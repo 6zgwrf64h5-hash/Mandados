@@ -1,0 +1,6 @@
+# Nunca suba dados reais para o GitHub (o repositório é público)
+*.pdf
+*.PDF
+Backup-Mandados-*.json
+*.zip
+.DS_Store
