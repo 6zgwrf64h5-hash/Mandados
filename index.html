@@ -305,6 +305,16 @@ body.procurando nav.tabs, body.procurando #legend, body.procurando #tools, body.
 a.btn.seqgo { display: block; text-align: center; text-decoration: none; padding: 16px 12px; font-size: 17px; margin: 10px 0; }
 .salvando { position: sticky; top: 0; z-index: 30; background: var(--warn-bg); color: var(--warn-ink); border: 2px solid var(--yel-line); border-radius: 12px; padding: 8px 12px; margin: 6px 0; font-weight: 700; font-size: 14px; }
 .salvando.erro { background: var(--stop-bg); color: var(--stop-ink); border-color: var(--neg); }
+.rota-banner { background: var(--ok-bg); border: 2px solid var(--ok-line); border-radius: 14px; padding: 10px 14px; margin: 8px 0; }
+.rota-banner p { margin: 0 0 8px; }
+.hoje { background: var(--surface); border: 2px solid var(--yel-line); border-radius: 14px; padding: 10px 14px; margin: 8px 0; }
+.hoje summary { cursor: pointer; font-size: 16px; }
+.hoje ul { margin: 8px 0; padding-left: 18px; }
+.hoje li { margin: 6px 0; }
+.urgtxt { color: var(--neg); }
+.rmgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 12px 0; }
+.rmbtn { min-height: 72px; font-size: 17px; font-weight: 800; border: 0; border-radius: 14px; color: #fff; cursor: pointer; }
+.rmbtn.pos { background: #17784A; } .rmbtn.neg { background: #A8383B; } .rmbtn.voz { background: #6A3FC4; }
 .chunkmais { margin: 6px 0; }
 .chunkmais summary { font-size: 13px; font-weight: 700; cursor: pointer; margin: 4px 0; }
 .rsel { display: inline-block; margin: 0 8px 0 0; vertical-align: middle; }
@@ -340,13 +350,13 @@ a.btn.seqgo { display: block; text-align: center; text-decoration: none; padding
     <p class="note" id="syncLine" style="margin-top:4px"></p>
     <div class="salvando" id="salvandoBar" hidden></div>
     <div class="bar">
-      <button class="btn primary" id="btnPdf">Adicionar PDF ou fotos</button>
+      <button class="btn primary" id="btnPdf">Adicionar PDF</button>
       <button class="btn" id="btnFisica">Certidão física (foto)</button>
-      <button class="btn" id="btnImport">Colar lote</button>
+      <button class="btn" id="btnImport" hidden>Colar lote</button>
       <button class="btn" id="btnExport">Copiar lista</button>
       <button class="btn" id="btnMe">Meus dados</button><button class="btn" id="btnSalvar">Salvar tudo</button>
     </div>
-    <input type="file" id="fileIn" accept="application/pdf,image/*" multiple hidden>
+    <input type="file" id="fileIn" accept="application/pdf" multiple hidden>
   </header>
 
   <section class="demo" id="buscando" hidden>
@@ -378,6 +388,9 @@ a.btn.seqgo { display: block; text-align: center; text-decoration: none; padding
     <p><strong>Versão de teste.</strong> Os mandados abaixo são inventados, nenhum é real. Mexa à vontade. Para usar de verdade, apague o exemplo e adicione o seu PDF.</p>
     <button class="btn small" id="btnClear">Apagar o exemplo e começar a minha lista</button>
   </section>
+
+  <section class="rota-banner" id="rotaBanner" hidden></section>
+  <section class="hoje" id="hoje" hidden></section>
 
   <nav class="tabs" id="tabs" aria-label="Listas">
     <button class="tab" data-tab="enviar" aria-pressed="true">Mandados <span class="count" data-c="enviar"></span></button>
@@ -450,6 +463,8 @@ function esc(s) {
 function norm(s) {
   return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
+var DDD_PADRAO = '45';
+function setDDD(v) { DDD_PADRAO = String(v || '').replace(/\D/g, '').slice(0, 2); }
 function normPhone(raw) {
   var d = String(raw || '').replace(/\D/g, '');
   if (/^\s*\+/.test(String(raw || '')) && !/^\s*\+\s*55/.test(String(raw || '')) && d.length >= 8) {
@@ -457,8 +472,8 @@ function normPhone(raw) {
   }
   if (d.indexOf('55') === 0 && d.length >= 12) { d = d.slice(2); }
   if (d.charAt(0) === '0') { d = d.slice(1); }
-  var ddd = '45', num, defaulted = false;
-  if (d.length === 8 || d.length === 9) { num = d; defaulted = true; }
+  var ddd = DDD_PADRAO, num, defaulted = false;
+  if (d.length === 8 || d.length === 9) { if (!DDD_PADRAO) { return { ok: false, label: raw, semDDD: true }; } num = d; defaulted = true; }
   else if (d.length === 10 || d.length === 11) { ddd = d.slice(0, 2); num = d.slice(2); }
   else { return { ok: false, label: raw }; }
   var fixo = num.length === 8 && /^[2-5]/.test(num);
@@ -545,7 +560,7 @@ function acharRegra(m, regras) {
     if (r.cond === 'citacao' && !/cita/.test(normRegra(m.tipo || ''))) { continue; }
     var alvo = r.onde === 'txt' ? txt : cab;
     var termos = String(r.texto || '').split(';').map(normRegra).filter(function (x) { return x; });
-    /* A regra do afastamento só vale se o afastamento foi IMPOSTO: a IA diz com todas as letras, ou lê-se o texto sem os "sem afastamento", "indeferido" e a lei citada */
+    /* A regra do afastamento só vale se o afastamento foi IMPOSTO: lê-se o texto sem os "sem afastamento", "indeferido" e a lei citada */
     if (r.cond === 'medida' && termos.some(function (t) { return t.indexOf('afastamento') !== -1 || t.indexOf('afastar') !== -1; })) {
       if (afIm === null) { afIm = analisaAfastamento((m.texto || '') + ' ' + (m.tipo || '') + ' ' + (m.resumo || '')).imposto; }
       if (afIm) { return r; }
@@ -582,7 +597,7 @@ function safeClass(m, regras) {
   /* Citação pode ir por mensagem, mesmo quando depois vier penhora */
   if (cls === 'nao_enviar' && /cita/.test(norm(m.tipo || '')) && m.natureza !== 'criminal' && !m.criminal && /penhora|execu|avalia/.test(norm(motivo)) && !/busca|apreens|arresto|sequestro|reintegra|imiss|despejo|prisao|conducao/.test(norm((m.tipo || '') + ' ' + motivo))) { cls = 'enviar'; motivo = ''; }
   if (cls === 'conferir' && m.natureza === 'medida_protetiva' && /prorrog|manuten|renov/.test(norm(m.tipo || ''))) { cls = 'enviar'; motivo = ''; }
-  /* Medida protetiva lida pela IA: "conferir" genérico vira enviar, a não ser que o próprio resumo diga que há afastamento */
+  /* Medida protetiva: "conferir" genérico vira enviar, a não ser que o próprio resumo diga que há afastamento */
   if (cls === 'conferir' && m.natureza === 'medida_protetiva' && /^medida protetiva(: confira a decis[aã]o)?\.?$/i.test(motivo.trim()) && !/execu|cumprimento|imposi/.test(norm(m.tipo || ''))) {
     var afIA = analisaAfastamento([m.tipo, m.resumo, m.aviso, m.motivo, m.texto].join(' '));
     if (afIA.imposto) { cls = 'nao_enviar'; motivo = 'Medida protetiva com afastamento do lar'; }
@@ -850,7 +865,7 @@ function paraEmpresa(texto, nome) {
   t = t.replace(/que o\(a\) referido\(a\)/g, 'que a referida empresa').replace(/conhece o\(a\) referido\(a\)/g, 'conhece a referida empresa').replace(/não o\(a\) encontrei/g, 'não a encontrei');
   return t;
 }
-/* Pedido simples, sem IA: "troque X por Y", "coloque Y no lugar de X", "tire X" */
+/* Pedido simples: "troque X por Y", "coloque Y no lugar de X", "tire X" */
 function ajusteLocal(texto, pedido) {
   var p = String(pedido || '').trim().replace(/[.!]+$/, ''), m, de = '', para = '', remover = false;
   var TROCA = '(?:troc[ae]r?|troque|mud[ae]r?|substitu[ai]r?|alter[ae]r?|coloc[ae]r?|coloque|ponh[ae]|escrev[ae]r?)', TIRA = '(?:tir[ae]r?|remov[ae]r?|remova|apag(?:ue|a|ar)|retir[ae]r?)';
@@ -1084,7 +1099,7 @@ function montarMensagem(tpl, nome, oficial, mat) {
     .replace(/\{MATRICULA\}/g, mat || '');
 }
 
-/* ---- Leitura sem IA: telefones e cor pelas palavras do mandado ---- */
+/* ---- Leitura: telefones e cor pelas palavras do mandado ---- */
 function parseTelefonesTexto(text) {
   var t = String(text || '').split('\n').filter(function (l) { return !/\bFone\s*:|E-mail\s*:/i.test(l); }).join(' ').replace(/\s+/g, ' ');
   var out = [], re = /telefones?(?:\(s\))?\s*:?\s*((?:[\d()\s.\-\/;,]|\be\b|\bou\b){8,90})/gi, m;
@@ -1364,7 +1379,7 @@ function custasContam(i, incluir, isentas, gratuitoOn) {
 
 /* ---- Duas diligências: física e on-line ---- */
 function tentativasOnline(it) {
-  var ts = (it.msgs || []).filter(function (m) { return m.kind !== 'analise'; }).map(function (m) { return m.t; }).sort(function (a, b) { return a - b; }), gs = [];
+  var corte = it.voltouLista || 0, ts = (it.msgs || []).filter(function (m) { return m.kind !== 'analise' && m.t > corte; }).map(function (m) { return m.t; }).sort(function (a, b) { return a - b; }), gs = [];
   ts.forEach(function (t) { var g = gs[gs.length - 1]; if (g && t - g.fim < 12 * 3600000) { g.fim = t; } else { gs.push({ ini: t, fim: t }); } });
   return gs;
 }
@@ -1458,6 +1473,91 @@ function urgencias(it, agora, c) {
   if (c.afast !== false && analisaAfastamento((it.motivo || '') + ' ' + (it.aviso || '')).imposto) { out.push({ tipo: 'afastamento', txt: 'afastamento do lar' }); }
   if (c.saude !== false && it.saudeLiminar) { out.push({ tipo: 'saude', txt: 'saúde com liminar' }); }
   return out;
+}
+function audDiasAte(it, agora) {
+  var a = audDe(it);
+  if (!a || !a.data) { return null; }
+  var h = horasAteAudiencia(a, agora);
+  if (h === null || h < -2) { return null; }
+  var p = a.data.split('-'), d0 = new Date(agora); d0.setHours(0, 0, 0, 0);
+  return Math.round((new Date(+p[0], +p[1] - 1, +p[2]).getTime() - d0.getTime()) / 86400000);
+}
+function icsEsc(t) { return String(t || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+function icsDobra(linha) {
+  var out = [], b = linha;
+  while (b.length > 73) { out.push(b.slice(0, 73)); b = ' ' + b.slice(73); }
+  out.push(b);
+  return out.join('\r\n');
+}
+/* Arquivo de calendário (.ics) com as audiências marcadas: o Calendário do iPhone avisa na véspera e 1 hora antes */
+function icsAudiencias(lista, agora) {
+  function z(x) { return (x < 10 ? '0' : '') + x; }
+  function dt(d) { return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()); }
+  function dth(d) { return dt(d) + 'T' + z(d.getHours()) + z(d.getMinutes()) + '00'; }
+  var n0 = new Date(agora), stamp = n0.getUTCFullYear() + z(n0.getUTCMonth() + 1) + z(n0.getUTCDate()) + 'T' + z(n0.getUTCHours()) + z(n0.getUTCMinutes()) + z(n0.getUTCSeconds()) + 'Z';
+  var linhas = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mandados do dia//PT-BR//', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'], n = 0;
+  (lista || []).forEach(function (it) {
+    if (!it || it.status !== 'pendente') { return; }
+    if (audDiasAte(it, agora) === null) { return; }
+    var a = audDe(it), p = a.data.split('-'), hm = /^(\d{1,2}):(\d{2})$/.exec(String(a.hora || ''));
+    var ini = new Date(+p[0], +p[1] - 1, +p[2], hm ? +hm[1] : 0, hm ? +hm[2] : 0, 0);
+    var ev = ['BEGIN:VEVENT', 'UID:aud-' + it.id + '@mandados-do-dia', 'DTSTAMP:' + stamp];
+    if (hm) { ev.push('DTSTART:' + dth(ini)); ev.push('DTEND:' + dth(new Date(ini.getTime() + 3600000))); }
+    else { ev.push('DTSTART;VALUE=DATE:' + dt(ini)); ev.push('DTEND;VALUE=DATE:' + dt(new Date(ini.getTime() + 86400000))); }
+    ev.push('SUMMARY:' + icsEsc('Audiência: ' + (it.nome || '')));
+    ev.push('DESCRIPTION:' + icsEsc('Processo ' + (it.processo || '') + (it.vara ? '\n' + it.vara : '')));
+    if (hm) {
+      ev.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Audiência amanhã', 'TRIGGER:-P1D', 'END:VALARM');
+      ev.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Audiência em 1 hora', 'TRIGGER:-PT1H', 'END:VALARM');
+    } else {
+      ev.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Audiência amanhã', 'TRIGGER:-PT15H', 'END:VALARM');
+    }
+    ev.push('END:VEVENT');
+    ev.forEach(function (l) { linhas.push(icsDobra(l)); });
+    n++;
+  });
+  linhas.push('END:VCALENDAR');
+  return { txt: linhas.join('\r\n') + '\r\n', n: n };
+}
+/* Agenda de contatos: o nome do mandado tem alguma das palavras cadastradas? */
+function acharContato(it, contatos) {
+  var nm = norm((it && it.nome) || '');
+  if (!nm) { return null; }
+  var l = contatos || [];
+  for (var k = 0; k < l.length; k++) {
+    var c = l[k], ch = (c.chaves || []).map(norm).filter(function (x) { return x.length >= 3; });
+    if (!ch.length && c.nome) { ch = [norm(c.nome)]; }
+    if (ch.some(function (x) { return nm.indexOf(x) !== -1; })) { return c; }
+  }
+  return null;
+}
+/* Documento da parte: só os 5 últimos dígitos do CPF (3 finais + 2 de controle), e só se vier colado ao nome dela */
+function extrairDocFim(texto, nome) {
+  var t = String(texto || ''), tn = norm(t), nn = norm(nome || '');
+  if (nn.length < 5) { return ''; }
+  var re = /\b(\d{3})\.(\d{3})\.(\d{3})-(\d{2})\b/g, i = tn.indexOf(nn);
+  while (i >= 0) {
+    var fim = i + nn.length, janela = tn.slice(fim, fim + 150), m;
+    re.lastIndex = 0;
+    while ((m = re.exec(janela))) {
+      var entre = t.slice(fim, fim + m.index);
+      if (!/[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{3,}\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{3,}/.test(entre)) { return (m[1] + m[2] + m[3] + m[4]).slice(-5); }
+    }
+    i = tn.indexOf(nn, i + nn.length);
+  }
+  return '';
+}
+/* Banco de pessoas: a mesma pessoa (nome igual; se os dois têm o final do CPF, ele também tem de bater) */
+function acharPessoa(it, pessoas) {
+  var nn = norm((it && it.nome) || '');
+  if (!nn) { return null; }
+  var c = (pessoas || []).filter(function (p) { return p.nomeN === nn; });
+  if (it.docFim) {
+    var igual = c.filter(function (p) { return p.docFim && p.docFim === it.docFim; });
+    if (igual.length) { return igual[0]; }
+    c = c.filter(function (p) { return !p.docFim; });
+  }
+  return c[0] || null;
 }
 function prioDe(it, agora, c) {
   if (it.prio === 'inicio' || it.prio === 'fim') { return it.prio; }
@@ -1573,7 +1673,7 @@ function vozLocal(fala, it, ctx) {
   var fecho = 'O referido é verdade. Dou fé.\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (oficial ? oficial + '\n' : '') + 'Oficial de Justiça';
   texto = 'CERTIDÃO\n\nCERTIFICO que, em cumprimento ao r. mandado' + (tipo === 'negativa' ? ', dirigi-me ao endereço indicado, e DEIXEI DE ' + (pessoal ? a.verbo + ' o(a) Sr(a). ' : 'CUMPRIR O MANDADO em face de o(a) Sr(a). ') + String(it.nome || '').toUpperCase() + ', tendo em vista que ' : ', ') + fraseVoz(fala) + '.' +
     (tipo === 'negativa' ? '\n\nAnte o exposto devolvo o mandado para os devidos fins.' : '') + '\n\n' + fecho + (dil ? '\n\nDiligência a receber: R$ ' + dil : '');
-  return { key: '', tipo: tipo, texto: texto, faltando: ['conferir o texto: sem a IA, usei a sua fala quase como foi dita'], entendi: 'Não encontrei um dos seus modelos para este caso, então escrevi um texto livre.' };
+  return { key: '', tipo: tipo, texto: texto, faltando: ['conferir o texto: usei a sua fala quase como foi dita'], entendi: 'Não encontrei um dos seus modelos para este caso, então escrevi um texto livre.' };
 }
 function promptVoz(it, fala, ctx) {
   ctx = ctx || {};
@@ -1893,7 +1993,7 @@ function ordenarComecando(list, termos, inicio, fimPt) {
   });
   return out.concat(sp.resto.length ? agruparPorRua(ordenarRota(sp.resto, pt, fimPt || null)) : []);
 }
-/* ---- Aprendizado da rota: guarda como você arruma a rota e, aos poucos, passa a ordenar parecido ---- */
+/* ---- (desligado nesta versão) guarda como você arruma a rota e, aos poucos, passa a ordenar parecido ---- */
 var _apr = null;
 function definirAprendizado(a) { _apr = a || null; }
 function parAp(P, a, b) { if (!P[a]) { P[a] = {}; } P[a][b] = (P[a][b] || 0) + 1; }
@@ -2113,7 +2213,7 @@ function parteLocal(parte, fala, it, ctx) {
     } else if (positivo) {
       tipo = 'positiva'; texto = 'CERTIFICO que, em cumprimento ao r. mandado, ' + fraseVoz(fala) + '.';
     } else {
-      tipo = 'negativa'; faltando.push('conferir o texto: sem a IA, usei a sua fala quase como foi dita');
+      tipo = 'negativa'; faltando.push('conferir o texto: usei a sua fala quase como foi dita');
       texto = 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado, e DEIXEI DE ' + (pessoal ? a.verbo + ' o(a) Sr(a). ' : 'CUMPRIR O MANDADO em face de o(a) Sr(a). ') + nome + ', tendo em vista que ' + fraseVoz(fala) + '.';
     }
   } else {
@@ -2146,7 +2246,7 @@ function parteLocal(parte, fala, it, ctx) {
     } catch (e) {}
     return null;
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} if (!state.syncOn) { ligarCopiaSozinha(); } schedulePush(); }
+  function save() { guardarPessoasPositivas(); try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} if (!state.syncOn) { ligarCopiaSozinha(); } schedulePush(); }
   function uid() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   var DEMO = [
@@ -2166,12 +2266,14 @@ function parteLocal(parte, fala, it, ctx) {
 
   state = load();
   if (!state || !state.items) {
-    state = { items: DEMO.map(fromRow), files: [], sample: true, origin: '' };
+    state = window.COM_DEMO ? { items: DEMO.map(fromRow), files: [], sample: true, origin: '', cfg: { ddd: '45', meuSms: '(45) 99900-0001', meuZap: '(45) 99900-0002', fim: 'Vila A' } } : { items: [], files: [], sample: false, origin: '' };
     save();
   }
   state.files = state.files || [];
   state.apagados = state.apagados || [];
   state.cfg = state.cfg || {};
+  setDDD(state.cfg.ddd || '');
+  if (MODO_ATALHO) { state.syncOn = false; }
   function cidades() { return state.cfg.cidades && state.cfg.cidades.length ? state.cfg.cidades : CIDADES_PADRAO; }
   function regras() {
     var l = state.cfg.regras && state.cfg.regras.length ? state.cfg.regras : null;
@@ -2183,7 +2285,6 @@ function parteLocal(parte, fala, it, ctx) {
     return l || DEFAULT_REGRAS;
   }
   function ufCfg() { return state.cfg.uf || 'PR'; }
-  function usarIA() { return state.cfg.usarIA !== false; }
   function etipo(i) { return enderecoTipo(i, cidades()); }
   function aguard(i) { return aguardandoOnline(i, Date.now(), cidades()); }
   function pronto(i) { return prontoCertificar(i, Date.now(), cidades()); }
@@ -2230,57 +2331,10 @@ function parteLocal(parte, fala, it, ctx) {
     var texto = preencherModelo(tpl.texto, dadosModelo(it, { onde: 'inteira', tipoRes: tpl.tipo }));
     openVoz(it, { final: { texto: texto, tipo: tpl.tipo, nota: 'Este é o seu modelo “' + tpl.nome + '”, já com os dados do mandado.' + (marcadoresDe(texto).length ? ' Ainda há trechos entre chaves: troque pelo que for certo antes de salvar.' : ' Confira com atenção e, se estiver certo, toque em “Salvar”.') } });
   }
-  async function abrirArquivosConta() {
-    openModal('PDFs e a conta', '<p class="prog">Conferindo cada PDF no aparelho e na sua conta…</p>');
-    var c = await syncGet(), arq = arquivosDaPagina(), linhas = [], tAqui = 0, tConta = 0;
-    for (var k = 0; k < arq.ids.length; k++) {
-      var id = arq.ids[k], aqui = false, meta = null, f = state.files.filter(function (x) { return x.id === id; })[0];
-      try { aqui = await idbHas(id); } catch (e) {}
-      if (c) { try { var sn = await docArq(c, id).get(); meta = sn.exists ? sn.data() : null; } catch (e) {} }
-      if (aqui) { tAqui++; } if (meta) { tConta++; }
-      linhas.push('<div class="grp"><strong>' + esc(arq.nomes[id]) + '</strong>' + (f ? ' <span class="note">(' + fmtTam(f.size) + ')</span>' : '') +
-        '<br><span class="note">Neste aparelho: <strong>' + (aqui ? 'sim' : 'não') + '</strong> · Na conta: <strong>' + (!c ? 'não consegui ver' : (meta ? 'sim (' + meta.n + (meta.n === 1 ? ' pedaço' : ' pedaços') + ', ' + fmtTam(meta.tam) + ')' : 'não')) + '</strong></span>' +
-        (errArq[id] ? '<br><span class="stopnote">Último erro ao salvar: ' + esc(errArq[id]) + '</span>' : '') + '</div>');
-    }
-    document.getElementById('mbody').innerHTML = (c ? '' : '<p class="stopnote">Não consegui acessar a conta. Abra a página pelo aplicativo do Claude.</p>') +
-      '<p><strong>' + arq.ids.length + (arq.ids.length === 1 ? ' arquivo' : ' arquivos') + '</strong>: ' + tAqui + ' neste aparelho, ' + tConta + ' na conta.</p>' +
-      (linhas.length ? linhas.join('') : '<p class="note">Nenhum PDF guardado ainda.</p>') +
-      '<div class="actions"><button class="btn primary" id="aqSalva">Salvar na conta agora</button><button class="btn" id="aqBusca">Buscar na conta o que falta aqui</button><button class="btn ghost" id="aqFecha">Fechar</button></div>';
-    document.getElementById('aqSalva').onclick = async function () {
-      if (!state.syncOn) { state.syncOn = true; save(); }
-      await aguardaPush();
-      var ok2 = await syncPush(true);
-      toast(ok2 ? (syncErr ? 'Salvei, mas: ' + syncErr : 'Tudo salvo na sua conta.') : (syncErr || 'Não consegui salvar agora.'));
-      abrirArquivosConta();
-    };
-    document.getElementById('aqBusca').onclick = async function () { await verificarArquivos(false); abrirArquivosConta(); };
-    document.getElementById('aqFecha').onclick = function () { closeModal(); };
-  }
-  function abrirAprendizado() {
-    function $(id) { return document.getElementById(id); }
-    var sn = state.cfg.rotasEnsinadas || [], ap = aprendido(), on = state.cfg.aprender !== false;
-    var ordB = ordemAprendida(ap.B), ordR = ordemAprendida(ap.R), sent = sentidoAprendido(ap);
-    openModal('Aprendizado da rota',
-      '<p class="note">Quando você toca em <strong>“Salvar esta rota”</strong> na janela da rota, a página guarda a ordem em que você arrumou: só <strong>rua, bairro e número</strong>, sem nomes de pessoas. Com 2 ou mais rotas salvas, ela passa a ordenar parecido com o que você repete: a ordem dos bairros e das ruas, e se você costuma subir ou descer os números. <strong>Não é uma IA treinada</strong>: é uma contagem simples, feita aqui no aparelho. Abaixo você vê tudo o que ela aprendeu, e a ordem que você ajusta à mão continua mandando.</p>' +
-      '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="apOn" style="width:24px;height:24px"' + (on ? ' checked' : '') + '> Usar o aprendizado nas próximas rotas</label>' +
-      '<p><strong>' + sn.length + '</strong> ' + (sn.length === 1 ? 'rota salva' : 'rotas salvas') + '.</p>' +
-      '<p><strong>Ordem dos bairros que você repete:</strong><br>' + (ordB.length >= 2 ? esc(ordB.map(nomeDoBairro).join('  →  ')) : 'ainda sem padrão. Salve mais rotas: ela só aprende o que aparece do mesmo jeito em 2 ou mais.') + '</p>' +
-      '<p><strong>Sentido dos números na mesma rua:</strong> ' + (sent === 'asc' ? 'crescente (do menor para o maior)' : (sent === 'desc' ? 'decrescente (do maior para o menor)' : 'ainda sem padrão')) + (ap.asc + ap.desc ? ' (' + ap.asc + ' vez' + (ap.asc === 1 ? '' : 'es') + ' crescente, ' + ap.desc + ' decrescente)' : '') + '.</p>' +
-      '<p><strong>Ruas com ordem aprendida:</strong> ' + ordR.length + '.</p>' +
-      '<div class="actions">' + (ordB.length >= 2 ? '<button class="btn" id="apZonas">Usar esta ordem de bairros em “Meus bairros”</button>' : '') + '<button class="btn ghost" id="apApaga">Apagar o aprendizado</button><button class="btn" id="apVolta">Voltar a Meus dados</button></div>');
-    $('apOn').addEventListener('change', function () { state.cfg.aprender = this.checked; save(); render(); toast(this.checked ? 'Aprendizado ligado.' : 'Aprendizado desligado: a rota volta a ser só em linha reta.'); });
-    if ($('apZonas')) { $('apZonas').onclick = function () { state.cfg.zonas = ordB.map(nomeDoBairro).join('\n'); save(); render(); toast('Escrevi essa ordem em Minha rota > Meus bairros. Para a rota seguir exatamente ela, escolha “Na ordem dos meus bairros”.'); }; }
-    var arm = false, ap2 = $('apApaga');
-    ap2.onclick = function () {
-      if (!arm) { arm = true; ap2.textContent = 'Toque de novo para apagar'; return; }
-      state.cfg.rotasEnsinadas = []; save(); render(); abrirAprendizado(); toast('Aprendizado apagado.');
-    };
-    $('apVolta').onclick = function () { openMe(); };
-  }
   function abrirModelos() {
     var L = modelos();
     openModal('Meus modelos de certidão',
-      '<p class="note">Os modelos que você salva aparecem na lista de certidões de cada cartão (física ou on-line) ou em Certificar (certidão inteira), em “Meus modelos”. Para criar um, faça uma certidão (por exemplo com “Certificar por IA”) e use “Salvar como modelo”.</p>' +
+      '<p class="note">Os modelos que você salva aparecem na lista de certidões de cada cartão (física ou on-line) ou em Certificar (certidão inteira), em “Meus modelos”. Para criar um, faça uma certidão (por exemplo com “Certificar por voz”) e use “Salvar como modelo”.</p>' +
       (L.length ? '<div class="models">' + L.map(function (m) { return '<button class="btn model" data-mm="' + esc(m.id) + '"><strong>' + esc(m.nome) + '</strong><span class="note">' + esc(ONDE_TXT[m.onde] || '') + ' · ' + (m.tipo === 'positiva' ? 'positiva' : 'negativa') + '</span></button>'; }).join('') + '</div>' : '<p class="empty">Nenhum modelo salvo ainda.</p>') +
       '<div class="actions"><button class="btn" id="mmVolta">Voltar a Meus dados</button></div>');
     document.getElementById('mbody').onclick = function (e) { var b = e.target.closest('[data-mm]'); if (b) { abrirEditarModelo(b.getAttribute('data-mm')); } };
@@ -2311,10 +2365,10 @@ function parteLocal(parte, fala, it, ctx) {
       save(); render(); abrirModelos(); toast('Modelo apagado');
     };
   }
-  function rotuloParte(p) { if (!p) { return ''; } if (String(p.modelo).indexOf('m:') === 0) { var mp = modeloPorId(p.modelo); return mp ? mp.nome : 'meu modelo'; } var l = (OPC_FISICA.concat(OPC_ONLINE)).filter(function (x) { return x[0] === p.modelo; })[0]; return l ? l[1].replace(/ \(.*$/, '') : 'feita por IA'; }
+  function rotuloParte(p) { if (!p) { return ''; } if (String(p.modelo).indexOf('m:') === 0) { var mp = modeloPorId(p.modelo); return mp ? mp.nome : 'meu modelo'; } var l = (OPC_FISICA.concat(OPC_ONLINE)).filter(function (x) { return x[0] === p.modelo; })[0]; return l ? l[1].replace(/ \(.*$/, '') : 'feita por voz'; }
   function selParte(parte) {
     var lst = parte === 'on' ? OPC_ONLINE : OPC_FISICA, tit = parte === 'on' ? 'Certidão on-line' : 'Certidão física';
-    return '<select class="sel pt" data-sel="' + parte + '" aria-label="' + tit + '"><option value="">' + tit + ': escolher…</option>' + lst.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('') + meusOpts(parte) + '<option value="ia">Certificar por IA (eu conto o que aconteceu)</option></select>';
+    return '<select class="sel pt" data-sel="' + parte + '" aria-label="' + tit + '"><option value="">' + tit + ': escolher…</option>' + lst.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('') + meusOpts(parte) + '<option value="ia">Certificar por voz (eu conto o que aconteceu)</option></select>';
   }
   function custasPadrao() { return parseValor((state.me && state.me.diligencia) || '108,63'); }
   function isentoIt(i) { return custasIsento(i, state.cfg.custasIsentas, state.cfg.gratuito); }
@@ -2382,7 +2436,7 @@ function parteLocal(parte, fala, it, ctx) {
       } catch (e) { if (e && e.name === 'AbortError') { return; } smsFalhou = true; }
     }
     var ok = await copyText(texto);
-    toast(ok ? 'Copiei a rota. Dentro do aplicativo do Claude o iPhone não deixa abrir o Mensagens sozinho: abra o Mensagens e cole.' : 'Não consegui abrir nem copiar. Use “Copiar link da rota”.');
+    toast(ok ? 'Copiei a rota. Abra o app Mensagens e cole.' : 'Não consegui abrir nem copiar. Use “Copiar link da rota”.');
   }
   function meuZapTxt() { return state.cfg.meuZap == null ? '' : state.cfg.meuZap; }
   function zapHref(texto) { var v = meuZapTxt(), n = v ? normPhone(v) : null; return n && n.ok ? 'https://wa.me/' + n.wa + '?text=' + encodeURIComponent(texto) : ''; }
@@ -2404,6 +2458,7 @@ function parteLocal(parte, fala, it, ctx) {
   }
   var aprCache = { chave: '', val: null };
   function aprendido() {
+    return null;
     var sn = state.cfg.rotasEnsinadas || [], ch = sn.length + ':' + (sn.length ? sn[sn.length - 1].t : 0);
     if (aprCache.chave !== ch) { aprCache = { chave: ch, val: aprenderRotas(sn) }; }
     return aprCache.val;
@@ -2516,11 +2571,11 @@ function parteLocal(parte, fala, it, ctx) {
   }
 
   /* Cópia segura na conta (db privado da pessoa): lista, ajustes, PDFs e prints */
-  var syncCtx = null, pushTimer = null, pushing = false, again = false, pushedHash = {}, syncErr = '', syncAt = '', syncProg = '', buscandoNuvem = false, nuvemListada = false, nuvemOk = null, pendNuvem = false, podeSalvar = !!(state && state.syncOn), ligandoCopia = false, avisouLigar = false;
+  var syncCtx = null, pushTimer = null, pushing = false, again = false, pushedHash = {}, syncErr = '', syncAt = '', syncProg = '', buscandoNuvem = false, nuvemListada = false, nuvemOk = null, pendNuvem = false, podeSalvar = !MODO_ATALHO && !!(state && state.syncOn), ligandoCopia = false, avisouLigar = false;
   async function syncGet() {
     if (syncCtx) { return syncCtx; }
     try {
-      if (!window.claude || !window.claude.use) { return null; }
+      if (MODO_ATALHO || !window.claude || !window.claude.use) { return null; }
       var d = await window.claude.use('db'), u = await window.claude.use('user');
       if (!d || !u) { return null; }
       var id = await u.id();
@@ -2543,6 +2598,7 @@ function parteLocal(parte, fala, it, ctx) {
   }
   function arquivosSemCopia() { var nu = state.nuvemArq || {}; return state.files.filter(function (f) { return f.stored && !nu[f.id]; }).length; }
   function schedulePush() {
+    if (MODO_ATALHO) { return; }
     if (!state || !state.syncOn) { return; }
     pendNuvem = true;
     clearTimeout(pushTimer);
@@ -2635,7 +2691,7 @@ function parteLocal(parte, fala, it, ctx) {
   }
   async function aguardaPush() { var t0 = Date.now(); while (pushing && Date.now() - t0 < 90000) { await new Promise(function (r) { setTimeout(r, 300); }); } }
   async function syncPush(force) {
-    if (!state.syncOn || !podeSalvar) { return false; }
+    if (MODO_ATALHO || !state.syncOn || !podeSalvar) { return false; }
     if (pushing) { again = true; return false; }
     pushing = true; again = false;
     var ok = false;
@@ -2836,10 +2892,10 @@ function parteLocal(parte, fala, it, ctx) {
     var f = state.files.filter(function (x) { return x.id === it.fileId; })[0];
     if (!f) { return false; }
     f.stored = false; save(); render();
-    openModal('O PDF não está neste aparelho', '<p class="prog">Procurando o PDF na sua conta…</p>');
+    openModal('O PDF não está neste aparelho', '<p class="prog">Conferindo o PDF…</p>');
     var feitos = state.syncOn ? await buscarFaltantesNaConta([f]) : 0;
     if (feitos) { closeModal(); toast('O PDF voltou da sua conta.'); depois(it); return true; }
-    document.getElementById('mbody').innerHTML = '<p>O PDF <strong>' + esc(f.name) + '</strong> (' + fmtTam(f.size) + ') não está mais neste aparelho' + (state.syncOn ? ' nem na sua conta' : '') + '. Escolha de novo o mesmo arquivo e todos os mandados dele voltam.</p><div class="actions"><button class="btn primary" id="fpEsc">Escolher o PDF de novo</button><button class="btn" id="fpFecha">Fechar</button></div>';
+    document.getElementById('mbody').innerHTML = '<p>O PDF <strong>' + esc(f.name) + '</strong> (' + fmtTam(f.size) + ') não está mais neste aparelho' + '. Escolha de novo o mesmo arquivo e todos os mandados dele voltam.</p><div class="actions"><button class="btn primary" id="fpEsc">Escolher o PDF de novo</button><button class="btn" id="fpFecha">Fechar</button></div>';
     document.getElementById('fpEsc').onclick = function () { escolherPdf(f.id, function () { closeModal(); depois(it); }); };
     document.getElementById('fpFecha').onclick = function () { closeModal(); };
     return true;
@@ -2853,7 +2909,7 @@ function parteLocal(parte, fala, it, ctx) {
       var b = null; try { b = await idbGet(ids[k]); } catch (e) {}
       if (b) { arquivos[ids[k]] = { tipo: b.type || '', b64: bytesParaB64(await blobBytes(b)) }; }
     }
-    var est = JSON.parse(JSON.stringify(state)); ['syncOn', 'nuvemArq', 'apagadosArq', 'seqAtiva', 'ultimoBackup'].forEach(function (x) { delete est[x]; });
+    var est = JSON.parse(JSON.stringify(state)); ['syncOn', 'nuvemArq', 'apagadosArq', 'seqAtiva', 'rotaAtiva', 'ultimoBackup'].forEach(function (x) { delete est[x]; });
     var d = new Date(), nome = 'Backup-Mandados-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.json';
     var txt = JSON.stringify({ app: 'mandados-do-dia', versao: 1, quando: d.toISOString(), estado: est, arquivos: arquivos });
     var ok = await salvarLocal(nome, txt, 'application/json');
@@ -2891,6 +2947,7 @@ function parteLocal(parte, fala, it, ctx) {
   };
   function linhaAtalho() {
     if (!state.items.length || state.sample) { return ''; }
+    if (!state.cfg.ddd && state.items.some(function (i) { return (i.telefones || []).some(function (t) { return normPhone(t).semDDD; }); })) { return 'Há telefones sem DDD. Informe o seu DDD em Meus dados para eles virarem link do WhatsApp.'; }
     var t = state.ultimoBackup, dias = t ? Math.floor((Date.now() - t) / 86400000) : null;
     return 'Seus dados ficam guardados neste aparelho. ' + (t ? 'Último backup em arquivo: ' + (dias === 0 ? 'hoje' : 'há ' + dias + (dias === 1 ? ' dia' : ' dias')) + '.' : 'Ainda não há backup em arquivo.') + (!t || dias >= 3 ? ' Toque em “Backup em arquivo”.' : '');
   }
@@ -3032,7 +3089,7 @@ function parteLocal(parte, fala, it, ctx) {
     var flt = arquivosFaltando();
     var errIds = Object.keys(errArq), barraTxt = '', barraErro = false;
     if (state.syncOn && podeSalvar) {
-      if (errIds.length) { barraTxt = 'Atenção: ' + (errIds.length === 1 ? 'um PDF não foi salvo' : errIds.length + ' PDFs não foram salvos') + ' na sua conta (' + errArq[errIds[0]] + '). A página tenta de novo sozinha; veja em Meus dados > PDFs e a conta.'; barraErro = true; }
+      if (errIds.length) { barraTxt = 'Atenção: ' + (errIds.length === 1 ? 'um PDF não foi salvo' : errIds.length + ' PDFs não foram salvos') + ' na sua conta (' + errArq[errIds[0]] + '). A página tenta de novo sozinha.'; barraErro = true; }
       else if (syncProg || arquivosSemCopia() || pendNuvem) { barraTxt = (syncProg || 'Salvando na sua conta') + '… não saia do aplicativo ainda.'; }
     }
     var sb = document.getElementById('salvandoBar'); sb.hidden = !barraTxt; sb.textContent = barraTxt; if (sb.classList) { sb.classList.toggle('erro', barraErro); }
@@ -3042,7 +3099,7 @@ function parteLocal(parte, fala, it, ctx) {
       document.getElementById('recoverTxt').innerHTML = '<strong>Tem um backup em arquivo?</strong> Restaure aqui a lista, os ajustes e os PDFs.';
       document.getElementById('btnRecover').textContent = 'Restaurar de um arquivo';
       var okInst = false; try { okInst = localStorage.getItem('mandados-instalar-ok') === '1'; } catch (e) {}
-      document.getElementById('instalar').hidden = ehInstalado() || okInst;
+      document.getElementById('instalar').hidden = ehInstalado() || okInst || !!window.claude;
     }
     document.getElementById('faltam').hidden = !flt.length || buscandoNuvem;
     if (flt.length) { var nm = flt.reduce(function (a, f) { return a + mandadosDoArquivo(f.id).length; }, 0); document.getElementById('faltamTxt').innerHTML = '<strong>' + (flt.length === 1 ? 'Falta 1 PDF' : 'Faltam ' + flt.length + ' PDFs') + ' neste aparelho</strong>: ' + nm + (nm === 1 ? ' mandado está' : ' mandados estão') + ' sem o “Ver mandado”.'; }
@@ -3054,6 +3111,7 @@ function parteLocal(parte, fala, it, ctx) {
     document.getElementById('syncLine').textContent = MODO_ATALHO ? linhaAtalho() : state.syncOn
       ? (syncProg || 'Cópia segura na sua conta: ligada' + (syncAt ? ' (última às ' + syncAt + ')' : '') + (syncErr ? '. ' + syncErr : '') + (arquivosSemCopia() ? '. ' + arquivosSemCopia() + (arquivosSemCopia() === 1 ? ' PDF ainda não foi salvo' : ' PDFs ainda não foram salvos') + ' na conta: não saia ainda.' : (pendNuvem && !syncErr ? '. Salvando as últimas mudanças: não saia ainda.' : '')))
       : (state.items.length && !state.sample ? (nuvemOk && !podeSalvar ? 'Não consegui conferir a sua conta, então não estou salvando para não sobrescrever a cópia. Toque em “Salvar tudo” para tentar de novo.' : 'Cópia segura desligada: toque em “Salvar tudo” para a lista, os PDFs e os ajustes não sumirem.') : '');
+    renderHoje(); renderRotaBanner();
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-tab') === tab);
     });
@@ -3092,7 +3150,7 @@ function parteLocal(parte, fala, it, ctx) {
         html = '<p class="empty">Nenhum nome encontrado para “' + esc(q) + '”.</p>';
       } else if (!list.length) {
         var msg = {
-          enviar: 'Nenhum mandado para enviar. Toque em “Adicionar PDF ou fotos” para ler o seu lote.',
+          enviar: 'Nenhum mandado para enviar. Toque em “Adicionar PDF” para ler o seu lote.',
           conferir: 'Nada para conferir. Aqui ficam os mandados que a leitura não conseguiu classificar sozinha.',
           nao_enviar: 'Nada aqui. Aqui ficam os mandados do 1º Juizado, citações criminais, penhoras, prisões e afastamento do lar.',
           aguardando: 'Nada aguardando resposta on-line. Aqui ficam os mandados em que a diligência física já foi feita e falta a on-line, e os só eletrônicos depois da 1ª mensagem.',
@@ -3165,6 +3223,9 @@ function parteLocal(parte, fala, it, ctx) {
     if (i.cls === 'nao_enviar') { flags.push(['Não enviar: ' + (i.motivo || 'regra do cartório'), true]); }
     if (i.cls === 'conferir') { flags.push(['Conferir: ' + (i.motivo || 'não deu para classificar'), false]); }
     if (i.aviso && i.aviso.length <= 70) { flags.push([i.aviso, false]); }
+    if (i.voltouLista && i.status === 'pendente') { flags.push(['Voltou das certidões: mandado não certificado', false]); }
+    if (i.agenda && i.status === 'pendente') { flags.push(['Agenda: ' + i.agenda.nome, 'ok']); }
+    if (i.jaIntimado && i.status === 'pendente') { var jd = new Date(i.jaIntimado.quando || 0); flags.push(['Já intimado por WhatsApp em ' + pad(jd.getDate()) + '/' + pad(jd.getMonth() + 1) + '/' + jd.getFullYear() + ' (proc. ' + i.jaIntimado.proc + ', ' + i.jaIntimado.tel + '). Confirme que é a mesma pessoa.', false]); }
     if (posRota[i.id] && i.status === 'pendente') { flags.push(['Rota ' + posRota[i.id], 'ok']); }
     var ad = audDe(i), af = ad ? audFlag(ad.data.split('-').reverse().join('/'), new Date()) : '';
     if (af && !(i.status === 'pendente' && urg(i).some(function (u) { return u.tipo === 'audiencia'; }))) { flags.push([af + ' (' + ad.data.split('-').reverse().join('/') + (ad.hora ? ' ' + ad.hora : '') + ')', true, 'aud']); }
@@ -3259,7 +3320,7 @@ function parteLocal(parte, fala, it, ctx) {
         h += '<div class="grp fis"><p class="grp-t">Física (no endereço)</p>' + selParte('fis') + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Não encontrei ninguém (registrar visita' + ((i.visitas || []).length ? ': ' + (i.visitas || []).length + ' de 3' : '') + ')</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' visitas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + '<button class="btn small" data-act="fisica">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint">Certidão física (print)</button>' + (isBA(i) ? '<button class="btn small wide" data-act="auto">Auto de busca e apreensão</button>' : '') + '</div></div>';
       }
       var cb = '<button class="btn small' + (pronto(i) ? ' primary' : '') + '" data-act="cert">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button><button class="btn small" data-act="externo">Certificada em outro meio (sem PDF)</button>';
-      cb = '<button class="btn small primary wide" data-act="certia">Certificar por IA</button>' + cb;
+      cb = '<button class="btn small primary wide" data-act="certia">Certificar por voz</button>' + cb;
       if ((ph.fis || ph.on) && partesFaltando(pn, ph).length) { cb += '<button class="btn small wide" data-act="partesjuntar">Juntar e revisar só com o que está pronto</button>'; }
       if (ph.fis || ph.on) { cb += '<button class="btn small ghost" data-act="partesundo">Refazer as partes</button>'; }
       h += '<div class="grp cer"><p class="grp-t">Certidão</p><div class="actions">' + cb + '</div></div>';
@@ -3270,7 +3331,7 @@ function parteLocal(parte, fala, it, ctx) {
       h += '<div class="grp man"><p class="grp-t">Mandado</p><div class="actions">' + man + '</div></div>';
     } else {
       h += '<p class="badge ' + i.certidao.tipo + '">Certidão ' + i.certidao.tipo + ' pronta' + (i.certidao.canal === 'wa' ? ' (WhatsApp)' : (i.certidao.canal === 'fisica' ? (i.certidao.origem === 'print' ? ' (feita por print)' : ' (feita à mão)') : (i.certidao.canal === 'externo' ? ' (feita fora da página, sem PDF)' : ''))) + (i.certidao.prints && i.certidao.prints.length ? ', ' + i.certidao.prints.length + (i.certidao.canal === 'fisica' && i.certidao.origem !== 'print' ? (i.certidao.prints.length === 1 ? ' foto' : ' fotos') : (i.certidao.prints.length === 1 ? ' print' : ' prints')) : '') + (i.baixada ? ', já baixada' : '') + '</p>';
-      h += '<div class="actions">' + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small" data-act="viewcert">Ver certidão</button>' + (externo(i) ? '' : '<button class="btn small primary" data-act="baixar">Baixar PDF</button><button class="btn small" data-act="compart">Compartilhar</button>') + '<button class="btn small ghost" data-act="devolver">Tirar da lista</button><button class="btn small ghost" data-act="purge">Excluir definitivamente</button></div>';
+      h += '<div class="actions">' + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small" data-act="viewcert">Ver certidão</button>' + (externo(i) ? '' : '<button class="btn small primary" data-act="baixar">Baixar PDF</button><button class="btn small" data-act="compart">Compartilhar</button>') + '<button class="btn small ghost" data-act="naocert">Mandado não certificado</button><button class="btn small ghost" data-act="purge">Excluir definitivamente</button></div>';
     }
     h += '</div></article>';
     return h;
@@ -3300,6 +3361,7 @@ function parteLocal(parte, fala, it, ctx) {
       '<p class="note">Estes dados vão na mensagem de WhatsApp e na certidão. Ficam só neste aparelho. A mensagem usa o texto padrão da Comarca de Foz do Iguaçu.</p>' +
       '<label class="f" for="meNome">Nome completo</label><input type="text" id="meNome" value="' + esc(me.nome) + '" autocomplete="off">' +
       '<label class="f" for="meMat">Matrícula</label><input type="text" id="meMat" value="' + esc(me.mat) + '" autocomplete="off">' +
+      '<label class="f" for="meDDD">DDD da sua região (completa os telefones que vêm sem DDD)</label><input type="text" id="meDDD" inputmode="numeric" maxlength="2" placeholder="Ex.: 45" value="' + esc(state.cfg.ddd || '') + '" autocomplete="off">' +
       '<label class="f" for="meDil">Diligência a receber, em R$ (vai nas certidões negativas)</label><input type="text" id="meDil" value="' + esc(me.diligencia || '108,63') + '" inputmode="decimal" autocomplete="off">' +
       '<label class="f" for="meSms">Celular que recebe a rota por SMS (quando você toca em “Enviar por SMS”)</label><input type="text" id="meSms" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuSmsTxt()) + '" autocomplete="off"><p class="note" id="meSmsNota"></p>' +
       '<label class="f" for="meZap">WhatsApp que recebe a rota (abre a conversa com o link já pronto)</label><input type="text" id="meZap" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuZapTxt()) + '" autocomplete="off"><p class="note" id="meZapNota"></p>' +
@@ -3308,12 +3370,11 @@ function parteLocal(parte, fala, it, ctx) {
       '<p class="note">Escreva <strong>{NOME}</strong> onde vai o nome da pessoa (em maiúsculas), <strong>{OFICIAL}</strong> onde vai o seu nome e <strong>{MATRICULA}</strong> onde vai a matrícula. A pergunta “o seu nome é o contido na 1ª linha?” só faz sentido se o nome estiver na primeira linha.</p>' +
       '<div class="actions"><button class="btn small" id="meMsgVer">Ver como fica</button><button class="btn small ghost" id="meMsgPad">Voltar ao texto padrão</button></div>' +
       '<pre id="meMsgPrev" class="note" style="white-space:pre-wrap" hidden></pre>' +
-      '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="meIA" style="width:24px;height:24px"' + (usarIA() ? ' checked' : '') + '> Usar a IA quando houver internet (sem ela a leitura continua funcionando, só pelas palavras do mandado)</label>' +
       '<label class="f" for="meAn">Texto do botão “Documentos em análise”</label><input type="text" id="meAn" value="' + esc(state.cfg.msgAnalise || 'Documentos em análise.') + '" autocomplete="off">' +
-      '<div class="actions"><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="mePrio">Prioridades da rota</button><button class="btn" id="meAprende">Aprendizado da rota</button><button class="btn" id="meArq">PDFs e a conta</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button></div>' +
+      '<div class="actions"><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="mePrio">Prioridades da rota</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
       '<p class="note">Toque em Salvar antes de abrir essas telas.</p>' +
       '<div class="actions"><button class="btn primary" id="meSave">Salvar</button></div>' +
-      (MODO_ATALHO ? painelAtalho() : painelNuvem()) + painelBackup());
+      painelAtalho() + painelBackup());
     function notaSms() {
       var v = String(document.getElementById('meSms').value || '').trim(), n = v ? normPhone(v) : null;
       document.getElementById('meSmsNota').textContent = !v ? 'Vazio: o SMS abre sem destinatário, e você escolhe para quem mandar.' : (n && n.ok ? 'Número reconhecido: ' + n.label + '. Tocar em “Enviar por SMS” abre o app Mensagens com esse número e o link da rota prontos.' : 'Não reconheci esse número. Escreva com DDD, por exemplo (45) 99999-9999 (11 dígitos). Enquanto isso, o SMS abre sem destinatário.');
@@ -3348,10 +3409,10 @@ function parteLocal(parte, fala, it, ctx) {
     function setSyncSt(t) { var e = document.getElementById('syncSt'); if (e) { e.textContent = t; } }
     document.getElementById('meRegras').onclick = function () { abrirRegras(); };
     document.getElementById('meComarca').onclick = function () { abrirComarca(); };
+    document.getElementById('meAgenda').onclick = function () { abrirAgenda(); };
+    document.getElementById('mePessoas').onclick = function () { abrirBancoPessoas(); };
     document.getElementById('meValores').onclick = function () { abrirValores(); };
     document.getElementById('meModelos').onclick = function () { abrirModelos(); };
-    document.getElementById('meAprende').onclick = function () { abrirAprendizado(); };
-    document.getElementById('meArq').onclick = function () { abrirArquivosConta(); };
     document.getElementById('mePrio').onclick = function () { abrirPrio(); };
     document.getElementById('meRota').onclick = function () { abrirMinhaRota(); };
     document.getElementById('meMsgVer').onclick = function () {
@@ -3365,7 +3426,6 @@ function parteLocal(parte, fala, it, ctx) {
       if (!n || !m) { toast('Preencha o nome e a matrícula'); return; }
       var tx = document.getElementById('meMsg').value;
       var custom = tx.trim() && tx.trim() !== MSG_PADRAO.trim() ? tx : '';
-      state.cfg.usarIA = document.getElementById('meIA').checked;
       state.cfg.msgAnalise = document.getElementById('meAn').value.trim() || null;
       state.cfg.meuSms = String(document.getElementById('meSms').value || '').trim();
       if (MODO_ATALHO && document.getElementById('meChave')) {
@@ -3374,6 +3434,7 @@ function parteLocal(parte, fala, it, ctx) {
         state.cfg.iaModelo = String(document.getElementById('meModelo').value || '').trim() || null;
       }
       state.cfg.meuZap = String(document.getElementById('meZap').value || '').trim();
+      state.cfg.ddd = String(document.getElementById('meDDD').value || '').replace(/\D/g, '').slice(0, 2); setDDD(state.cfg.ddd);
       state.me = { nome: n, mat: m, diligencia: document.getElementById('meDil').value.trim() || '108,63', msg: custom }; save(); closeModal(); render();
       toast(custom && tx.indexOf('{NOME}') === -1 ? 'Dados salvos. Atenção: a mensagem não tem {NOME}.' : 'Dados salvos');
     };
@@ -3453,14 +3514,6 @@ function parteLocal(parte, fala, it, ctx) {
     $('rgSave').onclick = function () { gravar(); closeModal(); toast('Exceções salvas. Valem para as próximas leituras.'); };
     $('rgApply').onclick = function () { gravar(); var n = reaplicarRegras(); closeModal(); toast('Exceções salvas. ' + n + (n === 1 ? ' mandado mudou de cor.' : ' mandados mudaram de cor.')); };
   }
-  function painelNuvem() {
-    return '<hr style="border:0;border-top:1.5px solid var(--line);margin:18px 0 8px">' +
-      '<h3 style="margin:8px 0 0;font-size:18px">Cópia segura na sua conta do Claude</h3>' +
-      '<p class="note">O iPhone pode apagar o que a página guarda quando você fecha o aplicativo. Ligando isto, a lista de mandados (nomes, telefones, endereços, certidões) é copiada para uma área <strong>privada da sua conta</strong> no Claude, que só você acessa. Os <strong>PDFs e os prints também</strong> são copiados (cada um é cortado em pedaços) e voltam sozinhos quando você abre a página de novo.</p>' +
-      '<p class="note" id="syncSt">' + (state.syncOn ? 'Ligada.' : 'Desligada.') + '</p>' +
-      '<div class="actions"><button class="btn primary" id="syncOn">' + (state.syncOn ? 'Copiar agora' : 'Ligar a cópia segura') + '</button>' +
-      (state.syncOn ? '<button class="btn" id="syncOff">Desligar</button><button class="btn ghost" id="syncDel">Apagar a cópia da conta</button>' : '') + '</div>';
-  }
   function painelBackup() {
     return '<hr style="border:0;border-top:1.5px solid var(--line);margin:18px 0 8px">' +
       '<h3 style="margin:8px 0 0;font-size:18px">Backup em arquivo</h3>' +
@@ -3473,10 +3526,7 @@ function parteLocal(parte, fala, it, ctx) {
       '<p class="note">Esta página funciona como um aplicativo: guarda a lista, os PDFs e os ajustes <strong>só no seu iPhone</strong>, sem enviar nada para outro lugar. O iPhone pode apagar isso se faltar espaço ou se você remover o ícone, por isso faça o <strong>backup em arquivo</strong> de vez em quando.</p>' +
       '<p class="note" id="stPersist">Proteção de armazenamento: conferindo…</p>' +
       '<div hidden><p id="syncSt"></p><button id="syncOn"></button><button id="syncOff"></button><button id="syncDel"></button></div>' +
-      '<h3 style="margin:14px 0 0;font-size:18px">IA (opcional)</h3>' +
-      '<p class="note">Sem IA, a leitura dos PDFs, as certidões por modelo, as rotas e o WhatsApp funcionam normalmente. Para ler foto de mandado e usar “Certificar por IA” e “Editar por IA”, cole aqui a sua <strong>chave da API da Anthropic</strong>. Ela fica só neste aparelho e a cobrança é por uso, na sua conta de desenvolvedor, <strong>separada do plano do Claude</strong>. Os textos dos mandados são enviados à Anthropic quando você usa a IA.</p>' +
-      '<label class="f" for="meChave">Chave da API</label><input type="password" id="meChave" placeholder="sk-ant-…" value="' + esc(chaveIA()) + '" autocomplete="off">' +
-      '<label class="f" for="meModelo">Modelo (deixe vazio para usar o padrão)</label><input type="text" id="meModelo" placeholder="claude-sonnet-5-5" value="' + esc(state.cfg.iaModelo || '') + '" autocomplete="off">';
+      '';
   }
   function abrirMinhaRota(voltaRota) {
     function $(id) { return document.getElementById(id); }
@@ -3724,6 +3774,10 @@ function parteLocal(parte, fala, it, ctx) {
     else if (act === 'baixar') { baixarUma(it); }
     else if (act === 'compart') { compartilharCerts([it]); }
     else if (act === 'purge') { purge(it); }
+    else if (act === 'naocert') {
+      if (window.confirm && !window.confirm('Este mandado volta para a lista de pendentes, na aba Mandados, e a certidão feita será apagada. As mensagens de WhatsApp ficam registradas. Continuar?')) { return; }
+      desfazerCertidao(it);
+    }
     else if (act === 'devolver') {
       it.status = 'devolvido'; lastDev = it.id; save(); render();
       toast('Retirado da lista', function () {
@@ -4129,84 +4183,11 @@ function parteLocal(parte, fala, it, ctx) {
     return (prefixo + ' - ' + it.nome + ' - ' + it.processo).replace(/[\x2f\x5c:*?"<>|]/g, '-');
   }
 
-  /* Leitura com IA */
-  var RULES =
-    'Você é assistente de um Oficial de Justiça da Comarca de Foz do Iguaçu (TJPR). Abaixo há o conteúdo de um PDF com vários mandados judiciais. Extraia UM objeto por mandado cujo início (cabeçalho "MANDADO de ...") esteja nas páginas de ALVO. As páginas de CONTEXTO servem só para completar um mandado que começou nelas: não gere mandados que começam no contexto.\n\n' +
-    'IMPORTANTE: o PDF alterna MANDADO e CONTRAFÉ. A contrafé é a cópia com os anexos que será entregue à pessoa e fica entre um mandado e outro. Extraia os dados SEMPRE do MANDADO (cabeçalho "MANDADO de ..."), nunca da contrafé. Páginas marcadas com (mandado) ou (contrafé) já foram identificadas automaticamente.\n\n' +
-    'Para cada mandado devolva estes campos:\n' +
-    '- nome: nome completo, em MAIÚSCULAS, da pessoa a ser citada, intimada ou notificada (o "Promovido", o "Destinatário do mandado", a "parte requerida", a "parte ré", a vítima, a testemunha, o jurado etc.). Se houver mais de uma pessoa destinatária, ponha a principal em nome e as outras em outros_nomes (lista).\n' +
-    '- processo: número do processo (formato CNJ).\n' +
-    '- vara: vara ou juízo que expediu, como está escrito (por exemplo "1º Juizado Especial Cível", "3ª Vara Criminal").\n' +
-    '- natureza: "civel", "criminal", "medida_protetiva", "juri", "execucao_penal", "fazenda", "familia" ou "outro".\n' +
-    '- afastamento_imposto: true ou false. true SOMENTE se o mandado é de medida protetiva e a decisão ORDENA, agora e expressamente, o afastamento do lar (que o requerido saia de casa), algo que só se cumpre pessoalmente. false em todo o resto: só proibição de aproximação, de contato ou de distância mínima; prorrogação ou manutenção; afastamento indeferido; "sem afastamento do lar"; "afastamento do lar" citado só como texto da lei (por exemplo "art. 22, II") ou como pedido da vítima ainda não decidido. Em mandado que não é de medida protetiva, false.\n' +
-    '- tipo: o ato, em poucas palavras, no máximo 5 palavras (por exemplo "Citação", "Intimação", "Intimação de sentença", "Notificação", "Intimação da vítima").\n' +
-    '- resumo: do que se trata o mandado, em UMA frase curta e direta, no máximo 90 caracteres, sem repetir o nome nem o número do processo (por exemplo "Intimação da vítima: denúncia oferecida; 5 dias para pedir audiência", "Citação em ação de cobrança", "Busca e apreensão de veículo").\n' +
-    '- endereco: logradouro e número, como no mandado. bairro: o bairro, se houver. cidade: município e UF do endereço da pessoa, como \"FOZ DO IGUAÇU/PR\", ou \"\" se não constar.\n' +
-    '- Só em mandado de BUSCA E APREENSÃO de veículo: autor (nome da parte autora/exequente, sem o representante, sem CNPJ e sem endereço), rotulo_autor (\"autor\", \"exequente\" ou \"requerente\", como está no mandado), rotulo_reu (\"réu\", \"executado\" ou \"requerido\", como está no mandado) e veiculos (lista de objetos com marca, modelo, ano, cor, placa, chassi e renavam, copiados exatamente do mandado; em ano use o ano de fabricação/modelo como \"2011/2012\"; o que não constar fica \"\"). Nos demais mandados, autor \"\" e veiculos [].\n' +
-    '- telefones: lista de TODOS os telefones da pessoa, exatamente como escritos, sem corrigir nem completar. Não inclua telefones do fórum, da vara, do CEJUSC, da Defensoria, da Patrulha Maria da Penha (153) nem de advogados.\n' +
-    '- audiencia: SOMENTE a data e hora de uma AUDIÊNCIA ou SESSÃO efetivamente designada no mandado (por exemplo "audiência de instrução designada para 26/10/2026 às 14:00"), no formato "dd/mm/aaaa hh:mm". NÃO use a data de expedição do mandado, da assinatura, da decisão, prazos (por exemplo "5 dias") nem a data de hoje. Se o mandado apenas diz que a parte ou a vítima PODE requerer/pedir audiência (por exemplo "possibilidade de requerer audiência preliminar"), isso NÃO é audiência marcada: devolva "". Sem data E hora marcadas, devolva "". Quando devolver uma data, preencha também audiencia_trecho.\n' +
-    '- audiencia_trecho: copie do mandado, entre aspas, o pedaço exato (no máximo 120 caracteres) onde está a data da audiência; "" se não houver audiência.\n' +
-    '- paginas: lista dos números de página (como em "=== PÁGINA n ===") que formam o MANDADO, incluindo as de continuação, sem contar a contrafé.\n' +
-    '- paginas_contrafe: lista dos números de página da contrafé que pertence a este mesmo mandado (mesmo número de processo), ou [].\n' +
-    '- classificacao e motivo. classificacao é "nao_enviar" (com motivo curto) quando: (a) o mandado é do 1º Juizado Especial (Cível, Criminal ou da Fazenda Pública; não confunda com "1ª Vara"); (b) é citação em ação penal; (c) o ATO do mandado é penhora, arresto, sequestro, busca e apreensão, reintegração de posse, imissão ou outro ato que não se cumpre por mensagem. CITAÇÃO e INTIMAÇÃO podem ser feitas por mensagem e são "enviar", mesmo em execução ou quando o mandado avisa que, se não pagar, haverá penhora depois: a penhora é ato posterior e não impede a citação on-line; (d) é medida protetiva com afastamento_imposto true (o mandado impõe o afastamento agora). Atenção: mandado de PRORROGAÇÃO, manutenção ou renovação de medidas protetivas (intimação para ciência da prorrogação ou para se manifestar sobre a manutenção) NÃO é nao_enviar, mesmo que as medidas já existentes incluam afastamento do lar: classifique como "enviar". Em medida protetiva, a única coisa que impede o envio é o afastamento do lar IMPOSTO pela decisão. Afastamento indeferido, \"sem afastamento\" ou citado só como texto da lei (por exemplo \"art. 22, II\") NÃO conta. Não use \"conferir\" só porque o mandado é de medida protetiva. É "conferir" (com motivo curto) apenas quando a decisão não aparece no texto ou o texto é ilegível. Quando for prorrogação, escreva isso no campo tipo (por exemplo "Intimação - prorrogação de medidas protetivas"). É "enviar" nos demais casos, inclusive medida protetiva só com distanciamento, proibição de contato ou de aproximação, e intimações para audiência ou ciência.\n' +
-    '- aviso: alerta curto e útil, no máximo 70 caracteres, ou "" (por exemplo mandado sigiloso, audiência próxima, telefone suspeito, endereço incompleto). Orientações longas do despacho NÃO entram aqui: resuma no campo resumo.\n\n' +
-    'Responda somente com um array JSON de objetos com esses campos, sem comentários. Se não houver mandado novo nas páginas de ALVO, responda [].';
-
-  var RULES_B = (function () {
-    var ini = RULES.indexOf('Para cada mandado devolva');
-    return 'Você é assistente de um Oficial de Justiça da Comarca de Foz do Iguaçu (TJPR). Abaixo há mandados judiciais de um PDF, cada um num bloco "### MANDADO k DE n". Cada bloco traz um resumo da CONTRAFÉ (já lido: nome da Parte, processo, endereço, telefones) e as páginas do MANDADO. Devolva EXATAMENTE um objeto por bloco, sem pular nenhum, mesmo que o texto seja curto ou incompleto. Use o resumo da contrafé para a pessoa, o processo, o endereço e os telefones; use as páginas do mandado para o ato, a vara, a natureza, a audiência, o aviso e a classificação. Em nome, use o nome da Parte do resumo.\n\n' +
-      RULES.slice(ini)
-        .replace(/- paginas: [^\n]*\n/, '')
-        .replace(/- paginas_contrafe: [^\n]*\n/, '- bloco: o número do bloco (o k de "### MANDADO k DE n") a que o objeto se refere.\n')
-        .replace(/Responda somente com um array JSON[^\n]*$/, 'Responda somente com um array JSON com EXATAMENTE um objeto por bloco, sem comentários.');
-  })();
-
   function errText(e) {
     var c = e && e.code;
     if (c === 'cancelled') { return 'Leitura interrompida.'; }
-    if (c === 'not_granted') { return 'Para ler com IA, permita o uso do Claude nesta página.'; }
-    if (c === 'rate_limited') { return 'O limite de uso do Claude foi atingido. Tente de novo mais tarde.'; }
-    if (c === 'sampling_disabled') { return 'O Claude não está disponível nesta conta.'; }
-    if (c === 'chave_invalida') { return 'A chave da IA não foi aceita. Confira em Meus dados.'; }
-    if (c === 'rede') { return 'Sem conexão com a IA agora.'; }
-    if (c === 'invalid_json') { return 'O Claude não devolveu uma lista válida desse trecho. Tente de novo.'; }
-    if (c === 'images_unavailable' || c === 'image_rejected') { return 'Não consegui enviar as imagens para leitura.'; }
-    if (c === 'prompt_too_large') { return 'O trecho ficou grande demais para ler de uma vez.'; }
     if (e && e.msg) { return e.msg; }
     return 'Não consegui ler agora' + (c ? ' (' + c + ')' : '') + '.';
-  }
-
-  /* IA: dentro do Claude usa a conta de quem abre; no atalho, só se você colocar a sua chave da API (guardada só neste aparelho) */
-  function chaveIA() { try { return localStorage.getItem('mandados-ia-chave') || ''; } catch (e) { return ''; } }
-  function extrairJson(txt) {
-    var t = String(txt || '').replace(/```json|```/g, '').trim(), a = Math.min.apply(null, ['[', '{'].map(function (c) { var k = t.indexOf(c); return k < 0 ? 1e9 : k; }));
-    var fimA = Math.max(t.lastIndexOf(']'), t.lastIndexOf('}'));
-    if (a === 1e9 || fimA < a) { throw { code: 'invalid_json' }; }
-    try { return JSON.parse(t.slice(a, fimA + 1)); } catch (e) { throw { code: 'invalid_json' }; }
-  }
-  function modeloIA(tier) { return state.cfg.iaModelo || (tier === 'quick' ? 'claude-haiku-5-5' : 'claude-sonnet-5-5'); }
-  function criarIA(chave) {
-    var chamar = async function (input, opt) {
-      opt = opt || {};
-      var content = [], imgs = opt.images || [];
-      for (var i = 0; i < imgs.length; i++) { content.push({ type: 'image', source: { type: 'base64', media_type: imgs[i].type || 'image/jpeg', data: bytesParaB64(await blobBytes(imgs[i])) } }); }
-      content.push({ type: 'text', text: typeof input === 'string' ? input : JSON.stringify(input) });
-      var resp;
-      try {
-        resp = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', signal: opt.signal, headers: { 'content-type': 'application/json', 'x-api-key': chave, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify({ model: modeloIA(opt.modelTier), max_tokens: 16000, messages: [{ role: 'user', content: content }] }) });
-      } catch (e) { if (e && e.name === 'AbortError') { throw { code: 'cancelled' }; } throw { code: 'rede', message: 'Sem conexão com a IA.' }; }
-      var j = await resp.json().catch(function () { return {}; });
-      if (!resp.ok) { throw { code: resp.status === 401 || resp.status === 403 ? 'chave_invalida' : (resp.status === 429 ? 'rate_limited' : (resp.status === 413 ? 'prompt_too_large' : 'erro_' + resp.status)), message: (j.error && j.error.message) || ('Erro ' + resp.status) }; }
-      return { text: (j.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join(''), truncated: j.stop_reason === 'max_tokens' };
-    };
-    chamar.json = async function (input, opt) { var r = await chamar(input, opt); return extrairJson(r.text); };
-    chamar.limits = async function () { return { images: { maxCount: 4 } }; };
-    return chamar;
-  }
-  async function getSample() {
-    try { if (window.claude && window.claude.use) { return await window.claude.use('sample'); } } catch (e) { return null; }
-    var k = chaveIA();
-    return k ? criarIA(k) : null;
   }
 
   function toItem(m, fileId) {
@@ -4268,46 +4249,39 @@ function parteLocal(parte, fala, it, ctx) {
   }
 
   async function readFiles(files) {
-    var sample = (usarIA() && navigator.onLine !== false) ? await getSample() : null;
+    var sample = null;
     reatt = 0; dups = 0; volt = 0; semIA = null; rs = { esperados: 0, ia: 0, local: 0 };
     runCtl = new AbortController();
     var ctl = runCtl;
     openModal('Lendo os mandados',
-      '<p class="prog" id="prog">Começando…</p><p class="note">' + (sample ? 'Pode levar alguns minutos em PDF grande. A primeira leitura pede a sua permissão para usar o Claude. Se a IA não responder, a leitura continua sozinha, só pelas palavras do mandado.' : 'Lendo sem a IA (desligada, sem internet ou sem acesso): a página usa só as palavras do mandado. Funciona para PDF com texto e contrafé, como o do Projudi.') + '</p>' +
+      '<p class="prog" id="prog">Começando…</p><p class="note">A leitura acontece neste aparelho: nada é enviado para a internet.</p>' +
       '<div class="actions"><button class="btn" id="stop">Parar</button></div>');
     document.getElementById('stop').onclick = function () { ctl.abort(); };
     var total = 0, lastErr = null;
     if (state.sample) { state.items = []; state.sample = false; }
     try {
-      var images = [];
       for (var fi = 0; fi < files.length; fi++) {
         var f = files[fi];
         var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+        if (!isPdf) { lastErr = lastErr || { msg: 'Só PDF de mandado é lido. Para foto de certidão, use “Certidão física (foto)”.' }; continue; }
         var fileId = uid();
         var stored = true;
         try { await idbPut(fileId, f); } catch (e) { stored = false; }
         var meta = { id: fileId, name: f.name, size: f.size, date: Date.now(), count: 0, stored: stored };
         state.files.push(meta); save();
-        if (isPdf) {
-          var n = await readPdf(f, fileId, sample, ctl);
-          meta.count += n; total += n; save();
-        } else { images.push({ f: f, meta: meta }); }
-      }
-      if (images.length) {
-        var n2 = await readImages(images, sample, ctl);
-        total += n2;
+        var n = await readPdf(f, fileId, sample, ctl);
+        meta.count += n; total += n; save();
       }
     } catch (e) { lastErr = e; }
     if (!lastErr && semIA) { lastErr = semIA; }
-    var semIaTudo = !sample;
     runCtl = null;
     save();
     var parts = ['enviar', 'conferir', 'nao_enviar'].map(function (c) {
       return state.items.filter(function (i) { return i.status === 'pendente' && i.cls === c; }).length;
     });
     openModal(lastErr ? 'Leitura parou' : 'Leitura concluída',
-      '<p>' + (lastErr ? esc(errText(lastErr)) + ' ' : '') + (semIaTudo ? 'Leitura <strong>sem a IA</strong>. ' : '') + 'Mandados novos adicionados: <strong>' + total + '</strong>.' + (reatt ? ' Reconectados ao PDF: <strong>' + reatt + '</strong>.' : '') + '</p>' +
-      (rs.esperados ? '<p>O PDF tem <strong>' + rs.esperados + '</strong> mandados (um por contrafé). Contei na leitura: <strong>' + (total + dups + reatt) + '</strong>' + ((total + dups + reatt) === rs.esperados ? ', tudo certo.' : '. <strong>Atenção: faltam ' + (rs.esperados - total - dups - reatt) + '.</strong>') + (dups ? ' Já estavam na lista: ' + dups + '.' : '') + (volt ? ' Voltaram à lista (estavam excluídos): ' + volt + '.' : '') + (rs.local ? ' <strong>' + rs.local + '</strong> foram lidos sem a IA: a cor e os telefones saíram só pelas palavras do mandado. Confira esses, que trazem o aviso “Lido sem a IA”.' : '') + '</p>' : '') +
+      '<p>' + (lastErr ? esc(errText(lastErr)) + ' ' : '') + 'Mandados novos adicionados: <strong>' + total + '</strong>.' + (reatt ? ' Reconectados ao PDF: <strong>' + reatt + '</strong>.' : '') + '</p>' +
+      (rs.esperados ? '<p>O PDF tem <strong>' + rs.esperados + '</strong> mandados (um por contrafé). Contei na leitura: <strong>' + (total + dups + reatt) + '</strong>' + ((total + dups + reatt) === rs.esperados ? ', tudo certo.' : '. <strong>Atenção: faltam ' + (rs.esperados - total - dups - reatt) + '.</strong>') + (dups ? ' Já estavam na lista: ' + dups + '.' : '') + (volt ? ' Voltaram à lista (estavam excluídos): ' + volt + '.' : '') + '</p>' : '') +
       '<p class="note">Na lista agora: ' + parts[0] + ' para enviar, ' + parts[1] + ' para conferir, ' + parts[2] + ' para não enviar.</p>' +
       '<p class="note">Confira sempre os nomes e números no próprio mandado antes de mandar a mensagem.</p>' +
       '<div class="actions"><button class="btn primary" id="okDone">Ver a lista</button></div>');
@@ -4323,51 +4297,7 @@ function parteLocal(parte, fala, it, ctx) {
       return { k: i + 1, loc: parseContrafe(pages[b.cf].text), cf: b.cf, pags: pags };
     });
     rs.esperados += total;
-    function corpo(x) {
-      var l = x.loc;
-      var s = '### MANDADO ' + x.k + ' DE ' + total + '\n' +
-        'CONTRAFÉ (página ' + pages[x.cf].n + '): Parte: ' + (l.nome || '?') + ' | Processo: ' + (l.processo || '?') +
-        (l.ident ? ' | Identificador: ' + l.ident : '') + (l.tipo ? ' | Contrafé de ' + l.tipo : '') +
-        (l.endereco_raw ? ' | Endereço: ' + l.endereco_raw : '') + (l.telefones.length ? ' | Telefone(s): ' + l.telefones.join(' / ') : '') +
-        (l.urgente ? ' | ' + l.urgente : '') + '\n';
-      x.pags.forEach(function (i) { s += '=== PÁGINA ' + pages[i].n + ' ===\n' + pages[i].text + '\n\n'; });
-      return s;
-    }
-    function grupos(lista, max) {
-      var gs = [], cur = [], len = 0;
-      lista.forEach(function (x) {
-        var l = corpo(x).length;
-        if (cur.length && (cur.length >= max || len + l > 28000)) { gs.push(cur); cur = []; len = 0; }
-        cur.push(x); len += l;
-      });
-      if (cur.length) { gs.push(cur); }
-      return gs;
-    }
-    var results = {}, fatal = semIA || (sample ? null : { code: 'sem_ia' });
-    async function perguntar(lista) {
-      var arr;
-      try {
-        arr = await sample.json(RULES_B + '\n\nBlocos neste envio: ' + lista.map(function (x) { return x.k; }).join(', ') + '.\n\n' + lista.map(corpo).join('\n'), { modelTier: 'default', signal: ctl.signal });
-      } catch (e) {
-        var c = e && e.code;
-        if (ctl.signal.aborted || c === 'cancelled' || c === 'not_granted' || c === 'rate_limited' || c === 'sampling_disabled') { fatal = e && e.code ? e : { code: 'cancelled' }; }
-        return;
-      }
-      if (!Array.isArray(arr) && arr && Array.isArray(arr.mandados)) { arr = arr.mandados; }
-      if (!Array.isArray(arr)) { return; }
-      arr.forEach(function (m) { var k = Number(m && m.bloco); if (k >= 1 && k <= total && !results[k]) { results[k] = m; } });
-    }
-    async function rodada(lista, max) {
-      var gs = grupos(lista, max);
-      for (var g = 0; g < gs.length && !fatal; g++) {
-        setProg('Lendo mandados ' + gs[g][0].k + ' a ' + gs[g][gs[g].length - 1].k + ' de ' + total + (max < 6 ? ' (nova tentativa)' : ''));
-        await perguntar(gs[g]);
-      }
-    }
-    await rodada(info, 6);
-    var falta = info.filter(function (x) { return !results[x.k]; });
-    if (falta.length && !fatal) { await rodada(falta, 2); falta = info.filter(function (x) { return !results[x.k]; }); }
-    if (falta.length && !fatal) { await rodada(falta, 1); }
+    var results = {}, fatal = null;
     var n = 0;
     info.forEach(function (x) {
       var m = results[x.k];
@@ -4387,7 +4317,6 @@ function parteLocal(parte, fala, it, ctx) {
       if (!m) {
         var cl = classificarLocal(l, txtM, regras());
         mm.classificacao = cl.base; mm.motivo = cl.baseMotivo; mm.natureza = cl.natureza; mm.tipo = mm.tipo || cl.tipo;
-        mm.aviso = sample ? 'Lido sem a IA: confira os dados e a cor' : 'Lido sem a IA (desligada ou sem internet): confira os dados e a cor';
       }
       if (l.urgente && !/urgente/i.test(mm.aviso || '')) { mm.aviso = (mm.aviso ? mm.aviso + ' | ' : '') + l.urgente; }
       var it = toItem(mm, fileId);
@@ -4405,6 +4334,7 @@ function parteLocal(parte, fala, it, ctx) {
         if (!it.rotAutor) { it.rotAutor = arr2.rotAutor; }
         if (!it.rotReu) { it.rotReu = arr2.rotReu; }
       }
+      it.docFim = extrairDocFim(txtM, it.nome); enriquecerComAgenda(it);
       n += putItem(it, fileId);
       if (m) { rs.ia++; } else { rs.local++; }
     });
@@ -4435,62 +4365,8 @@ function parteLocal(parte, fala, it, ctx) {
       try { doc.destroy(); } catch (e) {}
       return nb;
     }
-    var withText = pages.filter(function (x) { return x.text.length > 60; }).length;
-    var found = 0;
-    if (!sample) { throw { msg: 'Este PDF não está no formato com página de contrafé, ou não tem texto. Para ler assim, ligue a IA e use a internet.' }; }
-    if (withText >= pages.length / 2) {
-      var lens = pages.map(function (x) { return x.text.length + 30; });
-      var chunks = chunkPages(lens, 30000);
-      for (var c = 0; c < chunks.length; c++) {
-        var a = chunks[c][0], b = chunks[c][1];
-        setProg(file.name + ': lendo páginas ' + pages[a].n + ' a ' + pages[b].n + ' (trecho ' + (c + 1) + ' de ' + chunks.length + ')');
-        var body = '';
-        if (a > 0) { body += '### CONTEXTO (não extrair mandados que começam aqui)\n=== PÁGINA ' + pages[a - 1].n + (pages[a - 1].kind ? ' (' + pages[a - 1].kind + ')' : '') + ' ===\n' + pages[a - 1].text + '\n\n'; }
-        body += '### ALVO\n';
-        for (var k = a; k <= b; k++) { body += '=== PÁGINA ' + pages[k].n + (pages[k].kind ? ' (' + pages[k].kind + ')' : '') + ' ===\n' + pages[k].text + '\n\n'; }
-        var arr = await sample.json(RULES + '\n\n' + body, { modelTier: 'default', signal: ctl.signal });
-        if (!Array.isArray(arr) && arr && Array.isArray(arr.mandados)) { arr = arr.mandados; }
-        if (!Array.isArray(arr)) { throw { code: 'invalid_json' }; }
-        var added = addFound(arr, fileId, pages);
-        found += added; save(); render();
-      }
-    } else {
-      var lim = await sample.limits().catch(function () { return null; });
-      if (!lim || !lim.images) { throw { code: 'images_unavailable' }; }
-      var group = Math.max(1, Math.min(3, lim.images.maxCount || 3));
-      for (var s = 0; s < pages.length; s += group) {
-        var sub = pages.slice(s, s + group);
-        setProg(file.name + ': lendo páginas ' + sub[0].n + ' a ' + sub[sub.length - 1].n + ' de ' + pages.length + ' (leitura de imagem)');
-        var blobs = [];
-        for (var z = 0; z < sub.length; z++) { blobs.push(await renderPage(sub[z].page)); }
-        var arr2 = await sample.json(RULES + '\n\nAs imagens anexas são as páginas ' + sub.map(function (x) { return x.n; }).join(', ') + ' do PDF, nesta ordem. Todas são ALVO.', { modelTier: 'default', signal: ctl.signal, images: blobs });
-        if (!Array.isArray(arr2) && arr2 && Array.isArray(arr2.mandados)) { arr2 = arr2.mandados; }
-        if (!Array.isArray(arr2)) { throw { code: 'invalid_json' }; }
-        found += addFound(arr2, fileId); save(); render();
-      }
-    }
     try { doc.destroy(); } catch (e) {}
-    return found;
-  }
-
-  async function readImages(list, sample, ctl) {
-    if (!sample) { throw { msg: 'Ler foto precisa da IA. Ligue a IA em Meus dados e use a internet.' }; }
-    var lim = await sample.limits().catch(function () { return null; });
-    if (!lim || !lim.images) { throw { code: 'images_unavailable' }; }
-    var max = Math.max(1, Math.min(4, lim.images.maxCount || 3));
-    var found = 0;
-    for (var s = 0; s < list.length; s += max) {
-      var sub = list.slice(s, s + max);
-      setProg('Lendo fotos ' + (s + 1) + ' a ' + (s + sub.length) + ' de ' + list.length);
-      var arr = await sample.json(RULES + '\n\nAs imagens anexas são fotos ou páginas de mandados (' + sub.length + ' imagem(ns)). Todas são ALVO. Em "paginas" use [].', { modelTier: 'default', signal: ctl.signal, images: sub.map(function (x) { return x.f; }) });
-      if (!Array.isArray(arr) && arr && Array.isArray(arr.mandados)) { arr = arr.mandados; }
-      if (!Array.isArray(arr)) { throw { code: 'invalid_json' }; }
-      var n = addFound(arr, null);
-      found += n;
-      if (sub.length) { sub[0].meta.count += n; }
-      save(); render();
-    }
-    return found;
+    throw { msg: 'Este PDF não está num formato que o leitor reconhece: ele precisa de página de contrafé e de texto (não pode ser só imagem).' };
   }
 
   document.getElementById('btnPdf').onclick = function () { document.getElementById('fileIn').click(); };
@@ -4834,18 +4710,6 @@ function parteLocal(parte, fala, it, ctx) {
       var note = document.getElementById('cVozNote');
       note.textContent = 'Entendi como: ' + nomes[t] + '. Escrevendo a frase…';
       var frase = '';
-      var smp = await getSample();
-      if (smp) {
-        try {
-          var pedido = 'Você ajuda um Oficial de Justiça a redigir certidões. Ele ditou por voz o que ocorreu no cumprimento de um mandado. Reescreva em UMA frase curta, em linguagem formal de certidão, usando só o que foi dito, sem inventar fatos, nomes, horários ou números. ' +
-            (t === 'negativa'
-              ? 'A frase explica o motivo de não ter localizado ou cumprido e será encaixada depois de "pelo seguinte motivo:".'
-              : 'A frase deve começar por "que", por exemplo "que confirmou a identidade e recebeu a cópia do mandado", e será encaixada depois de uma vírgula.') +
-            '\n\nDitado: "' + fala + '"\n\nResponda somente com a frase, sem aspas e sem ponto final.';
-          var r = await smp(pedido, { modelTier: 'quick' });
-          frase = String(r && r.text || '').trim().replace(/^["“]|["”.]+$/g, '');
-        } catch (e) { frase = ''; }
-      }
       if (!frase) { frase = cleanDictation(fala, t); }
       document.getElementById('cObs').value = frase;
       setTipo(t);
@@ -4961,13 +4825,13 @@ function parteLocal(parte, fala, it, ctx) {
     openModal('Certidão por voz',
       '<div class="actions"><button class="btn small ghost" id="vzBack">Escolher um modelo</button></div>' +
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
-      '<p class="note">Toque no microfone do teclado e conte o que aconteceu, do seu jeito. Pode ser curto ou uma explicação mais longa. Exemplos: “mudou-se, a atual moradora Josefa Pereira, mãe do requerido, informou”; “fui ao endereço, não encontrei, mandei mensagem e ele recebeu a contrafé”; “penhora negativa, só encontrei bem de família”. Depois de escrita, você lê, edita à mão ou pede mudanças à IA, e só então salva.</p>' +
+      '<p class="note">Toque no microfone do teclado e conte o que aconteceu, do seu jeito. Pode ser curto ou uma explicação mais longa. Exemplos: “mudou-se, a atual moradora Josefa Pereira, mãe do requerido, informou”; “fui ao endereço, não encontrei, mandei mensagem e ele recebeu a contrafé”; “penhora negativa, só encontrei bem de família”. Depois de escrita, você lê, edita à mão ou pede uma troca de palavras, e só então salva.</p>' +
       '<textarea id="vzFala" style="min-height:130px" placeholder="Dite aqui o que aconteceu"></textarea>' +
       '<div class="actions"><button class="btn primary" id="vzGo">Escrever a certidão</button></div>' +
       '<p class="note" id="vzNote"></p>' +
-      '<div id="vzMudBox" hidden><label class="f" for="vzMud">Pedir uma mudança à IA (ditado ou texto)</label>' +
+      '<div id="vzMudBox" hidden><label class="f" for="vzMud">Pedir uma troca (ditado ou texto)</label>' +
       '<textarea id="vzMud" style="min-height:80px" placeholder="Ex.: troque “morador” por “vizinho”; acrescente que o imóvel é bem de família; deixe mais curto"></textarea>' +
-      '<div class="actions"><button class="btn small primary" id="vzAjusta">Ajustar com a IA</button><button class="btn small ghost" id="vzDesfaz" hidden>Voltar à versão anterior</button></div></div>' +
+      '<div class="actions"><button class="btn small primary" id="vzAjusta">Ajustar o texto</button><button class="btn small ghost" id="vzDesfaz" hidden>Voltar à versão anterior</button></div></div>' +
       '<label class="f" for="vzPrint">Print ou foto (opcional)</label><input type="file" id="vzPrint" accept="image/*" multiple>' +
       '<div class="thumbs" id="vzThumbs"></div>' +
       '<label class="f" for="vzCustas">Custas a receber, em R$ (em branco: não escreve na certidão)</label><input type="text" id="vzCustas" inputmode="decimal" value="' + esc(dilIni) + '" autocomplete="off">' +
@@ -4993,26 +4857,11 @@ function parteLocal(parte, fala, it, ctx) {
       var pedido = $('vzMud').value.trim(), atual = $('vzOut').value.trim();
       if (!atual) { toast('Escreva a certidão primeiro'); return; }
       if (!pedido) { toast('Diga o que quer mudar'); return; }
-      var smp = (usarIA() && navigator.onLine !== false) ? await getSample() : null;
-      if (!smp) {
-        var loc0 = ajusteLocal(separarDil(atual).corpo, pedido), sep0 = separarDil(atual);
-        if (!loc0) { toast('Sem a IA só consigo trocas simples, como “troque X por Y” ou “tire X”. Você pode editar o texto à mão.'); return; }
-        versoes.push($('vzOut').value);
-        $('vzOut').value = sep0.dil ? loc0.texto + '\n\n' + sep0.dil : loc0.texto; $('vzMud').value = ''; $('vzDesfaz').hidden = false;
-        $('vzNote').textContent = 'Sem a IA: ' + (loc0.remover ? 'tirei “' + loc0.de + '”.' : 'troquei “' + loc0.de + '” por “' + loc0.para + '”.') + ' Confira o resultado.';
-        return;
-      }
-      var c = ctxVoz(), sep = separarDil(atual);
-      $('vzNote').textContent = 'Ajustando…';
-      try {
-        var j = await smp.json(promptAjuste(it, sep.corpo, pedido, c), { modelTier: 'default' });
-        if (!j || typeof j.texto !== 'string' || !j.texto.trim()) { throw new Error('vazio'); }
-        var tx = separarDil(j.texto).corpo;
-        if (c.custas) { tx += '\n\nDiligência a receber: R$ ' + c.custas; }
-        versoes.push($('vzOut').value);
-        $('vzOut').value = tx; $('vzMud').value = ''; $('vzDesfaz').hidden = false;
-        $('vzNote').textContent = String(j.entendi || 'Mudança feita.') + (Array.isArray(j.faltando) && j.faltando.length ? ' Confira: ' + j.faltando.map(String).join('; ') + '.' : '') + ' Leia o texto: se não ficou bom, volte à versão anterior ou peça de novo.';
-      } catch (e) { $('vzNote').textContent = 'A IA não conseguiu ajustar agora. O texto continua como estava; você pode editar à mão.'; }
+      var loc0 = ajusteLocal(separarDil(atual).corpo, pedido), sep0 = separarDil(atual);
+      if (!loc0) { toast('Só consigo trocas simples, como “troque X por Y” ou “tire X”. Você pode editar o texto à mão.'); return; }
+      versoes.push($('vzOut').value);
+      $('vzOut').value = sep0.dil ? loc0.texto + '\n\n' + sep0.dil : loc0.texto; $('vzMud').value = ''; $('vzDesfaz').hidden = false;
+      $('vzNote').textContent = (loc0.remover ? 'Tirei “' + loc0.de + '”.' : 'Troquei “' + loc0.de + '” por “' + loc0.para + '”.') + ' Confira o resultado.';
     };
     $('vzDesfaz').onclick = function () {
       if (!versoes.length) { return; }
@@ -5021,20 +4870,9 @@ function parteLocal(parte, fala, it, ctx) {
     $('vzGo').onclick = async function () {
       var fala = $('vzFala').value.trim();
       if (!fala) { toast('Dite ou escreva o que aconteceu'); return; }
-      var c = ctxVoz(), smp = (usarIA() && navigator.onLine !== false) ? await getSample() : null, r = null, origem = '';
+      var c = ctxVoz(), r = null, origem = '';
       $('vzNote').textContent = 'Escrevendo a certidão…';
-      if (smp) {
-        try {
-          var j = await smp.json(promptVoz(it, fala, c), { modelTier: 'default' });
-          if (j && typeof j.texto === 'string' && j.texto.trim()) {
-            var tx = j.texto.trim();
-            if (c.custas && !/Dilig[eê]ncias? a receber/i.test(tx)) { tx += '\n\nDiligência a receber: R$ ' + c.custas; }
-            r = { texto: tx, tipo: j.tipo === 'positiva' ? 'positiva' : 'negativa', entendi: String(j.entendi || 'Escrevi a certidão com base no que você ditou.'), faltando: Array.isArray(j.faltando) ? j.faltando.map(String) : [] };
-            origem = 'Escrito pela IA com base nos seus modelos: leia antes de salvar.';
-          }
-        } catch (e) { r = null; }
-      }
-      if (!r) { r = vozLocal(fala, it, c); origem = smp ? 'A IA não respondeu: usei os seus modelos pelas palavras que você ditou.' : 'Sem a IA: usei os seus modelos pelas palavras que você ditou.'; }
+      r = vozLocal(fala, it, c); origem = 'Usei os seus modelos pelas palavras que você ditou. Confira o texto.';
       mostrar(r, origem);
     };
     function drawThumbs() {
@@ -5080,14 +4918,14 @@ function parteLocal(parte, fala, it, ctx) {
       $('vzBack').hidden = true; $('vzFala').hidden = true; $('vzGo').hidden = true;
       $('vzOut').value = opt.final.texto; tipoCert = opt.final.tipo === 'positiva' ? 'positiva' : 'negativa';
       $('vzMudBox').hidden = false;
-      $('vzNote').textContent = opt.final.nota || ('Esta é a certidão inteira, juntando ' + opt.final.quais + '. Leia com atenção: se estiver certa, toque em “Salvar”. Se quiser mudar algo, edite o texto ou peça à IA.');
+      $('vzNote').textContent = opt.final.nota || ('Esta é a certidão inteira, juntando ' + opt.final.quais + '. Leia com atenção: se estiver certa, toque em “Salvar”. Se quiser mudar algo, edite o texto ou peça uma troca.');
     }
   }
-  /* Editar por IA: o oficial diz (por voz ou texto) o que quer mudar; sem IA, só trocas simples */
+  /* Ajustar o texto: o oficial diz (por voz ou texto) o que quer trocar; só trocas simples */
   function htmlEditarIA(pref) {
-    return '<div class="grp" id="' + pref + 'Box"><label class="f" for="' + pref + 'Mud">Editar por IA: diga o que quer mudar (por voz ou texto)</label>' +
-      '<textarea id="' + pref + 'Mud" style="min-height:70px" placeholder="Ex.: troque “atual morador” por “irmão”; deixe mais curto; acrescente que o imóvel está vazio"></textarea>' +
-      '<div class="actions"><button class="btn small primary" id="' + pref + 'Ajusta">Editar por IA</button><button class="btn small ghost" id="' + pref + 'Desfaz" hidden>Voltar à versão anterior</button></div>' +
+    return '<div class="grp" id="' + pref + 'Box"><label class="f" for="' + pref + 'Mud">Ajustar o texto: diga o que quer trocar (por voz ou texto)</label>' +
+      '<textarea id="' + pref + 'Mud" style="min-height:70px" placeholder="Ex.: troque “atual morador” por “irmão”; tire “atual”"></textarea>' +
+      '<div class="actions"><button class="btn small primary" id="' + pref + 'Ajusta">Ajustar o texto</button><button class="btn small ghost" id="' + pref + 'Desfaz" hidden>Voltar à versão anterior</button></div>' +
       '<p class="note" id="' + pref + 'Note"></p></div>';
   }
   function ligarEditarIA(it, pref, getTxt, setTxt, parte) {
@@ -5098,26 +4936,12 @@ function parteLocal(parte, fala, it, ctx) {
       if (!atual) { toast('Não há texto para editar'); return; }
       if (!pedido) { toast('Diga o que quer mudar'); return; }
       var sep = parte ? { corpo: atual, dil: '' } : separarDil(atual), novo = null, nota = '';
-      var smp = (usarIA() && navigator.onLine !== false) ? await getSample() : null;
-      if (smp) {
-        $(pref + 'Note').textContent = 'Editando…';
-        try {
-          var j = await smp.json(promptAjuste(it, sep.corpo, pedido, { oficial: state.me && state.me.nome ? state.me.nome : '', parte: !!parte }), { modelTier: 'default' });
-          if (j && typeof j.texto === 'string' && j.texto.trim()) {
-            var tx = parte ? j.texto.trim() : separarDil(j.texto).corpo;
-            novo = sep.dil ? tx + '\n\n' + sep.dil : tx;
-            nota = String(j.entendi || 'Mudança feita.') + (Array.isArray(j.faltando) && j.faltando.length ? ' Confira: ' + j.faltando.map(String).join('; ') + '.' : '') + ' Leia o texto antes de dar ok.';
-          }
-        } catch (e) { novo = null; }
+      var loc = ajusteLocal(sep.corpo, pedido);
+      if (loc) {
+        novo = sep.dil ? loc.texto + '\\n\\n' + sep.dil : loc.texto;
+        nota = (loc.remover ? 'Tirei “' + loc.de + '”.' : 'Troquei “' + loc.de + '” por “' + loc.para + '”.') + ' Confira o resultado.';
       }
-      if (novo == null) {
-        var loc = ajusteLocal(sep.corpo, pedido);
-        if (loc) {
-          novo = sep.dil ? loc.texto + '\n\n' + sep.dil : loc.texto;
-          nota = (smp ? 'A IA não respondeu. ' : 'Sem a IA: ') + (loc.remover ? 'tirei “' + loc.de + '”.' : 'troquei “' + loc.de + '” por “' + loc.para + '”.') + ' Confira o resultado.';
-        }
-      }
-      if (novo == null) { $(pref + 'Note').textContent = smp ? 'A IA não conseguiu agora. O texto continua como estava; você pode editar à mão.' : 'Sem a IA ou sem internet só consigo trocas simples, como “troque X por Y” ou “tire X”. Edite à mão ou ligue a IA.'; return; }
+      if (novo == null) { $(pref + 'Note').textContent = 'Só consigo trocas simples, como “troque X por Y” ou “tire X”. Edite o texto à mão.'; return; }
       versoes.push(getTxt()); setTxt(novo);
       $(pref + 'Mud').value = ''; $(pref + 'Desfaz').hidden = false; $(pref + 'Note').textContent = nota;
     };
@@ -5231,13 +5055,13 @@ function parteLocal(parte, fala, it, ctx) {
     };
     gerar(true);
   }
-  /* Parte por IA: o oficial conta brevemente e a IA escreve só aquela parte */
+  /* Parte da certidão: o oficial conta brevemente e a página escreve só aquela parte, pelos modelos */
   function abrirParteIA(it, parte) {
     var fis = parte === 'fis', ult = it.msgs && it.msgs.length ? it.msgs[it.msgs.length - 1] : null, diaCont = ult ? dayKey(ult.t) : '';
     var oficial = state.me && state.me.nome ? state.me.nome : '', hoje = (function () { var n = new Date(); return n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()); })();
     var res = null;
     function $(id) { return document.getElementById(id); }
-    openModal('Parte ' + (fis ? 'física' : 'on-line') + ' por IA',
+    openModal('Parte ' + (fis ? 'física' : 'on-line'),
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
       '<p class="note">Conte brevemente o que aconteceu ' + (fis ? 'no endereço' : 'no contato por WhatsApp') + ', do seu jeito (pode ditar). A página escreve só esta parte, no estilo dos seus modelos; você confere e dá ok.</p>' +
       '<textarea id="piFala" style="min-height:110px" placeholder="' + (fis ? 'Ex.: o morador disse que ele se mudou há dois meses' : 'Ex.: mandei duas vezes e ela não respondeu') + '"></textarea>' +
@@ -5253,14 +5077,8 @@ function parteLocal(parte, fala, it, ctx) {
       var outra = fis ? (it.partes || {}).on : (it.partes || {}).fis;
       var ctx = { oficial: oficial, diaCont: diaCont, just: justDaTentativa(it.tentativas), temFisica: etipo(it) === 'local', visitas: (it.fisica && it.fisica.visitas) || (it.visitas || []).map(fmtVisita), outra: outra ? outra.texto : '' };
       $('piNote').textContent = 'Escrevendo…';
-      var smp = (usarIA() && navigator.onLine !== false) ? await getSample() : null, r = null, origem = '';
-      if (smp) {
-        try {
-          var j = await smp.json(promptParte(it, parte, fala, ctx), { modelTier: 'default' });
-          if (j && typeof j.texto === 'string' && j.texto.trim()) { r = { texto: j.texto.trim(), tipo: j.tipo === 'positiva' ? 'positiva' : 'negativa', entendi: String(j.entendi || 'Escrevi esta parte com base no que você contou.'), faltando: Array.isArray(j.faltando) ? j.faltando.map(String) : [], modelo: 'ia' }; origem = 'Escrito pela IA: leia antes de dar ok.'; }
-        } catch (e) { r = null; }
-      }
-      if (!r) { r = parteLocal(parte, fala, it, ctx); origem = smp ? 'A IA não respondeu: usei os seus modelos pelas palavras que você contou.' : 'Sem a IA: usei os seus modelos pelas palavras que você contou.'; }
+      var r = null, origem = '';
+      r = parteLocal(parte, fala, it, ctx); origem = 'Usei os seus modelos pelas palavras que você contou. Confira o texto.';
       res = r; $('piTxt').value = r.texto;
       $('piNote').textContent = r.entendi + (r.faltando && r.faltando.length ? ' Confira: ' + r.faltando.join('; ') + '.' : '') + ' ' + origem;
     };
@@ -5390,17 +5208,7 @@ function parteLocal(parte, fala, it, ctx) {
     vis(); upd();
   }
   /* Certidão física: foto do mandado com a diligência escrita à mão */
-  async function identificarFoto(blob) {
-    var sample = await getSample();
-    if (!sample) { return null; }
-    try {
-      var lim = await sample.limits().catch(function () { return null; });
-      if (!lim || !lim.images) { return null; }
-      var r = await sample.json('Esta é a foto de um mandado judicial, que pode ter anotações à mão. Leia SOMENTE o texto impresso e devolva um objeto JSON com: processo (número no formato CNJ, ou "") e nome (nome completo, em MAIÚSCULAS, da pessoa a ser citada, intimada ou notificada, ou ""). Sem comentários.', { modelTier: 'default', images: [blob] });
-      if (Array.isArray(r)) { r = r[0]; }
-      return r && typeof r === 'object' ? { processo: String(r.processo || ''), nome: String(r.nome || '').toUpperCase() } : null;
-    } catch (e) { return null; }
-  }
+  async function identificarFoto(blob) { return null; }
   function openFisica(it, modo) {
     var prt = modo === 'print', now = new Date();
     var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
@@ -5408,7 +5216,7 @@ function parteLocal(parte, fala, it, ctx) {
     var pend = state.items.filter(function (x) { return x.status === 'pendente'; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
     var alvo = it
       ? '<p><strong>' + esc(it.nome) + '</strong><br><span class="note">Processo ' + esc(it.processo) + '</span></p>'
-      : '<label class="f" for="fiSel">Mandado</label><select id="fiSel" class="sel"><option value="">Escolha o mandado (ou tire a foto e deixe a página reconhecer)</option>' +
+      : '<label class="f" for="fiSel">Mandado</label><select id="fiSel" class="sel"><option value="">Escolha o mandado</option>' +
         pend.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.nome) + ' - ' + esc(x.processo) + '</option>'; }).join('') +
         '<option value="__novo">Não está na lista</option></select>' +
         '<div id="fiNovo" hidden><label class="f" for="fiNome">Nome da pessoa</label><input type="text" id="fiNome" autocomplete="off">' +
@@ -5540,7 +5348,7 @@ function parteLocal(parte, fala, it, ctx) {
 
   function purge(it) {
     openModal('Excluir definitivamente',
-      '<p>Isso apaga o mandado de <strong>' + esc(it.nome) + '</strong> e a certidão deste aparelho (e da cópia na sua conta, se ela estiver ligada). Não dá para desfazer.</p>' +
+      '<p>Isso apaga o mandado de <strong>' + esc(it.nome) + '</strong> e a certidão deste aparelho Não dá para desfazer.</p>' +
       '<div class="actions"><button class="btn" id="pgNo">Cancelar</button><button class="btn primary" id="pgYes">Excluir definitivamente</button></div>');
     document.getElementById('pgNo').onclick = closeModal;
     document.getElementById('pgYes').onclick = function () {
@@ -6074,7 +5882,7 @@ function parteLocal(parte, fala, it, ctx) {
   }
   function reordBox() {
     return modoReord ? '<div class="chk"><p class="note" style="margin:0 0 8px"><strong>Modo reordenar:</strong> encoste o dedo em uma parada, arraste para cima ou para baixo e solte. Perto da borda da tela, a lista rola sozinha.</p><div class="actions"><button class="btn primary" data-rpronto="1">Pronto</button></div></div>'
-      : '<div class="actions"><button class="btn primary" data-rprint="1">Imprimir nesta ordem</button><button class="btn" data-rmodo="1">Reordenar com o dedo</button><button class="btn" data-rsalva="1">Salvar esta rota</button></div>';
+      : '<div class="actions"><button class="btn primary" data-rprint="1">Imprimir nesta ordem</button><button class="btn" data-rmodo="1">Reordenar com o dedo</button></div>';
   }
   function abrirPosicao(it) {
     var ids = rotaSel().map(function (x) { return x.id; }), atual = ids.indexOf(it.id) + 1;
@@ -6125,14 +5933,220 @@ function parteLocal(parte, fala, it, ctx) {
     var linhas = [
       ['Ordem', modoRota() === 'zonas' ? 'na ordem dos meus bairros' : 'em linha reta, bairro por bairro'],
       ['Começa perto de', iniTxt()], ['Bairros que vêm primeiro', primTxt()], ['Termina perto de', fimTxt()],
-      ['Ajuste à mão', man ? man + (man === 1 ? ' parada' : ' paradas') + ' (a ordem que você arrumou vale primeiro)' : 'nenhum'],
-      ['Aprendizado', apOff ? 'desligado' : (nap < 2 ? 'ainda sem efeito (' + nap + (nap === 1 ? ' rota salva' : ' rotas salvas') + ')' : 'ligado, com ' + nap + ' rotas salvas')]
+      ['Ajuste à mão', man ? man + (man === 1 ? ' parada' : ' paradas') + ' (a ordem que você arrumou vale primeiro)' : 'nenhum']
     ];
     return '<details class="chk"><summary><strong>Como esta rota foi montada</strong></summary>' + linhas.map(function (l) { return '<p class="note" style="margin:4px 0"><strong>' + l[0] + ':</strong> ' + esc(l[1]) + '</p>'; }).join('') +
-      '<div class="actions">' + (man ? '<button class="btn small" data-rauto="1">Voltar à ordem automática</button>' : '') + (nap >= 2 || apOff ? '<button class="btn small" data-rapr="1">' + (apOff ? 'Ligar o aprendizado' : 'Desligar o aprendizado') + '</button>' : '') + '</div></details>';
+      '<div class="actions">' + (man ? '<button class="btn small" data-rauto="1">Voltar à ordem automática</button>' : '') + '' + '</div></details>';
   }
   function manualNota() { return state.cfg.rotaManual && state.cfg.rotaManual.length ? '<p class="note"><strong>Você ajustou a ordem à mão.</strong> Esta é a rota oficial: a lista principal (“Por rota”) e a impressão seguem ela. <button class="btn small ghost" data-rauto="1">Voltar à ordem automática</button></p>' : ''; }
-  function rotaCorpo() { return reordBox() + comoRotaHtml() + manualNota() + foraDaRota() + '<div id="rOut">' + routeHtml() + '</div>' + listasBox() + mapaBox() + zapBox() + '<div id="rSelBox">' + selRotaHtml() + '</div>'; }
+  /* Mandado não certificado: a certidão é desfeita e o mandado volta para a lista de pendentes */
+  function desfazerCertidao(it) {
+    ((it.certidao && it.certidao.prints) || []).forEach(function (pid) { try { idbDel(pid); } catch (e) {} });
+    if (it.pessoaSalva && state.cfg.pessoas) {
+      var nn = norm(it.nome);
+      state.cfg.pessoas = state.cfg.pessoas.filter(function (pe) { return !(pe.nomeN === nn && pe.proc === it.processo && (pe.n || 1) <= 1); });
+    }
+    it.pessoaSalva = false; it.certidao = null; it.partes = {}; it.fisica = null; it.baixada = false;
+    it.status = 'pendente'; it.voltouLista = Date.now(); delete sel[it.id];
+    save(); render();
+    toast('Voltou para a lista de pendentes, na aba Mandados.');
+  }
+  /* ---- Agenda de contatos e banco de pessoas (tudo só neste aparelho) ---- */
+  function contatosLista() { return state.cfg.contatos || []; }
+  function pessoasLista() { return state.cfg.pessoas || []; }
+  function telsTexto(txt) { return mergePhones([], String(txt || '').split(/[;\/\n]+/).map(function (x) { return x.trim(); }).filter(Boolean)); }
+  function enriquecerComAgenda(it) {
+    var mudou = false, c = acharContato(it, contatosLista());
+    if (c && (c.tels || []).length) { it.telefones = mergePhones(it.telefones || [], c.tels); it.agenda = { id: c.id, nome: c.nome }; mudou = true; }
+    var pe = state.cfg.guardarPessoas === false ? null : acharPessoa(it, pessoasLista());
+    if (pe && (pe.tels || []).length) { it.telefones = mergePhones(it.telefones || [], pe.tels); it.jaIntimado = { quando: pe.quando, proc: pe.proc, tel: pe.tels[0] }; mudou = true; }
+    return mudou;
+  }
+  function aplicarAgendaLista() {
+    var n = 0;
+    state.items.forEach(function (i) { if (i.status === 'pendente' && enriquecerComAgenda(i)) { n++; } });
+    if (n) { save(); render(); }
+    return n;
+  }
+  /* Intimação positiva por WhatsApp: guarda nome, número e (se veio no mandado) o final do CPF */
+  function guardarPessoasPositivas() {
+    if (!state || !state.items || (state.cfg && state.cfg.guardarPessoas === false)) { return; }
+    state.items.forEach(function (i) {
+      if (i.pessoaSalva || !i.certidao || i.certidao.tipo !== 'positiva') { return; }
+      var cc = i.certidao, viaWa = /(via|por|pelo)\s+whats/i.test(cc.texto || '');
+      if (!(cc.canal === 'wa' || (i.partes && i.partes.on && i.partes.on.tipo === 'positiva') || ((cc.canal === 'voz' || cc.canal === 'partes') && viaWa))) { return; }
+      var tels = (i.msgs || []).filter(function (m) { return m.kind !== 'analise' && m.tel; }).map(function (m) { return m.tel; });
+      if (!tels.length) { tels = telefonesUnicos(i.telefones).filter(function (u) { return u.n.ok && !u.n.fixo; }).map(function (u) { return u.n.label; }); }
+      tels = mergePhones([], tels);
+      i.pessoaSalva = true;
+      if (!tels.length) { return; }
+      state.cfg = state.cfg || {};
+      var lista = state.cfg.pessoas = state.cfg.pessoas || [], pe = acharPessoa(i, lista);
+      if (pe) { pe.tels = mergePhones(pe.tels || [], tels); pe.quando = Date.now(); pe.proc = i.processo; pe.n = (pe.n || 1) + 1; if (i.docFim && !pe.docFim) { pe.docFim = i.docFim; } }
+      else { lista.push({ id: uid(), nome: i.nome, nomeN: norm(i.nome), docFim: i.docFim || '', tels: tels, quando: Date.now(), proc: i.processo, n: 1 }); }
+    });
+  }
+  function abrirAgenda(editId) {
+    var l = contatosLista(), ed = editId ? l.filter(function (c) { return c.id === editId; })[0] : null;
+    function $(id) { return document.getElementById(id); }
+    openModal('Agenda de contatos',
+      '<p class="note">Cadastre quem você sempre intima, como o procurador do município. Quando o nome do mandado tiver uma das palavras que você escrever em “Reconhecer”, o WhatsApp dele entra sozinho no mandado.</p>' +
+      (l.length ? l.map(function (c) { return '<div class="grp"><strong>' + esc(c.nome) + '</strong><br><span class="note">' + esc(telefonesUnicos(c.tels).map(function (u) { return u.n.ok ? u.n.label : u.raw; }).join(' · ')) + '<br>Reconhece: ' + esc((c.chaves || []).join('; ') || c.nome) + '</span><div class="actions"><button class="btn small" data-ctedit="' + esc(c.id) + '">Editar</button><button class="btn small ghost" data-ctdel="' + esc(c.id) + '">Apagar</button></div></div>'; }).join('') : '<p class="note">Nenhum contato ainda.</p>') +
+      '<h3 style="margin:14px 0 0;font-size:17px">' + (ed ? 'Editar contato' : 'Novo contato') + '</h3>' +
+      '<label class="f" for="ctNome">Nome do contato</label><input type="text" id="ctNome" placeholder="Ex.: Procurador do Município" value="' + esc(ed ? ed.nome : '') + '" autocomplete="off">' +
+      '<label class="f" for="ctTel">WhatsApp (mais de um: separe com ponto e vírgula)</label><input type="text" id="ctTel" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(ed ? (ed.tels || []).join('; ') : '') + '" autocomplete="off">' +
+      '<label class="f" for="ctChaves">Reconhecer quando o nome do mandado tiver (separe com ponto e vírgula)</label><input type="text" id="ctChaves" placeholder="Ex.: município de foz; prefeitura" value="' + esc(ed ? (ed.chaves || []).join('; ') : '') + '" autocomplete="off">' +
+      '<div class="actions"><button class="btn primary" id="ctSalvar">' + (ed ? 'Salvar mudanças' : 'Salvar contato') + '</button>' + (ed ? '<button class="btn" id="ctNovo">Cancelar</button>' : '') + '<button class="btn" id="ctAplicar">Aplicar à lista agora</button></div>');
+    var mb = $('mbody');
+    mb.onclick = function (e) {
+      var t = e.target.closest ? e.target.closest('[data-ctedit],[data-ctdel]') : null;
+      if (!t) { return; }
+      if (t.getAttribute('data-ctedit')) { abrirAgenda(t.getAttribute('data-ctedit')); return; }
+      var id = t.getAttribute('data-ctdel');
+      state.cfg.contatos = contatosLista().filter(function (c) { return c.id !== id; }); save(); abrirAgenda(); toast('Contato apagado.');
+    };
+    $('ctSalvar').onclick = function () {
+      var nome = String($('ctNome').value || '').trim(), tels = telsTexto($('ctTel').value).filter(function (x) { return normPhone(x).ok; });
+      var chaves = String($('ctChaves').value || '').split(';').map(function (x) { return x.trim(); }).filter(Boolean);
+      if (!nome) { toast('Escreva o nome do contato.'); return; }
+      if (!tels.length) { toast('Escreva um WhatsApp válido, com DDD.'); return; }
+      var lst = state.cfg.contatos = contatosLista().slice();
+      if (ed) { lst.forEach(function (c) { if (c.id === ed.id) { c.nome = nome; c.tels = tels; c.chaves = chaves; } }); }
+      else { lst.push({ id: uid(), nome: nome, tels: tels, chaves: chaves }); }
+      save(); abrirAgenda(); toast('Contato salvo.');
+    };
+    if ($('ctNovo')) { $('ctNovo').onclick = function () { abrirAgenda(); }; }
+    $('ctAplicar').onclick = function () { var n = aplicarAgendaLista(); toast(n ? 'Agenda aplicada a ' + n + (n === 1 ? ' mandado.' : ' mandados.') : 'Nenhum mandado da lista combina com a agenda.'); };
+  }
+  function abrirBancoPessoas(filtro) {
+    var l = pessoasLista().slice().sort(function (a, b) { return (b.quando || 0) - (a.quando || 0); }), f = norm(filtro || '');
+    var vis = f ? l.filter(function (p) { return p.nomeN.indexOf(f) !== -1; }) : l;
+    function $(id) { return document.getElementById(id); }
+    openModal('Banco de pessoas',
+      '<p class="note">Quando a intimação por WhatsApp é <strong>positiva</strong>, o app guarda o nome e o número da pessoa, para avisar se ela aparecer em outro processo. Fica <strong>só neste aparelho</strong> (e no seu backup). Do documento, guarda só o <strong>final do CPF</strong>, quando vem no mandado.</p>' +
+      '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="bpOn" style="width:24px;height:24px"' + (state.cfg.guardarPessoas === false ? '' : ' checked') + '> Guardar quem eu intimar por WhatsApp (positiva)</label>' +
+      '<input type="text" id="bpQ" placeholder="Buscar pelo nome" value="' + esc(filtro || '') + '" autocomplete="off">' +
+      '<p class="note">' + l.length + (l.length === 1 ? ' pessoa guardada.' : ' pessoas guardadas.') + (f ? ' Mostrando ' + vis.length + '.' : '') + '</p>' +
+      vis.slice(0, 50).map(function (p) { var d = new Date(p.quando || 0); return '<div class="grp"><strong>' + esc(p.nome) + '</strong><br><span class="note">' + esc((p.tels || []).join(' · ')) + '<br>Última vez: ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ', proc. ' + esc(p.proc || '') + (p.docFim ? '<br>CPF terminado em ' + esc(p.docFim.slice(0, 3) + '-' + p.docFim.slice(3)) : '') + '</span><div class="actions"><button class="btn small ghost" data-pdel="' + esc(p.id) + '">Apagar</button></div></div>'; }).join('') +
+      (l.length ? '<div class="actions"><button class="btn ghost" id="bpTudo">Apagar todas as pessoas guardadas</button></div>' : ''));
+    $('bpOn').onchange = function () { state.cfg.guardarPessoas = $('bpOn').checked; save(); toast($('bpOn').checked ? 'Vou guardar quem for intimado por WhatsApp.' : 'Não vou mais guardar pessoas.'); };
+    $('bpQ').oninput = function () { var v = $('bpQ').value; abrirBancoPessoas(v); var q = $('bpQ'); if (q && q.focus) { q.focus(); } };
+    $('mbody').onclick = function (e) {
+      var t = e.target.closest ? e.target.closest('[data-pdel]') : null;
+      if (!t) { return; }
+      var id = t.getAttribute('data-pdel');
+      state.cfg.pessoas = pessoasLista().filter(function (p) { return p.id !== id; }); save(); abrirBancoPessoas(filtro); toast('Pessoa apagada.');
+    };
+    if ($('bpTudo')) { $('bpTudo').onclick = function () { if (window.confirm && !window.confirm('Apagar todas as ' + l.length + ' pessoas guardadas?')) { return; } state.cfg.pessoas = []; save(); abrirBancoPessoas(); toast('Banco de pessoas apagado.'); }; }
+  }
+  /* ---- Hoje e amanhã: audiências, afastamento do lar e liminar de saúde ---- */
+  function hojeDados() {
+    var agora = Date.now(), aud = [], urgs = [], futuras = 0;
+    state.items.forEach(function (i) {
+      if (i.status !== 'pendente') { return; }
+      var df = audDiasAte(i, agora);
+      if (df !== null) { futuras++; if (df <= 1) { var a = audDe(i); aud.push({ it: i, df: df, hora: a.hora || '', data: a.data }); } }
+      urg(i).forEach(function (u) { if (u.tipo === 'afastamento' || u.tipo === 'saude') { urgs.push({ it: i, tipo: u.tipo }); } });
+    });
+    aud.sort(function (x, y) { return (x.data + ' ' + (x.hora || '99:99')).localeCompare(y.data + ' ' + (y.hora || '99:99')); });
+    return { aud: aud, urgs: urgs, futuras: futuras };
+  }
+  function renderHoje() {
+    var el = document.getElementById('hoje');
+    if (tab !== 'enviar') { el.hidden = true; return; }
+    var d = hojeDados(), qtd = d.aud.length + d.urgs.length;
+    if (!qtd && !d.futuras) { el.hidden = true; return; }
+    var itens = d.aud.map(function (x) { return '<li><strong>' + (x.df <= 0 ? 'Hoje' : 'Amanhã') + (x.hora ? ' ' + esc(x.hora) : '') + '</strong> · audiência de ' + esc(x.it.nome) + (x.it.vara ? '<br><span class="note">' + esc(varaCurta(x.it.vara)) + '</span>' : '') + '</li>'; })
+      .concat(d.urgs.map(function (x) { return '<li><strong class="urgtxt">' + (x.tipo === 'saude' ? 'Liminar de saúde' : 'Afastamento do lar') + '</strong> · ' + esc(x.it.nome) + '</li>'; })).join('');
+    el.hidden = false;
+    el.innerHTML = '<details class="chk" open><summary><strong>Hoje e amanhã</strong>' + (qtd ? ' (' + qtd + ')' : '') + '</summary>' + (itens ? '<ul>' + itens + '</ul>' : '<p class="note">Nada para hoje nem amanhã.</p>') +
+      (d.futuras ? '<div class="actions"><button class="btn small" data-hjcal="1">Adicionar ' + (d.futuras === 1 ? 'a audiência' : 'as ' + d.futuras + ' audiências') + ' ao Calendário</button></div><p class="note">O Calendário do iPhone avisa na véspera e 1 hora antes.</p>' : '') + '</details>';
+  }
+  async function baixarCalendario() {
+    var r = icsAudiencias(state.items, Date.now());
+    if (!r.n) { toast('Nenhuma audiência marcada para os próximos dias.'); return; }
+    var ok = await salvarLocal('Audiencias-Mandados.ics', r.txt, 'text/calendar');
+    if (ok) { toast('Calendário pronto: ' + r.n + (r.n === 1 ? ' audiência.' : ' audiências.') + ' Abra o arquivo e toque em Adicionar.'); }
+  }
+  document.getElementById('hoje').addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-hjcal]')) { baixarCalendario(); } });
+
+  /* ---- Modo rota: uma parada por vez, com Navegar, Positiva, Negativa e Voz ---- */
+  function sigRota(i) { return i.status + '|' + (fisicaFeita(i) ? 1 : 0) + '|' + Object.keys(i.partes || {}).join(',') + '|' + ((i.visitas || []).length) + '|' + (i.certidao ? 1 : 0); }
+  function rotaAtendida(i, ra) { return i.status !== 'pendente' || (ra.sig && ra.sig[i.id] !== undefined && sigRota(i) !== ra.sig[i.id]); }
+  function rotaRestantes() {
+    var ra = state.rotaAtiva;
+    if (!ra) { return []; }
+    return ra.ids.filter(function (id) { var i = byId(id); return i && i.status === 'pendente' && !ra.pul[id] && !rotaAtendida(i, ra); });
+  }
+  function iniciarRota() {
+    var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
+    if (!lista.length) { toast('Não há paradas na rota.'); return; }
+    var sig = {}; lista.forEach(function (i) { sig[i.id] = sigRota(i); });
+    state.rotaAtiva = { ids: lista.map(function (i) { return i.id; }), pul: {}, sig: sig, t0: Date.now() };
+    save(); closeModal(); render(); mostrarRota();
+  }
+  function mostrarRota() { try { mostrarRota0(); } catch (e) { toast('Não consegui abrir a rota: ' + ((e && e.message) || e)); } }
+  function mostrarRota0() {
+    var ra = state.rotaAtiva;
+    if (!ra) { return; }
+    var rest = rotaRestantes(), n = ra.ids.length, feitas = n - rest.length;
+    if (!rest.length) {
+      var pul = ra.ids.filter(function (id) { var i = byId(id); return ra.pul[id] && i && i.status === 'pendente' && !rotaAtendida(i, ra); }).length;
+      openModal('Rota concluída', '<p><strong>Rota concluída.</strong> ' + feitas + (feitas === 1 ? ' parada atendida' : ' paradas atendidas') + (pul ? ', ' + pul + (pul === 1 ? ' pulada' : ' puladas') : '') + '.</p><div class="actions">' + (pul ? '<button class="btn" data-rm="pulados">Voltar às puladas</button>' : '') + '<button class="btn primary" data-rm="stop">Encerrar rota</button></div>');
+      document.getElementById('mbody').onclick = rotaClique;
+      return;
+    }
+    var it = byId(rest[0]), pct = Math.round(feitas / n * 100), us = urg(it), rsm = resumoAto(it), vcu = varaCurta(it.vara);
+    openModal('Rota em andamento',
+      '<div class="seqbar"><div style="width:' + pct + '%"></div></div>' +
+      '<p class="note">Parada ' + (feitas + 1) + ' de ' + n + '</p>' +
+      '<h2 class="seqnome">' + esc(it.nome) + '</h2>' +
+      '<p class="note">' + (rsm ? esc(rsm) + '<br>' : '') + 'Proc. ' + esc(it.processo) + (vcu ? ' · ' + esc(vcu) : '') + '</p>' +
+      '<p><strong>' + esc(fullAddr(it)) + '</strong></p>' +
+      (us.length ? '<p class="stopnote">' + us.map(function (u) { return esc(u.txt); }).join(' · ') + '</p>' : '') +
+      '<a class="btn primary seqgo" href="' + mapsUrlB('', [it]) + '" target="_blank" rel="noopener">Navegar até aqui</a>' +
+      '<div class="rmgrid"><button class="rmbtn pos" data-rm="pos">Positiva</button><button class="rmbtn neg" data-rm="neg">Negativa</button><button class="rmbtn voz" data-rm="voz">Voz</button></div>' +
+      '<div class="actions"><button class="btn" data-rm="skip">Pular</button><button class="btn ghost" data-rm="stop">Encerrar rota</button></div>');
+    document.getElementById('mbody').onclick = rotaClique;
+  }
+  function escolherNegativa(it) {
+    openModal('Negativa: o que aconteceu?', '<p><strong>' + esc(it.nome) + '</strong></p><div class="actions">' + OPC_FISICA.map(function (o) { return '<button class="btn" data-neg="' + o[0] + '">' + esc(o[1].replace(/ \(.*$/, '')) + '</button>'; }).join('') + '<button class="btn" data-neg="__outro">Outro motivo (certidão completa)</button></div>');
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-neg]') : null;
+      if (!b) { return; }
+      var k = b.getAttribute('data-neg');
+      if (k === '__outro') { openCert(it); } else { abrirParte(it, 'fis', k); }
+    };
+  }
+  function rotaClique(e) {
+    var ra = state.rotaAtiva, b = e.target.closest ? e.target.closest('[data-rm]') : null;
+    if (!ra || !b) { return; }
+    var a = b.getAttribute('data-rm'), rest = rotaRestantes(), it = rest.length ? byId(rest[0]) : null;
+    if (a === 'stop') { state.rotaAtiva = null; save(); closeModal(); render(); toast('Rota encerrada.'); return; }
+    if (a === 'pulados') { ra.pul = {}; save(); render(); mostrarRota(); return; }
+    if (!it) { return; }
+    if (a === 'skip') { ra.pul[it.id] = true; save(); render(); mostrarRota(); return; }
+    if (a === 'pos') { openCert(it); var cp = document.getElementById('cPos'); if (cp && cp.click) { cp.click(); } }
+    else if (a === 'neg') { escolherNegativa(it); }
+    else if (a === 'voz') { openVoz(it); }
+  }
+  function renderRotaBanner() {
+    var el = document.getElementById('rotaBanner'), ra = state.rotaAtiva;
+    if (!ra) { el.hidden = true; return; }
+    var rest = rotaRestantes(), n = ra.ids.length;
+    el.hidden = false;
+    el.innerHTML = '<p><strong>Rota em andamento</strong>: ' + (rest.length ? 'parada ' + (n - rest.length + 1) + ' de ' + n + '.' : 'todas as paradas atendidas.') + '</p><div class="actions"><button class="btn primary" data-rb="cont">' + (rest.length ? 'Continuar rota' : 'Ver o resumo') + '</button><button class="btn small ghost" data-rb="stop">Encerrar</button></div>';
+  }
+  document.getElementById('rotaBanner').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-rb]') : null;
+    if (!b) { return; }
+    if (b.getAttribute('data-rb') === 'stop') { state.rotaAtiva = null; save(); render(); toast('Rota encerrada.'); } else { mostrarRota(); }
+  });
+  function iniciarBox() {
+    var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
+    return lista.length ? '<div class="actions"><button class="btn primary wide" data-rinicia="1">Iniciar rota (' + lista.length + (lista.length === 1 ? ' parada' : ' paradas') + ')</button></div>' : '';
+  }
+  function rotaCorpo() { return iniciarBox() + reordBox() + comoRotaHtml() + manualNota() + foraDaRota() + '<div id="rOut">' + routeHtml() + '</div>' + listasBox() + mapaBox() + zapBox() + '<div id="rSelBox">' + selRotaHtml() + '</div>'; }
   function zapBox() {
     var txt = rotaLinks.map(function (u, k) { return 'Rota ' + (k + 1) + ': ' + u; }).join('\n');
     if (!rotaLinks.length) { return ''; }
@@ -6226,6 +6240,8 @@ function parteLocal(parte, fala, it, ctx) {
     });
     $('rBody').addEventListener('click', function (e) {
       var rpt = e.target.closest('[data-rprint]'), mv = e.target.closest('[data-up],[data-down]'), rsv = e.target.closest('[data-rsalva]');
+      var rini = e.target.closest('[data-rinicia]');
+      if (rini) { iniciarRota(); return; }
       var sm1 = e.target.closest('[data-smsrota]'), smA = e.target.closest('[data-smsall]'), smS = e.target.closest('[data-smssel]'), rsAll = e.target.closest('[data-rselall]');
       if (sm1) { var jr = +sm1.getAttribute('data-smsrota') - 1; enviarSms('Rota ' + (jr + 1) + ': ' + (rotaLinks[jr] || '')); return; }
       if (smA) { enviarSms(rotaLinks.map(function (u, k) { return 'Rota ' + (k + 1) + ': ' + u; }).join('\n')); return; }
