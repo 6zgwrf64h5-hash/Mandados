@@ -315,6 +315,9 @@ a.btn.seqgo { display: block; text-align: center; text-decoration: none; padding
 .rmgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 12px 0; }
 .rmbtn { min-height: 72px; font-size: 17px; font-weight: 800; border: 0; border-radius: 14px; color: #fff; cursor: pointer; }
 .rmbtn.pos { background: #17784A; } .rmbtn.neg { background: #A8383B; } .rmbtn.voz { background: #6A3FC4; }
+.ico { vertical-align: -3px; }
+.iconbtn { min-width: 52px; padding-left: 12px; padding-right: 12px; }
+#btnSeq, #btnSeq2 { display: inline-flex; align-items: center; gap: 6px; }
 .chunkmais { margin: 6px 0; }
 .chunkmais summary { font-size: 13px; font-weight: 700; cursor: pointer; margin: 4px 0; }
 .rsel { display: inline-block; margin: 0 8px 0 0; vertical-align: middle; }
@@ -351,9 +354,9 @@ a.btn.seqgo { display: block; text-align: center; text-decoration: none; padding
     <div class="salvando" id="salvandoBar" hidden></div>
     <div class="bar">
       <button class="btn primary" id="btnPdf">Adicionar PDF</button>
-      <button class="btn" id="btnFisica">Certidão física (foto)</button>
+      <button class="btn" id="btnFisica" hidden>Certidão física (foto)</button>
       <button class="btn" id="btnImport" hidden>Colar lote</button>
-      <button class="btn" id="btnExport">Copiar lista</button>
+      <button class="btn" id="btnExport" hidden>Copiar lista</button>
       <button class="btn" id="btnMe">Meus dados</button><button class="btn" id="btnSalvar">Salvar tudo</button>
     </div>
     <input type="file" id="fileIn" accept="application/pdf" multiple hidden>
@@ -410,7 +413,8 @@ a.btn.seqgo { display: block; text-align: center; text-decoration: none; padding
       <button class="btn small" id="btnAll">Selecionar todos</button>
       <button class="btn small ghost" id="btnNone">Limpar seleção</button>
       <button class="btn small primary" id="btnRoute">Gerar rota</button>
-      <button class="btn small primary" id="btnSeq">Enviar em sequência</button>
+      <button class="btn small primary" id="btnSeq"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .6l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.8 2.1 1.2 1 2.2 1.4 2.5 1.5.3.1.5.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.8-.1 1.4z"/></svg> Citações/intimações em sequência</button>
+      <button class="btn small" id="btnSeq2"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .6l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.8 2.1 1.2 1 2.2 1.4 2.5 1.5.3.1.5.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.8-.1 1.4z"/></svg> 2ª mensagem em sequência</button>
       <button class="btn small ghost" id="btnDelAll">Excluir tudo</button>
     </div>
   </div>
@@ -782,6 +786,16 @@ function mergePhones(a, b) {
 /* ---- Modelos de certidão (textos do Oficial) ---- */
 function atoPalavras(tipo) {
   var t = norm(tipo || '');
+  var ci = t.search(/cita|intima|notifica/), bi = t.search(/penhor|remocao|remover|avalia/);
+  if (bi >= 0 && (ci < 0 || bi < ci)) {
+    var vs = [], ns = [];
+    (t.match(/penhor\w*|remocao|remover|avalia\w*/g) || []).forEach(function (w) {
+      var v = /^penhor/.test(w) ? 'PENHORAR' : (/^rem/.test(w) ? 'REMOVER' : 'AVALIAR');
+      if (vs.indexOf(v) === -1) { vs.push(v); ns.push(v === 'PENHORAR' ? 'PENHORA' : (v === 'REMOVER' ? 'REMOÇÃO' : 'AVALIAÇÃO')); }
+    });
+    var ju = function (a) { return a.length > 1 ? a.slice(0, -1).join(', ') + ' E ' + a[a.length - 1] : a[0]; };
+    return { subst: ju(ns), verbo: ju(vs), bem: true };
+  }
   var c = /cita/.test(t), i = /intima/.test(t), n = /notifica/.test(t);
   if (c && i) { return { subst: 'CITAÇÃO/INTIMAÇÃO', verbo: 'CITAR/INTIMAR' }; }
   if (c) { return { subst: 'CITAÇÃO', verbo: 'CITAR' }; }
@@ -808,6 +822,7 @@ function parenFrase(op, outro) {
 function justZap(key, just) {
   if (just === 'documento') { return 'a pessoa contatada não apresentou documento de identificação, o que impediu a confirmação da identidade e inviabilizou o cumprimento da comunicação eletrônica nos termos legalmente exigidos'; }
   if (just === 'inativo') { return 'o telefone informado encontra-se inativo, o que inviabilizou o cumprimento da comunicação eletrônica nos termos legalmente exigidos'; }
+  if (just === 'semzap') { return 'o número de telefone informado não possui WhatsApp, o que inviabilizou o cumprimento da comunicação eletrônica nos termos legalmente exigidos'; }
   if (key === 'mudou') { return 'até o presente momento não obtive retorno que viabilize o cumprimento da comunicação eletrônica nos termos legalmente exigidos'; }
   if (key === 'naoconhece') { return 'até o presente momento não tive retorno que viabilize o cumprimento da comunicação eletrônica nos termos legalmente exigidos'; }
   return 'não obtive retorno';
@@ -817,7 +832,8 @@ function justDaTentativa(list) {
   var m = norm(l && l.motivo);
   if (!m) { return 'documento'; }
   if (/identidade|document/.test(m)) { return 'documento'; }
-  if (/inativ|inexist|sem whatsapp/.test(m)) { return 'inativo'; }
+  if (/inativ|inexist/.test(m)) { return 'inativo'; }
+  if (/sem whatsapp/.test(m)) { return 'semzap'; }
   return 'semretorno';
 }
 /* ---- Resumo do cartão: cartório curto e "do que se trata" em uma linha ---- */
@@ -862,6 +878,7 @@ function paraEmpresa(texto, nome) {
   var t = String(texto);
   t = t.replace(new RegExp('o\\(a\\) Sr(?:\\(a\\)|\\.\\(a\\)|\\.)?\\.? ' + nm, 'g'), 'a empresa ' + nome);
   t = t.replace(new RegExp('do Sr\\.\\(A\\) ' + nm, 'g'), 'da empresa ' + nome);
+  t = t.replace(new RegExp('do\\(a\\) Sr(?:\\(a\\)|\\.\\(a\\)|\\.)?\\.? ' + nm, 'g'), 'da empresa ' + nome);
   t = t.replace(/que o\(a\) referido\(a\)/g, 'que a referida empresa').replace(/conhece o\(a\) referido\(a\)/g, 'conhece a referida empresa').replace(/não o\(a\) encontrei/g, 'não a encontrei');
   return t;
 }
@@ -902,6 +919,7 @@ function buildModeloBase(key, o) {
   if (key === 'numero') {
     return 'CERTIDÃO\n\nCERTIFICO ainda que me dirigi ao endereço indicado, e DEIXEI DE ' + a.verbo + ' o(a) Sr. ' + nome + ', tendo em vista que percorri a rua por três vezes e não encontrei a numeração predial indicada no mandado, ou por não existir ou por ser de difícil visualização.' + zap + '\n\nAnte o exposto devolvo o r. mandado em cartório para os devidos fins.\n\n' + fecho + dil;
   }
+  if (key === 'recado') { return 'CERTIDÃO\n\nCERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado, e DEIXEI DE ' + a.verbo + ' o(a) Sr(a). ' + nome + ', tendo em vista que não encontrei ninguém nas diligências realizadas no local, tendo deixado recado para que o(a) referido(a) retornasse o contato, porém não obtive retorno.' + zap + '\n\nAnte o exposto devolvo o mandado para os devidos fins.\n\n' + fecho + dil; }
   if (key === 'ninguem') {
     var vs = (o.visitas || []).filter(function (x) { return x; }), nv = vs.length;
     var vezes = nv === 1 ? 'uma vez' : (nv === 2 ? 'duas vezes' : (nv === 3 ? 'três vezes' : (nv ? nv + ' vezes' : 'nos dias e horários abaixo')));
@@ -913,10 +931,7 @@ function buildModeloBase(key, o) {
   return 'CERTIDÃO\n\nCERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado, e DEIXEI DE ' + a.verbo + ' o(a) Sr(a). ' + nome + ', tendo em vista que o(a) Sr(a). ' + morador + ', afirmou que não conhece o(a) referido(a).' + zap + '\n\nAnte o exposto devolvo o mandado para os devidos fins.\n\n' + fecho + dil;
 }
 
-function buildModelo(key, o) {
-  var t = buildModeloBase(key, o), pj = o && o.pj != null ? !!o.pj : ehEmpresa(o && o.nome);
-  return pj ? paraEmpresa(t, (o && o.nome) || 'NOME COMPLETO') : t;
-}
+function buildModelo(key, o) { return ajustaAto(buildModeloBase(key, o), o); }
 
 /* ---- Cumprimento eletrônico: tipo de endereço, modelo sugerido, envios ---- */
 var CIDADES_PADRAO = ['Foz do Iguaçu', 'Santa Terezinha de Itaipu'];
@@ -996,6 +1011,7 @@ function grupoDe(i) {
 /* ---- Auto de busca e apreensão ---- */
 var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 function isBA(it) { return /busca e apreens/.test(norm([it.tipo, it.vara, it.ctipo, it.motivo].join(' '))); }
+function temAuto(it) { return isBA(it) || !!atoPalavras(it && it.tipo).bem; }
 function rotuloPolo(raw, def) {
   var x = norm(raw || '');
   if (/exequente/.test(x)) { return 'exequente'; }
@@ -1050,8 +1066,12 @@ function parseAutorReu(text) {
   var r = /\n\s*(R[ée]u|Executado|Requerido|Promovido|Devedor)\(?[as]?\)?\(?s?\)?\s*:\s*([^\n]*)/i.exec(t);
   return { rotAutor: a ? a[1] : '', autor: a ? nome(a[2]) : '', rotReu: r ? r[1] : '', reu: r ? nome(r[2]) : '' };
 }
+function autoDoAto(tipo) { var a = atoPalavras(tipo); return a.bem ? a.subst : 'BUSCA E APREENSÃO'; }
 function autoParagrafos(d, o) {
   o = o || {};
+  var ato = d.ato || 'BUSCA E APREENSÃO', bens = (d.bens || []).filter(function (x) { return String(x || '').trim(); });
+  var temVeic = (d.veiculos || []).some(function (x) { return x && ['marca', 'modelo', 'ano', 'cor', 'placa', 'chassi', 'renavam'].some(function (k) { return x[k]; }); });
+  var usaVeic = temVeic || !bens.length;
   var dt = new Date(o.agora || Date.now());
   var B = '____________';
   var dia = o.diaHoje ? String(dt.getDate()) : '__';
@@ -1066,13 +1086,16 @@ function autoParagrafos(d, o) {
     { t: ' ' + v(d.autor) + ' e ', b: false },
     { t: d.rotReu || 'executado(a)', b: true },
     { t: ' ' + v(d.reu) + ', após as formalidades legais, ', b: false },
-    { t: 'procedi a BUSCA E APREENSÃO do bem(ns)', b: true },
+    { t: 'procedi a ' + ato + ' do bem(ns)', b: true },
     { t: ' abaixo descrito:', b: false }
   ];
-  var pv = vs.map(function (x) {
+  var pv = (usaVeic ? vs : []).map(function (x) {
     return [{ t: 'Veículo Marca ' + v(x.marca) + ', Modelo ' + v(x.modelo) + ', Ano ' + v(x.ano) + ', Cor ' + v(x.cor) + ', Placa ' + v(x.placa) + ', Chassi ' + v(x.chassi) + ', Renavam ' + v(x.renavam) + ', no estado das fotos em anexo.', b: true }];
   });
-  var p3 = [{ t: 'Após efetivada a busca, deixei como depositário ' + (vs.length > 1 ? 'dos bens' : 'do bem') + ', Sr. ____________________________________________, que aceitou ao cargo, prometendo zelar pela sua conservação e não abrir mão, sem ordem expressa do MM. Juízo, sob as penas da lei. E para constar lavrei o presente auto que lido e achado, vai devidamente assinado por mim, oficial de justiça, e pelo(a) depositário(a).', b: false }];
+  pv = pv.concat(bens.map(function (x) { return [{ t: String(x).trim(), b: true }]; }));
+  var nb = (usaVeic ? vs.length : 0) + bens.length, verboAto = ato.split(/ E |, /)[0].toLowerCase(), soAval = ato === 'AVALIAÇÃO';
+  var pAval = 'Avaliei ' + (nb > 1 ? 'os bens' : 'o bem') + ' em R$ ____________ (______________________________________________). ';
+  var p3 = soAval ? [{ t: pAval + 'E para constar lavrei o presente auto que lido e achado, vai devidamente assinado por mim, oficial de justiça.', b: false }] : [{ t: (/AVALIA/.test(ato) ? pAval : '') + 'Após efetivada a ' + verboAto + ', deixei como depositário ' + (nb > 1 ? 'dos bens' : 'do bem') + ', Sr. ____________________________________________, que aceitou ao cargo, prometendo zelar pela sua conservação e não abrir mão, sem ordem expressa do MM. Juízo, sob as penas da lei. E para constar lavrei o presente auto que lido e achado, vai devidamente assinado por mim, oficial de justiça, e pelo(a) depositário(a).', b: false }];
   return [{ runs: p1, indent: 0 }].concat(pv.map(function (r) { return { runs: r, indent: 0 }; })).concat([{ runs: p3, indent: 36 }]);
 }
 function lacunasAuto(d) {
@@ -1082,6 +1105,9 @@ function lacunasAuto(d) {
   if (!d.autor) { f.push('nome do autor'); }
   if (!d.reu) { f.push('nome do réu'); }
   var vs = (d.veiculos && d.veiculos.length) ? d.veiculos : [{}];
+  var bensL = (d.bens || []).filter(function (x) { return String(x || '').trim(); });
+  var temV = (d.veiculos || []).some(function (x) { return x && ['marca', 'modelo', 'ano', 'cor', 'placa', 'chassi', 'renavam'].some(function (k) { return x[k]; }); });
+  if (bensL.length && !temV) { vs = []; }
   vs.forEach(function (x, i) {
     ['marca', 'modelo', 'ano', 'cor', 'placa', 'chassi', 'renavam'].forEach(function (k) { if (!x[k]) { f.push((vs.length > 1 ? 'veículo ' + (i + 1) + ': ' : '') + k); } });
   });
@@ -1100,6 +1126,22 @@ function montarMensagem(tpl, nome, oficial, mat) {
 }
 
 /* ---- Leitura: telefones e cor pelas palavras do mandado ---- */
+/* Telefone que veio dentro do endereço ("citação por meio eletrônico, - - (45) 98402-7546") */
+function telefonesDoEndereco(end) {
+  var t = String(end || ''), out = [], m;
+  var re = /\(\s*\d{2}\s*\)\s*9?\s*\d{4}\s*[-.\s]?\s*\d{4}/g;
+  while ((m = re.exec(t))) { if (normPhone(m[0]).ok) { out.push(m[0].trim()); } }
+  if (/eletr[oô]nic|whats|e-?mail|virtual/i.test(t)) {
+    var re2 = /\b\d{2}\s*9\d{4}\s*[-.\s]?\s*\d{4}\b|\b\d{2}\s+\d{4}[-.\s]?\d{4}\b/g;
+    while ((m = re2.exec(t))) { var x = m[0].trim(); if (normPhone(x).ok && out.indexOf(x) === -1) { out.push(x); } }
+  }
+  return out;
+}
+function limpaEndereco(end, tels) {
+  var t = String(end || '');
+  (tels || []).forEach(function (x) { t = t.split(x).join(''); });
+  return t.replace(/\s{2,}/g, ' ').replace(/[\s,;\-–]+$/, '').replace(/^[\s,;\-–]+/, '').trim();
+}
 function parseTelefonesTexto(text) {
   var t = String(text || '').split('\n').filter(function (l) { return !/\bFone\s*:|E-mail\s*:/i.test(l); }).join(' ').replace(/\s+/g, ' ');
   var out = [], re = /telefones?(?:\(s\))?\s*:?\s*((?:[\d()\s.\-\/;,]|\be\b|\bou\b){8,90})/gi, m;
@@ -1383,6 +1425,17 @@ function tentativasOnline(it) {
   ts.forEach(function (t) { var g = gs[gs.length - 1]; if (g && t - g.fim < 12 * 3600000) { g.fim = t; } else { gs.push({ ini: t, fim: t }); } });
   return gs;
 }
+/* 2ª mensagem: o mandado teve só 1 tentativa por WhatsApp, em dia anterior ao de hoje; no dia seguinte libera a partir do meio-dia */
+function segundaMensagemPronta(it, agora) {
+  if (!it || it.status !== 'pendente') { return false; }
+  var t = tentativasOnline(it);
+  if (t.length !== 1) { return false; }
+  var d0 = new Date(agora); d0.setHours(0, 0, 0, 0);
+  var f = new Date(t[0].ini); f.setHours(0, 0, 0, 0);
+  var dias = Math.round((d0.getTime() - f.getTime()) / 86400000);
+  if (dias >= 2) { return true; }
+  return dias === 1 && new Date(agora).getHours() >= 12;
+}
 function onlineInfo(it, agora) {
   var g = tentativasOnline(it), n = g.length, ult = n ? g[n - 1].fim : 0, h = n ? (agora - ult) / 3600000 : 0;
   return { n: n, ult: ult, primeira: n ? g[0].ini : 0, horas: h, repetir: n === 1 && h >= 24, pronto: n >= 2 && h >= 48, faltam: n >= 2 ? Math.max(0, 48 - h) : 0 };
@@ -1636,7 +1689,23 @@ function fraseVoz(fala) {
   if (t.length > 1 && /^[A-ZÀ-Ú]/.test(ps[0]) && (ps[0].length === 1 || !/^[A-ZÀ-Ú]/.test(ps[1] || '')) && !/^[A-ZÀ-Ú]{2,}$/.test(ps[0])) { t = t.charAt(0).toLowerCase() + t.slice(1); }
   return t;
 }
-function ehAtoPessoal(tipo) { return !/penhora|busca|apreens|avalia|constata|reintegra|imiss|arresto|sequestro|despejo|desocupa/.test(norm(tipo || '')); }
+function ehAtoPessoal(tipo) {
+  var t = norm(tipo || '');
+  if (atoPalavras(tipo).bem) { return false; }
+  if (/cita|intima|notifica/.test(t) && !/busca|apreens|constata|reintegra|imiss|arresto|sequestro|despejo|desocupa/.test(t)) { return true; }
+  return !/penhora|busca|apreens|avalia|constata|reintegra|imiss|arresto|sequestro|despejo|desocupa/.test(t);
+}
+/* Penhora, remoção e avaliação: "deixei de PENHORAR o bem indicado do(a) Sr(a). NOME" (e não "deixei de intimar o Sr(a)") */
+function paraBem(t, verbo) {
+  var v = String(verbo || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!v) { return t; }
+  return String(t).replace(new RegExp('(deixei de ' + v + ') o\\(a\\) Sr(?:\\(a\\)|\\.\\(a\\)|\\.)?\\.? ', 'gi'), '$1 o bem indicado do(a) Sr(a). ');
+}
+function ajustaAto(t, o) {
+  var a = atoPalavras(o && o.tipo), pj = o && o.pj != null ? !!o.pj : ehEmpresa(o && o.nome);
+  if (a.bem) { t = paraBem(t, a.verbo); }
+  return pj ? paraEmpresa(t, (o && o.nome) || 'NOME COMPLETO') : t;
+}
 function separarDil(texto) {
   var t = String(texto || ''), m = /\n*\s*Dilig[eê]ncias? a receber:[^\n]*\s*$/i.exec(t);
   return m ? { corpo: t.slice(0, m.index).replace(/\s+$/, ''), dil: m[0].trim() } : { corpo: t.replace(/\s+$/, ''), dil: '' };
@@ -1653,7 +1722,7 @@ function promptAjuste(it, texto, pedido, ctx) {
 }
 function vozLocal(fala, it, ctx) {
   ctx = ctx || {};
-  var key = ehAtoPessoal(it.tipo) ? tipoVoz(fala) : '', faltando = [], texto, tipo;
+  var key = (ehAtoPessoal(it.tipo) || atoPalavras(it.tipo).bem) ? tipoVoz(fala) : '', faltando = [], texto, tipo;
   var dil = ctx.custas ? String(ctx.custas) : '';
   var oficial = ctx.oficial || '';
   if (key) {
@@ -1671,7 +1740,7 @@ function vozLocal(fala, it, ctx) {
   tipo = /(citei|intimei|notifiquei|cumpri|cumprid|recebeu|ciente|aceitou|entreguei)/.test(n) && !/nao (recebeu|aceitou|foi possivel)/.test(n) ? 'positiva' : 'negativa';
   var a = atoPalavras(it.tipo), pessoal = ehAtoPessoal(it.tipo);
   var fecho = 'O referido é verdade. Dou fé.\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (oficial ? oficial + '\n' : '') + 'Oficial de Justiça';
-  texto = 'CERTIDÃO\n\nCERTIFICO que, em cumprimento ao r. mandado' + (tipo === 'negativa' ? ', dirigi-me ao endereço indicado, e DEIXEI DE ' + (pessoal ? a.verbo + ' o(a) Sr(a). ' : 'CUMPRIR O MANDADO em face de o(a) Sr(a). ') + String(it.nome || '').toUpperCase() + ', tendo em vista que ' : ', ') + fraseVoz(fala) + '.' +
+  texto = 'CERTIDÃO\n\nCERTIFICO que, em cumprimento ao r. mandado' + (tipo === 'negativa' ? ', dirigi-me ao endereço indicado, e DEIXEI DE ' + (a.bem ? a.verbo + ' o bem indicado do(a) Sr(a). ' : (pessoal ? a.verbo + ' o(a) Sr(a). ' : 'CUMPRIR O MANDADO em face de o(a) Sr(a). ')) + String(it.nome || '').toUpperCase() + ', tendo em vista que ' : ', ') + fraseVoz(fala) + '.' +
     (tipo === 'negativa' ? '\n\nAnte o exposto devolvo o mandado para os devidos fins.' : '') + '\n\n' + fecho + (dil ? '\n\nDiligência a receber: R$ ' + dil : '');
   return { key: '', tipo: tipo, texto: texto, faltando: ['conferir o texto: usei a sua fala quase como foi dita'], entendi: 'Não encontrei um dos seus modelos para este caso, então escrevi um texto livre.' };
 }
@@ -2101,28 +2170,51 @@ function moverParaPosicao(ids, id, pos) {
 }
 
 /* ---- Certidão em duas partes: física (no endereço) e on-line (WhatsApp) ---- */
-var OPC_FISICA = [['mudou', 'Mudou-se (o morador informou)'], ['naoconhece', 'Não conhece (o morador informou)'], ['numero', 'Não achei a numeração'], ['ninguem', 'Não encontrei ninguém (visitas)']];
+var OPC_FISICA = [['mudou', 'Mudou-se (o morador informou)'], ['naoconhece', 'Não conhece (o morador informou)'], ['numero', 'Não achei a numeração'], ['ninguem', 'Não encontrei ninguém (com os horários das visitas)'], ['recado', 'Não encontrei ninguém, deixei recado (sem horários)'], ['pospres', 'Positiva: citei/intimei pessoalmente (foto da assinatura)']];
 var OPC_ONLINE = [['pos', 'Citei/intimei por WhatsApp'], ['neg', 'Tentei por WhatsApp e não deu certo']];
+/* Certidões que já existem no app: o usuário pode editar o texto (guardado em cfg.padroes) */
+var PADROES_USER = {};
+function setPadroes(p) { PADROES_USER = p || {}; }
+var PADROES_LISTA = [['f:mudou', 'Física: mudou-se'], ['f:naoconhece', 'Física: não conhece'], ['f:numero', 'Física: não achei a numeração'], ['f:ninguem', 'Física: não encontrei ninguém (horários)'], ['f:recado', 'Física: não encontrei ninguém, deixei recado'], ['f:pospres', 'Física: positiva presencial'], ['o:pos', 'On-line: citei/intimei por WhatsApp'], ['o:neg', 'On-line: tentei por WhatsApp e não deu certo']];
+function padraoComMarcadores(chave) {
+  var k = String(chave).slice(2), tipo = 'Citação e Intimação';
+  var o = { tipo: tipo, nome: '{NOME}', morador: '{MORADOR}', paren: '{PAREN}', visitas: ['{VISITAS}'], data: '{DATA}', oficial: '{OFICIAL}', idConf: true, just: 'semretorno', temFisica: true };
+  var t = chave.charAt(0) === 'f' ? parteFisicaBase(k, o) : parteOnlineBase(k, o);
+  return t.replace(/CITAR\/INTIMAR/g, '{VERBO}').replace(/CITAÇÃO\/INTIMAÇÃO/g, '{SUBST}').replace(/\b(?:uma vez|duas vezes|três vezes|\d+ vezes|nos dias e horários abaixo) \(\{VISITAS\}\)/, '{VEZES} ({VISITAS})');
+}
+function preencherPadrao(texto, o) {
+  o = o || {};
+  var vs = (o.visitas || []).filter(function (x) { return x; }), nv = vs.length;
+  var vezes = nv === 1 ? 'uma vez' : (nv === 2 ? 'duas vezes' : (nv === 3 ? 'três vezes' : (nv ? nv + ' vezes' : 'nos dias e horários abaixo')));
+  var t = String(texto || '').replace(/\{VEZES\}/g, vezes).replace(/\{VISITAS\}/g, nv ? vs.join('; ') : '__/__/____, às __:__').replace(/\{PAREN\}/g, o.paren || PAREN.atual).replace(/\{EMPRESA\}/g, o.empLocal || 'NOME DA EMPRESA');
+  return preencherModelo(t, o);
+}
 function parteFisicaTexto(key, o) {
-  var t = parteFisicaBase(key, o), pj = o && o.pj != null ? !!o.pj : ehEmpresa(o && o.nome);
-  return pj ? paraEmpresa(t, (o && o.nome) || 'NOME COMPLETO') : t;
+  var ov = PADROES_USER['f:' + key];
+  return ajustaAto(ov ? preencherPadrao(ov, o) : parteFisicaBase(key, o), o);
 }
 function parteFisicaBase(key, o) {
   var a = atoPalavras(o.tipo), nome = o.nome || 'NOME COMPLETO';
   var morador = (o.morador || 'NOME DO MORADOR') + ', ' + ((key === 'mudou' && o.paren) || PAREN.atual);
   var base = 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado';
   if (key === 'numero') { return 'CERTIFICO ainda que me dirigi ao endereço indicado, e DEIXEI DE ' + a.verbo + ' o(a) Sr. ' + nome + ', tendo em vista que percorri a rua por três vezes e não encontrei a numeração predial indicada no mandado, ou por não existir ou por ser de difícil visualização.'; }
+  if (key === 'recado') { return base + ', e DEIXEI DE ' + a.verbo + ' o(a) Sr(a). ' + nome + ', tendo em vista que não encontrei ninguém nas diligências realizadas no local, tendo deixado recado para que o(a) referido(a) retornasse o contato, porém não obtive retorno.'; }
+  if (key === 'pospres') {
+    if (a.bem) { return 'CERTIFICO que, em cumprimento ao r. mandado expedido pelo MM. Juízo de Direito desta comarca, no dia ' + (o.data || '__/__/____') + ', dirigi-me ao endereço indicado e procedi à ' + a.subst + ' do bem indicado do(a) Sr(a). ' + nome + ', conforme auto em anexo.'; }
+    return 'CERTIFICO que, em cumprimento ao r. mandado expedido pelo MM. Juízo de Direito desta comarca, no dia ' + (o.data || '__/__/____') + ', dirigi-me ao endereço indicado e procedi à ' + a.subst + ' do Sr.(A) ' + nome + ', que ficou(aram) ciente(s) do inteiro teor do presente mandado e das cópias que o acompanhavam, exarando o seu ciente no mandado.';
+  }
   if (key === 'ninguem') {
     var vs = (o.visitas || []).filter(function (x) { return x; }), nv = vs.length;
     var vezes = nv === 1 ? 'uma vez' : (nv === 2 ? 'duas vezes' : (nv === 3 ? 'três vezes' : (nv ? nv + ' vezes' : 'nos dias e horários abaixo')));
     return base + ' ' + vezes + ' (' + (nv ? vs.join('; ') : '__/__/____, às __:__') + '), e DEIXEI DE ' + a.verbo + ' o(a) Sr(a). ' + nome + ', tendo em vista que não encontrei ninguém nas diligências realizadas no local.';
   }
   if (key === 'mudou') { return base + ', e DEIXEI DE ' + a.verbo + ' o(a) Sr(a). ' + nome + ', tendo em vista que o(a) Sr(a). ' + morador + ', afirmou que o(a) referido(a) mudou para endereço desconhecido.'; }
+  if (o.pj && o.empLocal) { return base + ', e DEIXEI DE ' + a.verbo + ' o(a) Sr(a). ' + nome + ', tendo em vista que, no local indicado, funciona a empresa ' + o.empLocal + ', e o(a) colaborador(a) ' + (o.morador || 'NOME DO COLABORADOR') + ' afirmou que não conhece o(a) referido(a).'; }
   return base + ', e DEIXEI DE ' + a.verbo + ' o(a) Sr(a). ' + nome + ', tendo em vista que o(a) Sr(a). ' + morador + ', afirmou que não conhece o(a) referido(a).';
 }
 function parteOnlineTexto(kind, o) {
-  var t = parteOnlineBase(kind, o), pj = o && o.pj != null ? !!o.pj : ehEmpresa(o && o.nome);
-  return pj ? paraEmpresa(t, (o && o.nome) || 'NOME COMPLETO') : t;
+  var ov = PADROES_USER['o:' + kind];
+  return ajustaAto(ov ? preencherPadrao(ov, o) : parteOnlineBase(kind, o), o);
 }
 function parteOnlineBase(kind, o) {
   var a = atoPalavras(o.tipo), nome = o.nome || 'NOME COMPLETO';
@@ -2144,6 +2236,7 @@ function montarCertidaoPartes(fis, on, o) {
 }
 /* ---- Modelos do oficial: o texto vira modelo trocando os dados do mandado por marcadores ---- */
 var MARCADORES_TXT = '{NOME} {PROCESSO} {ENDERECO} {DATA} {ATO} {VERBO} {SUBST} {MORADOR} {OFICIAL} {VARA}';
+var MARCADORES_PADRAO_TXT = MARCADORES_TXT + ' {PAREN} {VEZES} {VISITAS} {EMPRESA}';
 function escRe(x) { return String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function generalizarModelo(texto, c) {
   var t = String(texto || '');
@@ -2172,6 +2265,7 @@ function preencherModelo(texto, o) {
   var m = { NOME: nome, PROCESSO: o.processo || '', ENDERECO: o.endereco || '', DATA: o.data || '', ATO: String(o.tipo || '').toLowerCase(), VERBO: a.verbo, SUBST: a.subst, MORADOR: String(o.morador || '').toUpperCase(), OFICIAL: o.oficial || '', VARA: o.vara || '' };
   var t = String(texto || '').replace(/\{([A-ZÇÃÕ]+)\}/g, function (all, k) { return (k in m && m[k] !== '') ? m[k] : all; });
   var pj = o.pj != null ? !!o.pj : ehEmpresa(nome);
+  if (a.bem) { t = paraBem(t, a.verbo); }
   if (pj && nome) { t = paraEmpresa(t, nome); }
   var zap = o.onde === 'on' || (o.onde === 'inteira' && /whatsapp/i.test(t));
   if (zap && o.tipoRes === 'positiva' && !/identidade foi confirmada previamente/i.test(t)) {
@@ -2204,7 +2298,7 @@ function parteLocal(parte, fala, it, ctx) {
   var n = norm(fala), nome = String(it.nome || '').toUpperCase(), a = atoPalavras(it.tipo), pessoal = ehAtoPessoal(it.tipo), faltando = [], texto, tipo, key = '';
   var positivo = /(citei|intimei|notifiquei|cumpri|cumprid|recebeu|confirmou|ciente|aceitou|entreguei)/.test(n) && !/nao (recebeu|aceitou|respondeu|retornou)|sem (resposta|retorno)/.test(n);
   if (parte === 'fis') {
-    var k = pessoal ? tipoVoz(fala) : '';
+    var k = (pessoal || a.bem) ? tipoVoz(fala) : '';
     if (k === 'mudou' || k === 'naoconhece' || k === 'numero' || k === 'ninguem') {
       var mor = moradorVoz(fala), pv = parenVoz(fala);
       if ((k === 'mudou' || k === 'naoconhece') && !mor) { faltando.push('nome do morador'); }
@@ -2214,7 +2308,7 @@ function parteLocal(parte, fala, it, ctx) {
       tipo = 'positiva'; texto = 'CERTIFICO que, em cumprimento ao r. mandado, ' + fraseVoz(fala) + '.';
     } else {
       tipo = 'negativa'; faltando.push('conferir o texto: usei a sua fala quase como foi dita');
-      texto = 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado, e DEIXEI DE ' + (pessoal ? a.verbo + ' o(a) Sr(a). ' : 'CUMPRIR O MANDADO em face de o(a) Sr(a). ') + nome + ', tendo em vista que ' + fraseVoz(fala) + '.';
+      texto = 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado, e DEIXEI DE ' + (a.bem ? a.verbo + ' o bem indicado do(a) Sr(a). ' : (pessoal ? a.verbo + ' o(a) Sr(a). ' : 'CUMPRIR O MANDADO em face de o(a) Sr(a). ')) + nome + ', tendo em vista que ' + fraseVoz(fala) + '.';
     }
   } else {
     if (positivo) { key = 'pos'; tipo = 'positiva'; texto = parteOnlineTexto('pos', { pj: ehEmpresaIt(it), tipo: it.tipo, nome: nome, data: ctx.diaCont ? fmtDate(ctx.diaCont) : '', idConf: true }); }
@@ -2273,6 +2367,7 @@ function parteLocal(parte, fala, it, ctx) {
   state.apagados = state.apagados || [];
   state.cfg = state.cfg || {};
   setDDD(state.cfg.ddd || '');
+  setPadroes(state.cfg.padroes);
   if (MODO_ATALHO) { state.syncOn = false; }
   function cidades() { return state.cfg.cidades && state.cfg.cidades.length ? state.cfg.cidades : CIDADES_PADRAO; }
   function regras() {
@@ -2336,9 +2431,48 @@ function parteLocal(parte, fala, it, ctx) {
     openModal('Meus modelos de certidão',
       '<p class="note">Os modelos que você salva aparecem na lista de certidões de cada cartão (física ou on-line) ou em Certificar (certidão inteira), em “Meus modelos”. Para criar um, faça uma certidão (por exemplo com “Certificar por voz”) e use “Salvar como modelo”.</p>' +
       (L.length ? '<div class="models">' + L.map(function (m) { return '<button class="btn model" data-mm="' + esc(m.id) + '"><strong>' + esc(m.nome) + '</strong><span class="note">' + esc(ONDE_TXT[m.onde] || '') + ' · ' + (m.tipo === 'positiva' ? 'positiva' : 'negativa') + '</span></button>'; }).join('') + '</div>' : '<p class="empty">Nenhum modelo salvo ainda.</p>') +
+      '<div class="actions"><button class="btn primary" id="mmNovo">Novo modelo negativo</button></div>' +
+      '<p class="note"><strong>Certidões que já existem no app</strong> (toque para editar o texto):</p>' +
+      '<div class="models">' + PADROES_LISTA.map(function (x) { return '<button class="btn model" data-pd="' + x[0] + '"><strong>' + esc(x[1]) + '</strong><span class="note">' + (PADROES_USER[x[0]] ? 'editada por você' : 'texto original do app') + '</span></button>'; }).join('') + '</div>' +
       '<div class="actions"><button class="btn" id="mmVolta">Voltar a Meus dados</button></div>');
-    document.getElementById('mbody').onclick = function (e) { var b = e.target.closest('[data-mm]'); if (b) { abrirEditarModelo(b.getAttribute('data-mm')); } };
+    document.getElementById('mmNovo').onclick = function () { abrirNovoModelo(); };
+    document.getElementById('mbody').onclick = function (e) { var b = e.target.closest('[data-mm]'); if (b) { abrirEditarModelo(b.getAttribute('data-mm')); return; } var pd = e.target.closest('[data-pd]'); if (pd) { abrirEditarPadrao(pd.getAttribute('data-pd')); } };
     document.getElementById('mmVolta').onclick = function () { openMe(); };
+  }
+  function abrirNovoModelo() {
+    openModal('Novo modelo negativo',
+      '<label class="f" for="nmNome">Nome do modelo</label><input type="text" id="nmNome" placeholder="Ex.: Porteiro informou que mudou" autocomplete="off">' +
+      '<label class="f" for="nmOnde">Onde aparece</label><select id="nmOnde" class="sel"><option value="fis">Lista da certidão física</option><option value="on">Lista da certidão on-line</option><option value="inteira">Certificar (certidão inteira)</option></select>' +
+      '<label class="f" for="nmTxt">Texto do modelo</label><textarea id="nmTxt" style="min-height:240px">CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado, e DEIXEI DE {VERBO} o(a) Sr(a). {NOME}, tendo em vista que </textarea>' +
+      '<p class="note">A página troca estes marcadores pelos dados do mandado: <strong>' + esc(MARCADORES_TXT) + '</strong>. Modelos novos aqui são sempre negativos.</p>' +
+      '<div class="actions"><button class="btn primary" id="nmSalva">Salvar</button><button class="btn" id="nmVolta">Voltar</button></div>');
+    document.getElementById('nmVolta').onclick = abrirModelos;
+    document.getElementById('nmSalva').onclick = function () {
+      var nome = document.getElementById('nmNome').value.trim(), tx = document.getElementById('nmTxt').value.trim();
+      if (!nome || !tx) { toast('O modelo precisa de nome e de texto'); return; }
+      state.cfg.modelos = modelos().concat([{ id: uid(), nome: nome, onde: document.getElementById('nmOnde').value, tipo: 'negativa', texto: tx }]);
+      save(); render(); abrirModelos(); toast('Modelo salvo');
+    };
+  }
+  function abrirEditarPadrao(chave) {
+    var rot = PADROES_LISTA.filter(function (x) { return x[0] === chave; })[0];
+    if (!rot) { return; }
+    var atual = PADROES_USER[chave] || padraoComMarcadores(chave);
+    openModal('Editar: ' + rot[1],
+      '<label class="f" for="epTxt">Texto da certidão</label><textarea id="epTxt" style="min-height:260px">' + esc(atual) + '</textarea>' +
+      '<p class="note">A página troca estes marcadores pelos dados do mandado: <strong>' + esc(MARCADORES_PADRAO_TXT) + '</strong>. {VISITAS} e {VEZES} só valem na certidão de “não encontrei ninguém”; {EMPRESA} é a empresa que está no local.</p>' +
+      '<div class="actions"><button class="btn primary" id="epSalva">Salvar</button><button class="btn ghost" id="epOrig"' + (PADROES_USER[chave] ? '' : ' hidden') + '>Voltar ao texto original</button><button class="btn" id="epVolta">Voltar</button></div>');
+    document.getElementById('epVolta').onclick = abrirModelos;
+    document.getElementById('epSalva').onclick = function () {
+      var tx = document.getElementById('epTxt').value.trim();
+      if (!tx) { toast('O texto não pode ficar vazio'); return; }
+      state.cfg.padroes = Object.assign({}, state.cfg.padroes || {}); state.cfg.padroes[chave] = tx; setPadroes(state.cfg.padroes);
+      save(); render(); abrirModelos(); toast('Certidão editada');
+    };
+    document.getElementById('epOrig').onclick = function () {
+      state.cfg.padroes = Object.assign({}, state.cfg.padroes || {}); delete state.cfg.padroes[chave]; setPadroes(state.cfg.padroes);
+      save(); render(); abrirModelos(); toast('Voltou ao texto original');
+    };
   }
   function abrirEditarModelo(id) {
     var m = modelos().filter(function (x) { return x.id === id; })[0];
@@ -3111,6 +3245,7 @@ function parteLocal(parte, fala, it, ctx) {
     document.getElementById('syncLine').textContent = MODO_ATALHO ? linhaAtalho() : state.syncOn
       ? (syncProg || 'Cópia segura na sua conta: ligada' + (syncAt ? ' (última às ' + syncAt + ')' : '') + (syncErr ? '. ' + syncErr : '') + (arquivosSemCopia() ? '. ' + arquivosSemCopia() + (arquivosSemCopia() === 1 ? ' PDF ainda não foi salvo' : ' PDFs ainda não foram salvos') + ' na conta: não saia ainda.' : (pendNuvem && !syncErr ? '. Salvando as últimas mudanças: não saia ainda.' : '')))
       : (state.items.length && !state.sample ? (nuvemOk && !podeSalvar ? 'Não consegui conferir a sua conta, então não estou salvando para não sobrescrever a cópia. Toque em “Salvar tudo” para tentar de novo.' : 'Cópia segura desligada: toque em “Salvar tudo” para a lista, os PDFs e os ajustes não sumirem.') : '');
+    setPadroes(state.cfg && state.cfg.padroes); setDDD(state.cfg && state.cfg.ddd);
     renderHoje(); renderRotaBanner();
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-tab') === tab);
@@ -3223,6 +3358,7 @@ function parteLocal(parte, fala, it, ctx) {
     if (i.cls === 'nao_enviar') { flags.push(['Não enviar: ' + (i.motivo || 'regra do cartório'), true]); }
     if (i.cls === 'conferir') { flags.push(['Conferir: ' + (i.motivo || 'não deu para classificar'), false]); }
     if (i.aviso && i.aviso.length <= 70) { flags.push([i.aviso, false]); }
+    if (atoPalavras(i.tipo).bem && i.status === 'pendente') { flags.push(['Ato principal: ' + atoPalavras(i.tipo).subst.toLowerCase() + '. A certidão sai como “deixei de ' + atoPalavras(i.tipo).verbo.toLowerCase() + ' o bem indicado”', false]); }
     if (i.voltouLista && i.status === 'pendente') { flags.push(['Voltou das certidões: mandado não certificado', false]); }
     if (i.agenda && i.status === 'pendente') { flags.push(['Agenda: ' + i.agenda.nome, 'ok']); }
     if (i.jaIntimado && i.status === 'pendente') { var jd = new Date(i.jaIntimado.quando || 0); flags.push(['Já intimado por WhatsApp em ' + pad(jd.getDate()) + '/' + pad(jd.getMonth() + 1) + '/' + jd.getFullYear() + ' (proc. ' + i.jaIntimado.proc + ', ' + i.jaIntimado.tel + '). Confirme que é a mesma pessoa.', false]); }
@@ -3255,7 +3391,7 @@ function parteLocal(parte, fala, it, ctx) {
       var oi = onlineInfo(i, Date.now()), fOk = fisicaFeita(i), fDisp = fisicaDispensada(i, cidades());
       if (fOk) { var fd = new Date(i.fisica.data + 'T12:00:00'); flags.push(['Diligência física feita' + (isNaN(fd) ? '' : ' em ' + pad(fd.getDate()) + '/' + pad(fd.getMonth() + 1)) + ': ' + rotuloFis(i.fisica) + (i.fisica.morador ? ' (' + i.fisica.morador + ')' : ''), false]); }
       var semOn = fOk && !onlinePossivel(i);
-      if (!fOk && i.visitas && i.visitas.length) { flags.push(['Visitas ao endereço: ' + i.visitas.map(function (t, k) { var d = new Date(t); return (k + 1) + 'ª ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }).join(' · '), false]); }
+      if (!fOk && i.visitas && i.visitas.length) { flags.push(['Tentativas no endereço: ' + i.visitas.map(function (t, k) { var d = new Date(t); return (k + 1) + 'ª ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }).join(' · '), false]); }
       if (!fOk && !fDisp && oi.n > 0) { flags.push(['On-line já feito: falta a diligência física', false]); }
       if (oi.n > 0 && !(fOk || fDisp)) { flags.push(['On-line: ' + Math.min(oi.n, 2) + ' de 2 tentativas', false]); }
       if (semOn) { flags.push(['PRONTO PARA CERTIFICAR: diligência física feita e não há número para a on-line', 'ok']); }
@@ -3309,17 +3445,22 @@ function parteLocal(parte, fala, it, ctx) {
     if (flags.length) { h += '<div class="flags">' + flags.map(function (f) { var cls = 'flag' + (f[1] === 'ok' ? ' okf' : (f[1] ? ' stop' : '')); return f[2] === 'aud' ? '<button class="' + cls + ' flagbtn" data-act="audinfo" aria-label="De onde veio a data da audiência">' + esc(f[0]) + ' ⓘ</button>' : '<span class="' + cls + '">' + esc(f[0]) + '</span>'; }).join('') + '</div>'; }
     if (i.status === 'pendente') {
       var temNum = onlinePossivel(i), loc = etipo(i) === 'local', onl = '', onb = '';
-      if (temNum) { onl += selParte('on'); }
+      var temNumero = telefonesUnicos(i.telefones).some(function (u) { return u.n.ok; }) || !!temDil;
+      if (temNum && temNumero) { onl += selParte('on'); }
       if (phones) { onl += '<div class="phones">' + phones + '</div>'; }
-      if (i.cls === 'enviar' || temDil) { onb += (mr.n ? '<button class="btn small ghost" data-act="unsent">Desfazer envio</button>' : '') + '<button class="btn small" data-act="watry">WhatsApp não deu certo</button>'; }
-      if (fileOk(i)) { onb += '<button class="btn small primary" data-act="share">Compartilhar mandado</button>'; }
-      if (i.cls !== 'nao_enviar' || temDil) { onb += '<button class="btn small" data-act="certwa">Certidão do WhatsApp</button>'; }
-      onb += '<button class="btn small" data-act="teldil">WhatsApp novo</button>';
+      if (temNumero) {
+        if (i.cls === 'enviar' || temDil) { onb += (mr.n ? '<button class="btn small ghost" data-act="unsent">Desfazer envio</button>' : '') + '<button class="btn small" data-act="watry">WhatsApp não deu certo</button>'; }
+        if (fileOk(i)) { onb += '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>'; }
+        if (i.cls !== 'nao_enviar' || temDil) { onb += '<button class="btn small" data-act="certwa">Certidão do WhatsApp</button>'; }
+        onb += '<button class="btn small" data-act="teldil">WhatsApp novo</button>';
+      } else {
+        onb += '<button class="btn small primary" data-act="teldil">Inserir WhatsApp</button>';
+      }
       h += '<div class="grp on"><p class="grp-t">On-line (WhatsApp)</p>' + onl + '<div class="actions">' + onb + '</div></div>';
       if (loc) {
-        h += '<div class="grp fis"><p class="grp-t">Física (no endereço)</p>' + selParte('fis') + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Não encontrei ninguém (registrar visita' + ((i.visitas || []).length ? ': ' + (i.visitas || []).length + ' de 3' : '') + ')</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' visitas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + '<button class="btn small" data-act="fisica">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint">Certidão física (print)</button>' + (isBA(i) ? '<button class="btn small wide" data-act="auto">Auto de busca e apreensão</button>' : '') + '</div></div>';
+        h += '<div class="grp fis"><p class="grp-t">Física (no endereço)</p>' + selParte('fis') + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + '<button class="btn small" data-act="fisica">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint">Certidão física (print)</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
       }
-      var cb = '<button class="btn small' + (pronto(i) ? ' primary' : '') + '" data-act="cert">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button><button class="btn small" data-act="externo">Certificada em outro meio (sem PDF)</button>';
+      var cb = '<button class="btn small' + (pronto(i) ? ' primary' : '') + '" data-act="cert">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button><button class="btn small" data-act="externo">Certificada em outro meio (sem PDF)</button><button class="btn small ghost" data-act="atotipo">Trocar o tipo do ato</button>';
       cb = '<button class="btn small primary wide" data-act="certia">Certificar por voz</button>' + cb;
       if ((ph.fis || ph.on) && partesFaltando(pn, ph).length) { cb += '<button class="btn small wide" data-act="partesjuntar">Juntar e revisar só com o que está pronto</button>'; }
       if (ph.fis || ph.on) { cb += '<button class="btn small ghost" data-act="partesundo">Refazer as partes</button>'; }
@@ -3438,6 +3579,19 @@ function parteLocal(parte, fala, it, ctx) {
       state.me = { nome: n, mat: m, diligencia: document.getElementById('meDil').value.trim() || '108,63', msg: custom }; save(); closeModal(); render();
       toast(custom && tx.indexOf('{NOME}') === -1 ? 'Dados salvos. Atenção: a mensagem não tem {NOME}.' : 'Dados salvos');
     };
+  }
+  /* Telefone escondido no texto do endereço: puxa para os telefones do mandado e limpa o endereço */
+  function corrigirTelefonesNoEndereco() {
+    var n = 0;
+    state.items.forEach(function (i) {
+      if (i.status === 'excluido') { return; }
+      var tels = telefonesDoEndereco(i.endereco);
+      if (!tels.length) { return; }
+      var antes = temTelefone(i);
+      i.telefones = mergePhones(i.telefones || [], tels); i.endereco = limpaEndereco(i.endereco, tels);
+      if (!antes && temTelefone(i)) { n++; }
+    });
+    return n;
   }
   /* Corrige mandados que ficaram vermelhos por engano: medida protetiva sem afastamento e citação com penhora depois */
   function corrigirClassificacoes() {
@@ -3747,18 +3901,19 @@ function parteLocal(parte, fala, it, ctx) {
     else if (act === 'fisundo') { it.fisica = null; save(); render(); toast('Diligência física desfeita.'); }
     else if (act === 'visita') {
       it.visitas = it.visitas || [];
-      if (it.visitas.length >= 3) { toast('Já são 3 visitas. Toque em “Encerrar”.'); }
+      if (it.visitas.length >= 3) { toast('Já são 3 tentativas. Toque em “Encerrar”.'); }
       else {
         it.visitas.push(Date.now()); save();
         var nv = it.visitas.length, dv = new Date(it.visitas[nv - 1]);
         if (nv >= 3) { fecharVisitas(it); }
-        else { render(); toast(nv + 'ª visita registrada: ' + pad(dv.getDate()) + '/' + pad(dv.getMonth() + 1) + ' às ' + pad(dv.getHours()) + ':' + pad(dv.getMinutes()) + '.' + (nv === 2 ? ' Faça a 3ª ou encerre com 2.' : '')); }
+        else { render(); toast(nv + 'ª tentativa registrada: ' + pad(dv.getDate()) + '/' + pad(dv.getMonth() + 1) + ' às ' + pad(dv.getHours()) + ':' + pad(dv.getMinutes()) + '.' + (nv === 2 ? ' Faça a 3ª ou encerre com 2.' : '')); }
       }
     }
     else if (act === 'visdel') { if (it.visitas && it.visitas.length) { it.visitas.pop(); save(); render(); toast('Última visita desfeita.'); } }
     else if (act === 'visfim') { fecharVisitas(it); }
     else if (act === 'teldil') { abrirTelDil(it); }
     else if (act === 'auto') { abrirAuto(it); }
+    else if (act === 'atotipo') { abrirTipoAto(it); }
     else if (act === 'viewcert') { viewCert(it); }
     else if (act === 'ver') { viewMandado(it); }
     else if (act === 'share') { shareMandado(it); }
@@ -3794,16 +3949,23 @@ function parteLocal(parte, fala, it, ctx) {
     return l.filter(function (u) { return !u.n.fixo; }).concat(l.filter(function (u) { return u.n.fixo; }));
   }
   function recebeuNum(i, u) { return (i.msgs || []).some(function (m) { return m.kind !== 'analise' && normPhone(m.tel).wa === u.n.wa; }); }
+  var seqModo = '';
   function entradasDe(id) {
     var i = byId(id), nums = numerosSeq(i), falt = nums.filter(function (u) { return !recebeuNum(i, u); });
+    if (seqModo === 'segunda') { return nums.filter(function (u) { return recebeuNum(i, u); }).map(function (u) { return id + '|' + u.n.wa; }); }
     return (i.cls === 'enviar' && falt.length ? falt : nums).map(function (u) { return id + '|' + u.n.wa; });
+  }
+  function seqOpcoes2() {
+    var verdes = [];
+    ordemVisivel.forEach(function (id) { var i = byId(id); if (i && segundaMensagemPronta(i, Date.now()) && numerosSeq(i).some(function (u) { return recebeuNum(i, u); })) { verdes.push(id); } });
+    return { verdes: verdes, jaMsg: [], extras: [], semZap: 0 };
   }
   function entInfo(key) {
     var k = key.indexOf('|'), id = key.slice(0, k), wa = key.slice(k + 1), it = byId(id);
     var u = it ? numerosSeq(it).filter(function (x) { return x.n.wa === wa; })[0] : null;
     return { id: id, wa: wa, it: it, u: u };
   }
-  function seqGuarda() { state.seqAtiva = seq ? { ents: seq.ents, t0: seq.t0, pul: seq.pul } : null; save(); }
+  function seqGuarda() { state.seqAtiva = seq ? { ents: seq.ents, t0: seq.t0, pul: seq.pul, modo: seqModo } : null; save(); }
   function seqOpcoes() {
     var verdes = [], jaMsg = [], extras = [], semZap = 0;
     ordemVisivel.forEach(function (id) {
@@ -3825,22 +3987,24 @@ function parteLocal(parte, fala, it, ctx) {
       if (r.n > 0 && ents.length === nums.length && nums.every(function (u) { return recebeuNum(i, u); })) { tag = 'já recebeu ' + r.n + (r.n === 1 ? ' mensagem' : ' mensagens') + ' (há ' + (r.horas < 1 ? 'menos de 1 h' : Math.round(r.horas) + ' h') + ')' + (precisaRepetir(i) ? ': já pode repetir' : ': ainda cedo para repetir'); }
       else if (r.n > 0) { tag = 'falta mandar para ' + ents.length + (ents.length === 1 ? ' número' : ' números'); }
       else { tag = etipo(i) === 'local' ? (i.bairro || 'Foz do Iguaçu') : 'só WhatsApp'; }
+      if (seqModo === 'segunda') { var p1 = new Date(onlineInfo(i, Date.now()).primeira); tag = 'recebeu a 1ª mensagem em ' + pad(p1.getDate()) + '/' + pad(p1.getMonth() + 1) + ' às ' + pad(p1.getHours()) + ':' + pad(p1.getMinutes()); }
     }
     var tels = nums.filter(function (u) { return ents.indexOf(id + '|' + u.n.wa) >= 0; }).map(function (u) { return u.n.label + (u.n.fixo ? ' (fixo)' : ''); });
     return '<label class="seqrow"><input type="checkbox" data-sqk="' + esc(id) + '"' + (marc[id] ? ' checked' : '') + '> <span><strong>' + esc(i.nome) + '</strong><br><span class="note">' + esc(tag) + '</span><br><span class="note">' + (tels.length > 1 ? tels.length + ' números: ' : '') + esc(tels.join(' · ')) + '</span></span></label>';
   }
-  function abrirSequencia() {
+  function abrirSequencia(modo) {
+    seqModo = modo === 'segunda' ? 'segunda' : '';
     if (!state.me) { toast('Confirme os seus dados em “Meus dados” antes de enviar.'); return; }
-    var O = seqOpcoes(), marc = {};
-    if (!O.verdes.length && !O.jaMsg.length && !O.extras.length) { toast('Nenhum mandado com telefone para a fila.'); return; }
+    var O = seqModo ? seqOpcoes2() : seqOpcoes(), marc = {};
+    if (!O.verdes.length && !O.jaMsg.length && !O.extras.length) { toast(seqModo ? 'Nenhum mandado pronto para a 2ª mensagem. Ela libera no dia seguinte à 1ª, a partir do meio-dia.' : 'Nenhum mandado com telefone para a fila.'); return; }
     O.verdes.forEach(function (id) { marc[id] = true; });
     O.jaMsg.forEach(function (id) { marc[id] = !!sel[id] || (repOnly && precisaRepetir(byId(id))); });
     O.extras.forEach(function (id) { marc[id] = !!sel[id]; });
     var contaM = function () { return Object.keys(marc).filter(function (k) { return marc[k]; }).length; };
     var contaE = function () { return Object.keys(marc).filter(function (k) { return marc[k]; }).reduce(function (a, k) { return a + entradasDe(k).length; }, 0); };
-    var frase = (O.verdes.length ? 'Já entraram todos os verdes que ainda não receberam mensagem, cada número de telefone numa mensagem. Toque para tirar algum.' : 'Nenhum verde está esperando a primeira mensagem.') +
+    var frase = seqModo ? 'Entraram os mandados que receberam a 1ª mensagem no dia anterior (ou antes). A 2ª mensagem libera a partir do meio-dia. Cada número de telefone vai numa mensagem. Toque para tirar algum.' : (O.verdes.length ? 'Já entraram todos os verdes que ainda não receberam mensagem, cada número de telefone numa mensagem. Toque para tirar algum.' : 'Nenhum verde está esperando a primeira mensagem.') +
       (O.jaMsg.length ? ' Quem já recebeu aparece abaixo, para repetir.' : '') + (O.extras.length ? ' Amarelos e vermelhos aparecem no fim, para incluir se quiser.' : '') + (O.semZap ? ' Ficaram de fora ' + O.semZap + ' sem telefone.' : '');
-    openModal('Enviar em sequência',
+    openModal(seqModo ? '2ª mensagem em sequência' : 'Citações/intimações em sequência',
       '<p><strong id="sqN"></strong></p>' +
       '<p class="note">' + frase + '</p>' +
       '<div class="actions"><button class="btn primary" id="sqIni"></button><button class="btn" id="sqFecha">Cancelar</button></div>' +
@@ -3887,6 +4051,7 @@ function parteLocal(parte, fala, it, ctx) {
       '<a class="btn primary seqgo" data-sqgo="1" data-tel="' + esc(u.n.label) + '" href="' + link + '">' + (jaReg ? 'Abrir de novo' : 'Abrir WhatsApp') + ': ' + esc(u.n.label) + (u.n.fixo ? ' (fixo)' : '') + '</a>' +
       (jaReg ? '<p class="note">Já registrado como enviado. <button class="btn small ghost" data-sq="desf">Não enviei: desfazer</button></p>' : '') +
       '<div class="actions"><button class="btn" data-sq="prev"' + (seq.k ? '' : ' disabled') + '>Voltar</button><button class="btn" data-sq="skip">Pular</button></div>' +
+      (seqModo ? '' : '<div class="actions"><button class="btn" data-sq="semzap">Telefone sem WhatsApp</button></div>') +
       '<div class="actions"><button class="btn ghost" data-sq="stop">Parar aqui</button></div>';
     document.getElementById('mbody').onclick = seqClique;
     document.getElementById('mbody').onchange = null;
@@ -3898,8 +4063,13 @@ function parteLocal(parte, fala, it, ctx) {
     document.getElementById('mbody').innerHTML = '<p><strong>' + (parou ? 'Parei aqui.' : 'Fila concluída.') + '</strong> ' + s2.feitos + (s2.feitos === 1 ? ' mensagem aberta' : ' mensagens abertas') + ', ' + s2.pulados + (s2.pulados === 1 ? ' pulada' : ' puladas') + (parou && resta > 0 ? ', ' + resta + (resta === 1 ? ' ficou' : ' ficaram') + ' para depois' : '') + '.</p>' +
       '<p class="note">Quem recebeu mensagem e não tem endereço físico passa para “Aguardando on-line”. Os outros continuam na lista, com a contagem de tentativas.</p>' +
       '<div class="actions"><button class="btn primary" id="sqFim">Fechar</button></div>';
+    var certSz = [];
+    (s2.semz || []).forEach(function (k) { var id = k.slice(0, k.indexOf('|')), i = byId(id); if (i && i.status === 'pendente' && certSz.indexOf(id) === -1 && numerosSeq(i).length && numerosSeq(i).every(function (u) { return (i.semZap || []).indexOf(u.n.wa) !== -1; })) { certSz.push(id); } });
+    if (certSz.length) {
+      document.getElementById('mbody').innerHTML = document.getElementById('mbody').innerHTML + '<p class="note"><strong>Telefone sem WhatsApp:</strong> toque para certificar (parte on-line negativa, “o número não possui WhatsApp”).</p><div class="actions" style="grid-template-columns:1fr">' + certSz.map(function (id) { return '<button class="btn" data-szcert="' + esc(id) + '">' + esc(byId(id).nome) + '</button>'; }).join('') + '</div>';
+    }
     document.getElementById('sqFim').onclick = function () { closeModal(); };
-    document.getElementById('mbody').onclick = null;
+    document.getElementById('mbody').onclick = certSz.length ? function (e) { var b = e.target.closest ? e.target.closest('[data-szcert]') : null; if (b) { var iz = byId(b.getAttribute('data-szcert')); if (iz) { iz.tentativas = (iz.tentativas || []).concat([{ t: Date.now(), motivo: 'sem WhatsApp' }]); save(); abrirParte(iz, 'on', 'neg'); } } } : null;
     seq = null;
     render();
   }
@@ -3919,6 +4089,11 @@ function parteLocal(parte, fala, it, ctx) {
       var b = e.target.closest ? e.target.closest('[data-sq]') : null;
       if (!b || b.disabled) { return; }
       var a = b.getAttribute('data-sq');
+      if (a === 'semzap') {
+        var kz = seq.ents[seq.k], iz = entInfo(kz);
+        if (iz.it && iz.u) { iz.it.semZap = (iz.it.semZap || []).filter(function (w) { return w !== iz.wa; }).concat([iz.wa]); seq.semz = (seq.semz || []).concat([kz]); save(); }
+        seq.k++; seqGuarda(); seqMostra(); return;
+      }
       if (a === 'skip') { var pk = seq.ents[seq.k]; if (pk) { seq.pul.push(pk); } seq.pulados++; seq.k++; seqGuarda(); seqMostra(); }
       else if (a === 'prev') { if (seq.k > 0) { seq.k--; seqMostra(); } }
       else if (a === 'stop') { seqFim(true); }
@@ -3947,12 +4122,14 @@ function parteLocal(parte, fala, it, ctx) {
       return pul.indexOf(key) < 0;
     });
     if (!rest.length) { state.seqAtiva = null; save(); return; }
+    seqModo = sa.modo === 'segunda' ? 'segunda' : '';
     seq = { ents: rest, k: 0, feitos: feitos, pulados: pul.length, reg: {}, t0: sa.t0, pul: pul };
-    openModal('Enviar em sequência', '');
+    openModal(seqModo ? '2ª mensagem em sequência' : 'Citações/intimações em sequência', '');
     seqMostra();
     toast('Continuando a fila de onde parou.');
   }
-  document.getElementById('btnSeq').onclick = abrirSequencia;
+  document.getElementById('btnSeq').onclick = function () { abrirSequencia(''); };
+  document.getElementById('btnSeq2').onclick = function () { abrirSequencia('segunda'); };
   function registrarEnvio(it, tel, kind) {
     it.msgs = (it.msgs || []).concat([{ t: Date.now(), tel: tel || '', kind: kind }]);
     save();
@@ -4311,6 +4488,8 @@ function parteLocal(parte, fala, it, ctx) {
       if (l.cep) { mm.cep = l.cep; }
       var txtM = x.pags.map(function (i) { return pages[i].text; }).join('\n');
       mm.telefones = mergePhones(mergePhones(mm.telefones, l.telefones), parseTelefonesTexto(txtM));
+      var telEnd = telefonesDoEndereco(mm.endereco);
+      if (telEnd.length) { mm.telefones = mergePhones(mm.telefones, telEnd); mm.endereco = limpaEndereco(mm.endereco, telEnd); }
       mm.paginas = x.pags.map(function (i) { return pages[i].n; });
       mm.paginas_contrafe = [pages[x.cf].n];
       mm.texto = txtM;
@@ -4327,7 +4506,7 @@ function parteLocal(parte, fala, it, ctx) {
       it.ident = l.ident; it.ctipo = l.tipo; it.gratuito = /\bgratuito\b/i.test(txtM);
       var au = parseAudiencia(txtM); if (au) { it.audData = au.data; it.audHora = au.hora; if (!it.audTrecho) { it.audTrecho = au.trecho; } }
       it.saudeLiminar = ehSaudeLiminar(txtM, state.cfg.saudeWords, state.cfg.liminarWords);
-      if (isBA(it)) {
+      if (isBA(it) || atoPalavras(it.tipo).bem) {
         if (!it.veiculos.length) { it.veiculos = parseVeiculos(txtM); }
         var arr2 = parseAutorReu(txtM);
         if (!it.autor) { it.autor = arr2.autor; }
@@ -4470,7 +4649,7 @@ function parteLocal(parte, fala, it, ctx) {
     $('exSave').onclick = function () {
       it.certidao = { tipo: res || 'externo', canal: 'externo', externo: true, texto: '', sig: null, data: $('exData').value || today, prints: [], custas: parseValor($('exCustas').value) };
       it.status = 'certidao'; delete sel[it.id]; save();
-      closeModal(); tab = 'devolver'; render();
+      closeModal(); render();
       toast('Guardado em Certidões, sem PDF.');
     };
   }
@@ -4486,6 +4665,7 @@ function parteLocal(parte, fala, it, ctx) {
     openModal('WhatsApp novo',
       '<p class="note">Digite o número que você conseguiu. Ele passa a valer como os números do mandado, mesmo que o mandado esteja em vermelho ou amarelo: botão do WhatsApp, copiar mensagem, “já mandei”, contagem das 24 h e das 48 h e aba Aguardando on-line. O 9 e o DDD 45 são incluídos sozinhos.</p>' +
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
+      '<p class="note">' + (it.vara ? 'Vara: ' + esc(it.vara) + '<br>' : '') + (resumoAto(it) ? 'O que fazer: ' + esc(resumoAto(it)) : '') + '</p>' +
       '<label class="f" for="tdNum">Número</label><input type="text" id="tdNum" inputmode="tel" placeholder="(45) 99999-9999" autocomplete="off">' +
       '<p class="note" id="tdPrev"></p>' +
       '<div class="actions"><button class="btn primary" id="tdAdd">Adicionar</button><button class="btn" id="tdNo">Fechar</button></div>' +
@@ -4754,7 +4934,7 @@ function parteLocal(parte, fala, it, ctx) {
       it.certidao = { tipo: tipo === 'wa' ? 'positiva' : tipo, canal: tipo === 'wa' ? 'wa' : 'pessoal', texto: document.getElementById('cOut').value, sig: pad1.data(), data: document.getElementById('cData').value, prints: ids };
       it.status = 'certidao'; delete sel[it.id]; save();
       var blobs = prints.map(function (p) { return p.blob; });
-      closeModal(); tab = 'devolver'; render();
+      closeModal(); render();
       if (!baixar) { toast('Certidão salva em Certidões.'); return; }
       if (!(await ensureLib('pdflib'))) { toast('Certidão salva. A ferramenta de PDF não carregou, baixe depois em Certidões.'); return; }
       try {
@@ -4835,6 +5015,7 @@ function parteLocal(parte, fala, it, ctx) {
       '<label class="f" for="vzPrint">Print ou foto (opcional)</label><input type="file" id="vzPrint" accept="image/*" multiple>' +
       '<div class="thumbs" id="vzThumbs"></div>' +
       '<label class="f" for="vzCustas">Custas a receber, em R$ (em branco: não escreve na certidão)</label><input type="text" id="vzCustas" inputmode="decimal" value="' + esc(dilIni) + '" autocomplete="off">' +
+      '<label class="f" id="vzFisBox" style="display:flex;gap:10px;align-items:center" hidden><input type="checkbox" id="vzFis" style="width:26px;height:26px" checked> <span>Houve diligência presencial no endereço (desmarque se não foi lá: a parte física some do texto)</span></label>' +
       '<label class="f" for="vzOut">Texto da certidão (pode editar)</label><textarea id="vzOut" style="min-height:300px"></textarea>' + htmlSalvarModelo('vz') +
       '<div class="actions"><button class="btn" id="vzCopy">Copiar texto</button><button class="btn" id="vzPdf">Baixar PDF</button><button class="btn primary" id="vzSave">Salvar e baixar PDF</button><button class="btn" id="vzSaveOnly">Só salvar</button></div>');
     function $(id) { return document.getElementById(id); }
@@ -4903,7 +5084,7 @@ function parteLocal(parte, fala, it, ctx) {
       it.certidao = { tipo: tipoCert, canal: opt && opt.final ? 'partes' : 'voz', modelo: opt && opt.final ? 'partes' : 'voz', texto: $('vzOut').value, sig: null, data: today, prints: ids, custas: parseValor($('vzCustas').value) };
       it.status = 'certidao'; delete sel[it.id]; save();
       var blobs = prints.map(function (p) { return p.blob; });
-      closeModal(); tab = 'devolver'; render();
+      closeModal(); render();
       if (!baixar) { toast('Certidão salva em Certidões.'); return; }
       if (!(await ensureLib('pdflib'))) { toast('Certidão salva. A ferramenta de PDF não carregou, baixe depois em Certidões.'); return; }
       try {
@@ -4917,6 +5098,19 @@ function parteLocal(parte, fala, it, ctx) {
       document.getElementById('mtitle').textContent = 'Certidão de ' + it.nome + ' (confira)';
       $('vzBack').hidden = true; $('vzFala').hidden = true; $('vzGo').hidden = true;
       $('vzOut').value = opt.final.texto; tipoCert = opt.final.tipo === 'positiva' ? 'positiva' : 'negativa';
+      var phF = it.partes || {};
+      if (phF.fis && phF.on) {
+        var ultimoAuto = $('vzOut').value;
+        $('vzFisBox').hidden = false;
+        $('vzFis').onchange = function () {
+          var com = $('vzFis').checked;
+          if ($('vzOut').value !== ultimoAuto && window.confirm && !window.confirm('Você editou o texto à mão. Refazer o texto agora apaga essas mudanças. Continuar?')) { $('vzFis').checked = !com; return; }
+          var novo = montarCertidaoPartes(com ? phF.fis : null, phF.on, { oficial: state.me && state.me.nome, diligencia: $('vzCustas').value.replace(/[^\d.,]/g, '').trim() });
+          $('vzOut').value = novo; ultimoAuto = novo;
+          tipoCert = (com && phF.fis.tipo === 'positiva') || phF.on.tipo === 'positiva' ? 'positiva' : 'negativa';
+          $('vzNote').textContent = com ? 'Voltei a incluir a parte da diligência presencial.' : 'Tirei a parte da diligência presencial: a certidão ficou só com a parte on-line.';
+        };
+      }
       $('vzMudBox').hidden = false;
       $('vzNote').textContent = opt.final.nota || ('Esta é a certidão inteira, juntando ' + opt.final.quais + '. Leia com atenção: se estiver certa, toque em “Salvar”. Se quiser mudar algo, edite o texto ou peça uma troca.');
     }
@@ -5007,11 +5201,12 @@ function parteLocal(parte, fala, it, ctx) {
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptPj" style="width:24px;height:24px"' + (ehEmpresaIt(it) ? ' checked' : '') + '> É empresa (tira o “Sr(a).” e adapta o texto)</label>' +
       '<p class="note">Confira o texto desta parte. Depois de dar ok, ' + (outra ? 'a certidão inteira aparece para você conferir.' : (fis ? (onlinePossivel(it) ? 'falta só a parte on-line.' : 'a certidão inteira aparece para você conferir.') : (etipo(it) === 'local' ? 'falta só a parte física.' : 'a certidão inteira aparece para você conferir.'))) + '</p>' +
       (mor ? '<label class="f" for="ptMor">Nome de quem informou (morador atual)</label><input type="text" id="ptMor" value="' + esc((it.fisica && it.fisica.morador) || '') + '" autocomplete="off">' : '') +
+      (!tpl && fis && val === 'naoconhece' ? '<div id="ptEmpBox"' + (ehEmpresaIt(it) ? '' : ' hidden') + '><label class="f" for="ptEmpL">Empresa que está no local</label><input type="text" id="ptEmpL" placeholder="Nome da empresa que funciona no endereço" value="' + esc((it.fisica && it.fisica.empLocal) || '') + '" autocomplete="off"><p class="note">Em “Nome de quem informou”, escreva o colaborador que disse não conhecer a empresa do mandado.</p></div>' : '') +
       (par ? '<label class="f" for="ptPar">Quem é</label><select id="ptPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select><div id="ptOutBox" hidden><input type="text" id="ptOut" placeholder="Ex.: tio(a), avô(ó), sogro(a)" autocomplete="off"></div>' : '') +
       (vis ? '<label class="f" for="ptVis">Dias e horários das visitas (uma por linha)</label><textarea id="ptVis" style="min-height:90px">' + esc(visIni.join('\n')) + '</textarea>' : '') +
-      ((!fis && val === 'pos') || (tpl && /\{DATA\}/.test(tpl.texto)) ? '<label class="f" for="ptData">Dia ' + (fis ? 'da diligência' : 'do contato por WhatsApp') + '</label><input type="date" id="ptData" value="' + diaCont + '">' + (!fis && (val === 'pos' || (tpl && tpl.tipo === 'positiva')) ? '<p class="note">A frase “a identidade foi confirmada previamente” entra sempre na certidão por WhatsApp.</p>' : '') : '') +
+      ((!fis && val === 'pos') || (fis && val === 'pospres') || (tpl && /\{DATA\}/.test(tpl.texto)) ? '<label class="f" for="ptData">Dia ' + (fis ? 'da diligência' : 'do contato por WhatsApp') + '</label><input type="date" id="ptData" value="' + diaCont + '">' + (!fis && (val === 'pos' || (tpl && tpl.tipo === 'positiva')) ? '<p class="note">A frase “a identidade foi confirmada previamente” entra sempre na certidão por WhatsApp.</p>' : '') : '') +
       (!tpl && !fis && val === 'pos' && etipo(it) === 'local' ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptFis" style="width:24px;height:24px"' + ((it.fisica && it.fisica.feita) ? ' checked' : '') + '> Antes, fui ao endereço físico e não encontrei (isso entra no começo da certidão)</label>' : '') +
-      (!tpl && !fis && val === 'neg' ? '<label class="f" for="ptJus">O que aconteceu na tentativa</label><select id="ptJus" class="sel"><option value="documento">A pessoa não apresentou documento</option><option value="inativo">O telefone está inativo</option><option value="semretorno">Sem retorno até agora</option></select>' : '') +
+      (!tpl && !fis && val === 'neg' ? '<label class="f" for="ptJus">O que aconteceu na tentativa</label><select id="ptJus" class="sel"><option value="documento">A pessoa não apresentou documento</option><option value="inativo">O telefone está inativo</option><option value="semzap">O número não tem WhatsApp</option><option value="semretorno">Sem retorno até agora</option></select>' : '') +
       '<label class="f" for="ptTxt">Texto desta parte (pode editar)</label><textarea id="ptTxt" style="min-height:150px"></textarea>' +
       '<div class="actions"><button class="btn small ghost" id="ptRefaz">Refazer o texto com as opções</button></div>' + htmlEditarIA('pt') + htmlSalvarModelo('pt') +
       '<label class="f">Como fica a certidão até aqui</label><pre id="ptPrev" class="note" style="white-space:pre-wrap"></pre>' +
@@ -5021,6 +5216,8 @@ function parteLocal(parte, fala, it, ctx) {
     function dados() {
       var d = { pj: $('ptPj').checked, tipo: it.tipo, nome: String(it.nome || '').toUpperCase(), data: '', oficial: oficial };
       if (mor) { d.morador = $('ptMor').value.trim().toUpperCase(); }
+      if ($('ptEmpL') && d.pj) { d.empLocal = $('ptEmpL').value.trim().toUpperCase(); }
+      if ($('ptEmpBox')) { $('ptEmpBox').hidden = !d.pj; }
       if (par) { d.parOp = $('ptPar').value; d.parOut = $('ptOut').value.trim(); d.paren = parenFrase(d.parOp, d.parOut); $('ptOutBox').hidden = d.parOp !== 'outro'; }
       if (vis) { d.visitas = $('ptVis').value.split('\n').map(function (x) { return x.trim(); }).filter(function (x) { return x; }); }
       if ($('ptData')) { var dv = $('ptData').value; d.data = dv ? fmtDate(dv) : ''; }
@@ -5028,7 +5225,7 @@ function parteLocal(parte, fala, it, ctx) {
       if (!tpl && !fis && val === 'neg') { d.just = $('ptJus').value; d.temFisica = etipo(it) === 'local'; }
       return d;
     }
-    function tipoParte() { return tpl ? (tpl.tipo === 'positiva' ? 'positiva' : 'negativa') : (!fis && val === 'pos' ? 'positiva' : 'negativa'); }
+    function tipoParte() { return tpl ? (tpl.tipo === 'positiva' ? 'positiva' : 'negativa') : (((!fis && val === 'pos') || (fis && val === 'pospres')) ? 'positiva' : 'negativa'); }
     var editado = false;
     function gerar(forcar) {
       var d = dados(); if (editado && !forcar) { previa(); return; } editado = false;
@@ -5040,7 +5237,7 @@ function parteLocal(parte, fala, it, ctx) {
       var f = fis ? mine : (it.partes || {}).fis, o = fis ? (it.partes || {}).on : mine;
       $('ptPrev').textContent = montarCertidaoPartes(f, o, { oficial: oficial, diligencia: custasCard(it).replace(/[^\d.,]/g, '') });
     }
-    ['ptMor', 'ptPar', 'ptOut', 'ptVis', 'ptData', 'ptId', 'ptJus', 'ptFis'].forEach(function (id) { var el = $(id); if (el) { el.addEventListener('input', function () { gerar(); }); el.addEventListener('change', function () { gerar(); }); } });
+    ['ptMor', 'ptPar', 'ptOut', 'ptVis', 'ptData', 'ptId', 'ptJus', 'ptFis', 'ptEmpL'].forEach(function (id) { var el = $(id); if (el) { el.addEventListener('input', function () { gerar(); }); el.addEventListener('change', function () { gerar(); }); } });
     $('ptPj').addEventListener('change', function () { it.pj = this.checked; save(); gerar(true); });
     $('ptTxt').addEventListener('input', function () { editado = true; previa(); });
     $('ptRefaz').onclick = function () { gerar(true); toast('Texto refeito'); };
@@ -5051,7 +5248,7 @@ function parteLocal(parte, fala, it, ctx) {
       var d = dados();
       if (mor && !d.morador) { toast('Escreva o nome de quem informou'); return; }
       if (tpl && marcadoresDe($('ptTxt').value).length) { toast('Ainda há trechos entre chaves no texto. Troque pelo que for certo.'); return; }
-      guardarParte(it, parte, { modelo: val, texto: $('ptTxt').value, tipo: tipoParte(), dados: { morador: d.morador || '', paren: d.parOp || '', parenOut: d.parOut || '', visitas: d.visitas || [], data: hoje } });
+      guardarParte(it, parte, { modelo: val, texto: $('ptTxt').value, tipo: tipoParte(), dados: { morador: d.morador || '', empLocal: d.empLocal || '', paren: d.parOp || '', parenOut: d.parOut || '', visitas: d.visitas || [], data: hoje } });
     };
     gerar(true);
   }
@@ -5111,7 +5308,6 @@ function parteLocal(parte, fala, it, ctx) {
       chk('mdPj', 'É empresa (tira o “Sr(a).” e adapta o texto)', ehEmpresaIt(it)) +
       (zapKind && ult ? '<p class="note"><strong>Mensagem enviada em ' + pad(new Date(ult.t).getDate()) + '/' + pad(new Date(ult.t).getMonth() + 1) + ' às ' + pad(new Date(ult.t).getHours()) + ':' + pad(new Date(ult.t).getMinutes()) + '.</strong> Anexe abaixo o print da conversa: é o comprovante.</p>' : '') +
       (zapKind ? '<label class="f" for="mdData">Dia do contato por WhatsApp</label><input type="date" id="mdData" value="' + diaCont + '"><p class="note">A frase “a identidade foi confirmada previamente” entra sempre na certidão por WhatsApp.</p>' : '') +
-      (temFis ? chk('mdFis', 'Antes, fui ao endereço físico e não encontrei (isso entra no começo da certidão)', !!(it.fisica && it.fisica.feita)) : '') +
       (morad ? '<label class="f" for="mdMor">Nome de quem informou (morador)</label><input type="text" id="mdMor" placeholder="Nome do morador" autocomplete="off">' : '') +
       (temVis ? '<label class="f" for="mdVis">Dias e horários das visitas (uma por linha)</label><textarea id="mdVis" style="min-height:90px">' + esc(visIni.join('\n')) + '</textarea>' : '') +
       (temPar ? '<label class="f" for="mdPar">Quem é</label><select id="mdPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select>' +
@@ -5122,6 +5318,7 @@ function parteLocal(parte, fala, it, ctx) {
       '<div class="thumbs" id="mdThumbs"></div>' +
       '<label class="f" for="mdCustas">Custas a receber, em R$ (em branco: não escreve na certidão)</label><input type="text" id="mdCustas" inputmode="decimal" value="' + esc(dilIni) + '" autocomplete="off">' +
       (isentoIt(it) ? '<p class="note">Este mandado não tem custas (juizado, ou escrito “gratuito”), por isso o campo vem em branco. O transporte continua valendo.</p>' : '') +
+      (temFis ? '<div style="border:2px solid var(--accent);border-radius:12px;padding:6px 12px;margin:12px 0">' + chk('mdFis', '<span><strong>Teve diligência presencial</strong> (fui ao endereço e não encontrei)</span>', !!(it.fisica && it.fisica.feita)) + '<p class="note" style="margin:2px 0 4px">Marcado: o relato da visita entra no começo da certidão. Se você não foi ao endereço, desmarque e esse trecho some.</p></div>' : '') +
       '<label class="f" for="mdOutTxt">Texto da certidão (pode editar)</label><textarea id="mdOutTxt" style="min-height:300px"></textarea>' +
       '<div class="actions"><button class="btn small ghost" id="mdRefaz">Refazer o texto com as opções</button></div>' + htmlEditarIA('md') + htmlSalvarModelo('md') +
       '<div class="actions"><button class="btn" id="mdCopy">Copiar texto</button><button class="btn" id="mdPdf">Baixar PDF</button><button class="btn primary" id="mdSave">Salvar e baixar PDF</button><button class="btn" id="mdSaveOnly">Só salvar</button></div>');
@@ -5190,7 +5387,7 @@ function parteLocal(parte, fala, it, ctx) {
       it.certidao = { tipo: zapKind ? 'positiva' : 'negativa', canal: zapKind ? 'wa' : 'pessoal', modelo: chave(), texto: $('mdOutTxt').value, sig: null, data: zapKind ? $('mdData').value : today, prints: ids, custas: parseValor($('mdCustas').value) };
       it.status = 'certidao'; delete sel[it.id]; save();
       var blobs = prints.map(function (p) { return p.blob; });
-      closeModal(); tab = 'devolver'; render();
+      closeModal(); render();
       if (!baixar) { toast('Certidão salva em Certidões.'); return; }
       if (!(await ensureLib('pdflib'))) { toast('Certidão salva. A ferramenta de PDF não carregou, baixe depois em Certidões.'); return; }
       try {
@@ -5302,7 +5499,7 @@ function parteLocal(parte, fala, it, ctx) {
       alvoIt.certidao = { tipo: res, canal: 'fisica', origem: prt ? 'print' : 'foto', fisica: true, modelo: 'fisica', texto: '', sig: null, data: $('fiData').value || today, prints: ids };
       alvoIt.status = 'certidao'; delete sel[alvoIt.id]; save();
       var blobs = prints.map(function (x) { return x.blob; });
-      closeModal(); tab = 'devolver'; render();
+      closeModal(); render();
       if (!baixar) { toast('Certidão física salva em Certidões.'); return; }
       if (!(await ensureLib('pdflib'))) { toast('Certidão salva. A ferramenta de PDF não carregou, baixe depois em Certidões.'); return; }
       try {
@@ -5509,6 +5706,7 @@ function parteLocal(parte, fala, it, ctx) {
   async function dadosAuto(it) {
     var a = it.auto || {};
     var d = {
+      ato: a.ato || autoDoAto(it.tipo), bens: a.bens || [],
       processo: a.processo || it.processo || '', vara: a.vara || it.vara || '',
       rotAutor: a.rotAutor || (it.rotAutor ? rotuloPolo(it.rotAutor, 'exequente') : ''), autor: a.autor || it.autor || '',
       rotReu: a.rotReu || (it.rotReu ? rotuloPolo(it.rotReu, 'executado(a)') : ''), reu: a.reu || it.nome || '',
@@ -5526,7 +5724,7 @@ function parteLocal(parte, fala, it, ctx) {
     }
     d.rotAutor = d.rotAutor || 'exequente'; d.rotReu = d.rotReu || 'executado(a)';
     d.veiculos = d.veiculos.map(function (x) { return { marca: x.marca || '', modelo: x.modelo || '', ano: x.ano || '', cor: x.cor || '', placa: x.placa || '', chassi: x.chassi || '', renavam: x.renavam || '' }; });
-    if (!d.veiculos.length) { d.veiculos = [{ marca: '', modelo: '', ano: '', cor: '', placa: '', chassi: '', renavam: '' }]; }
+    if (!d.veiculos.length && d.ato === 'BUSCA E APREENSÃO') { d.veiculos = [{ marca: '', modelo: '', ano: '', cor: '', placa: '', chassi: '', renavam: '' }]; }
     return d;
   }
   async function desenharAuto(doc, d, o) {
@@ -5550,7 +5748,7 @@ function parteLocal(parte, fala, it, ctx) {
     centro('PODER JUDICIÁRIO', ML + 70, W - MR, H - 76, f, tsz);
     centro('Comarca de ' + (o.comarca || 'Foz do Iguaçu') + ' – ' + (o.estado || 'Paraná'), ML + 70, W - MR, H - 122, fb, 12);
     centro(o.foro || 'Av. Pedro Basso, n.º 1001, Jd. Polo Centro', ML + 70, W - MR, H - 136, f, 10);
-    centro('AUTO DE BUSCA E APREENSÃO', ML, W - MR, H - 175, fb, 12, true);
+    centro('AUTO DE ' + (d.ato || 'BUSCA E APREENSÃO'), ML, W - MR, H - 175, fb, 12, true);
     var y = H - 215;
     var sp = f.widthOfTextAtSize(' ', size);
     function novaPagina() { page = doc.addPage([W, H]); y = H - 70; }
@@ -5598,8 +5796,9 @@ function parteLocal(parte, fala, it, ctx) {
     return await doc.save();
   }
   async function abrirAuto(it, extra) {
-    openModal('Auto de busca e apreensão', '<p class="prog">Lendo os dados do mandado…</p>');
+    openModal('Auto', '<p class="prog">Lendo os dados do mandado…</p>');
     var d = await dadosAuto(it);
+    document.getElementById('mtitle').textContent = 'Auto de ' + d.ato.toLowerCase();
     if (extra && extra.veiculos) { d.veiculos = extra.veiculos; }
     var hojeOn = !!(extra && extra.hoje);
     function campo(id, rot, val) { return '<label class="f" for="' + id + '">' + rot + '</label><input type="text" id="' + id + '" value="' + esc(val) + '" autocomplete="off">'; }
@@ -5615,21 +5814,22 @@ function parteLocal(parte, fala, it, ctx) {
       campo('avRotA', 'Parte autora é', d.rotAutor) + campo('avAutor', 'Nome da parte autora', d.autor) +
       campo('avRotR', 'Parte ré é', d.rotReu) + campo('avReu', 'Nome da parte ré', d.reu) +
       vh +
-      '<div class="actions"><button class="btn small" id="avMais">Adicionar outro veículo</button></div>' +
+      '<label class="f" for="avBens">' + (d.veiculos.length ? 'Outro bem (um por linha)' : 'Bem descrito no mandado (um por linha; para veículo, toque em “Adicionar veículo”)') + '</label><textarea id="avBens" style="min-height:80px" placeholder="Ex.: Uma geladeira Brastemp, duas portas, branca">' + esc((d.bens || []).join('\n')) + '</textarea>' +
+      '<div class="actions"><button class="btn small" id="avMais">' + (d.veiculos.length ? 'Adicionar outro veículo' : 'Adicionar veículo') + '</button></div>' +
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="avHoje" style="width:24px;height:24px"' + (hojeOn ? ' checked' : '') + '> Escrever a data de hoje (senão o dia e o mês ficam em branco para você escrever)</label>' +
       '<div class="actions"><button class="btn primary" id="avPdf">Baixar PDF do auto</button><button class="btn" id="avSave">Só salvar os dados</button></div>' +
       '<p class="note">No auto sai “no estado das fotos em anexo”. As fotos você anexa à mão na hora.</p>';
     function $(id) { return document.getElementById(id); }
     function ler() {
       var vs = d.veiculos.map(function (v, i) { var o2 = {}; ['marca', 'modelo', 'ano', 'cor', 'placa', 'chassi', 'renavam'].forEach(function (k) { o2[k] = ($('av' + i + '_' + k).value || '').trim(); }); return o2; });
-      return { processo: $('avProc').value.trim(), vara: $('avVara').value.trim(), rotAutor: $('avRotA').value.trim(), autor: $('avAutor').value.trim(), rotReu: $('avRotR').value.trim(), reu: $('avReu').value.trim(), veiculos: vs, completo: true };
+      return { ato: d.ato, bens: String($('avBens').value || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean), processo: $('avProc').value.trim(), vara: $('avVara').value.trim(), rotAutor: $('avRotA').value.trim(), autor: $('avAutor').value.trim(), rotReu: $('avRotR').value.trim(), reu: $('avReu').value.trim(), veiculos: vs, completo: true };
     }
-    $('avMais').onclick = function () { var cur = ler(); cur.veiculos.push({ marca: '', modelo: '', ano: '', cor: '', placa: '', chassi: '', renavam: '' }); it.auto = cur; save(); abrirAuto(it, { hoje: $('avHoje').checked }); };
+    $('avMais').onclick = function () { var cur = ler(); cur.ato = d.ato; cur.veiculos.push({ marca: '', modelo: '', ano: '', cor: '', placa: '', chassi: '', renavam: '' }); it.auto = cur; save(); abrirAuto(it, { hoje: $('avHoje').checked }); };
     $('avSave').onclick = function () { it.auto = ler(); save(); closeModal(); toast('Dados do auto salvos'); };
     $('avPdf').onclick = async function () {
       var dd = ler(); it.auto = dd; save();
       if (!(await ensureLib('pdflib'))) { toast('Ferramenta de PDF não carregou. Confira a internet.'); return; }
-      try { await savePdf(certNameBase('Auto de busca e apreensão', it) + '.pdf', await autoPdfBytes(dd, { oficial: state.me && state.me.nome, diaHoje: $('avHoje').checked, agora: Date.now(), comarca: optAuto().comarca, estado: optAuto().estado, foro: optAuto().foro })); }
+      try { await savePdf(certNameBase('Auto de ' + dd.ato.toLowerCase(), it) + '.pdf', await autoPdfBytes(dd, { oficial: state.me && state.me.nome, diaHoje: $('avHoje').checked, agora: Date.now(), comarca: optAuto().comarca, estado: optAuto().estado, foro: optAuto().foro })); }
       catch (e) { toast('Não consegui gerar o PDF do auto'); }
     };
   }
@@ -5651,7 +5851,7 @@ function parteLocal(parte, fala, it, ctx) {
       (sem.length ? ' Ficam de fora, por não terem o PDF guardado: ' + esc(sem.map(function (i) { return i.nome; }).join(', ')) + '.' : '') + '</p>' +
       '<ol class="ordem">' + lista.map(function (i) { return '<li>' + esc(i.nome) + ' <span class="note">- ' + esc(enderecoSimples(i.endereco).texto) + (fileOk(i) ? '' : ' (sem PDF)') + '</span></li>'; }).join('') + '</ol>' +
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcCf" checked style="width:24px;height:24px"> Incluir a contrafé</label>' +
-      (com.some(isBA) ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcAuto" checked style="width:24px;height:24px"> Incluir o auto de busca e apreensão preenchido (' + com.filter(isBA).length + ')</label>' +
+      (com.some(temAuto) ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcAuto" checked style="width:24px;height:24px"> Incluir o auto preenchido (busca e apreensão, penhora, remoção ou avaliação) (' + com.filter(temAuto).length + ')</label>' +
         '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcHoje" style="width:24px;height:24px"> Escrever a data de hoje no auto (senão o dia e o mês ficam em branco)</label>' : '') +
       '<div class="actions"><button class="btn primary" id="pcGo"' + (com.length ? '' : ' disabled') + '>Gerar PDF</button><button class="btn" id="pcNo">Cancelar</button></div>' +
       '<p class="note">Depois de gerar, você pode <strong>visualizar</strong> o arquivo antes de imprimir.</p>');
@@ -5676,7 +5876,7 @@ function parteLocal(parte, fala, it, ctx) {
           var pgs = await out.copyPages(src, nums.map(function (n) { return n - 1; })), iniPag = out.getPageCount() + 1;
           pgs.forEach(function (p) { out.addPage(p); });
           marcas.push({ nome: it.nome, ini: iniPag });
-          if (incAuto && isBA(it)) {
+          if (incAuto && temAuto(it)) {
             var da = await dadosAuto(it);
             marcas[marcas.length - 1].auto = true;
             await desenharAuto(out, da, { oficial: state.me && state.me.nome, diaHoje: hojeAuto, agora: Date.now(), comarca: optAuto().comarca, estado: optAuto().estado, foro: optAuto().foro });
@@ -5950,6 +6150,23 @@ function parteLocal(parte, fala, it, ctx) {
     it.status = 'pendente'; it.voltouLista = Date.now(); delete sel[it.id];
     save(); render();
     toast('Voltou para a lista de pendentes, na aba Mandados.');
+  }
+  /* Trocar o tipo do ato: quando a leitura errar, o oficial escolhe e a certidão e o auto seguem a escolha */
+  var TIPOS_ATO = [['Citação e Intimação', 'Citar/intimar (comum)'], ['Citação', 'Citar'], ['Intimação', 'Intimar'], ['Penhora', 'Penhorar'], ['Remoção', 'Remover'], ['Avaliação', 'Avaliar'], ['Penhora e Avaliação', 'Penhorar e avaliar'], ['Remoção e Avaliação', 'Remover e avaliar'], ['Penhora, Remoção e Avaliação', 'Penhorar, remover e avaliar']];
+  function abrirTipoAto(it) {
+    openModal('Tipo do ato',
+      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Agora: <strong>' + esc(it.tipo || '(sem tipo)') + '</strong>. Escolha o que o mandado manda fazer. Para <strong>penhora, remoção ou avaliação</strong> como objeto principal, a certidão sai “deixei de penhorar/remover o bem indicado” e o auto vem junto. Se for citar/intimar e só depois penhorar, deixe como citação/intimação.</p>' +
+      '<div class="actions" style="grid-template-columns:1fr">' + TIPOS_ATO.map(function (t, k) { return '<button class="btn" data-ato="' + k + '">' + esc(t[1]) + '</button>'; }).join('') + (it.tipoOrig ? '<button class="btn ghost" data-ato="orig">Voltar ao original: ' + esc(it.tipoOrig) + '</button>' : '') + '<button class="btn ghost" data-ato="nao">Cancelar</button></div>');
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-ato]') : null;
+      if (!b) { return; }
+      var v = b.getAttribute('data-ato');
+      if (v === 'nao') { closeModal(); return; }
+      if (v === 'orig') { it.tipo = it.tipoOrig; delete it.tipoOrig; }
+      else { if (it.tipoOrig == null) { it.tipoOrig = it.tipo || ''; } it.tipo = TIPOS_ATO[+v][0]; }
+      save(); closeModal(); render();
+      toast('Tipo do ato: ' + (it.tipo || '(original)') + '.');
+    };
   }
   /* ---- Agenda de contatos e banco de pessoas (tudo só neste aparelho) ---- */
   function contatosLista() { return state.cfg.contatos || []; }
@@ -6413,6 +6630,8 @@ function parteLocal(parte, fala, it, ctx) {
         }
         if (podeSalvar && state.syncOn) { schedulePush(); }
       }
+      var ctel = corrigirTelefonesNoEndereco();
+      if (ctel) { save(); render(); toast(ctel + (ctel === 1 ? ' mandado tinha o telefone escondido no endereço: já puxei o número.' : ' mandados tinham o telefone escondido no endereço: já puxei os números.')); }
       var corr = corrigirClassificacoes();
       if (corr) { save(); render(); toast(corr + (corr === 1 ? ' mandado estava vermelho por engano e ficou verde' : ' mandados estavam vermelhos por engano e ficaram verdes') + ' (medida protetiva sem afastamento do lar, ou citação com penhora depois). Confira.'); }
       await verificarArquivos(false);
