@@ -232,7 +232,7 @@ li.arrastando { opacity: .85; outline: 3px solid var(--accent); box-shadow: 0 6p
 .sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
 .sheet-head h2 { margin: 0; font-size: 22px; }
 label.f { display: block; margin: 12px 0 4px; font-weight: 700; }
-input[type="text"], input[type="date"], input[type="time"], textarea {
+input[type="text"], input[type="password"], input[type="date"], input[type="time"], textarea {
   width: 100%; border: 1.5px solid var(--line); background: var(--surface);
   border-radius: 10px; padding: 10px 12px; min-height: 44px;
 }
@@ -406,7 +406,7 @@ header p { color: rgba(255, 255, 255, 0.86); font-weight: 600; }
 .sheet { border-radius: 28px 28px 0 0; box-shadow: 0 -12px 40px rgba(10, 20, 60, 0.30); }
 .sheet::before { content: ""; display: block; width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: -4px auto 10px; }
 .modal { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
-input[type="text"], input[type="date"], input[type="time"], textarea, select.sel { border-radius: 14px; border: 1.5px solid var(--line); }
+input[type="text"], input[type="password"], input[type="date"], input[type="time"], textarea, select.sel { border-radius: 14px; border: 1.5px solid var(--line); }
 .dock { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding: 10px 12px; border: 0; border-radius: 24px; box-shadow: 0 10px 30px rgba(10, 20, 60, 0.28); }
 .toast { border-radius: 18px; }
 .rota-banner, .hoje { border-radius: 20px; box-shadow: var(--sombra); }
@@ -517,6 +517,28 @@ header h1 { font-size: 26px; }
 .sheet [data-mot], .sheet #nxOut { min-height: 46px; }
 
 .sheet [data-op="__voz"] { background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff; box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35); }
+
+.audrow { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 10px 12px; border: 0; border-radius: 14px; background: var(--surface); box-shadow: 0 2px 8px rgba(24, 44, 100, 0.12); font: inherit; color: var(--ink); cursor: pointer; }
+.audrow.perd { background: var(--stop-bg); border: 1px solid var(--neg); }
+
+/* ===== Remessas: lista que recolhe ===== */
+.remrow { margin: 8px 0 4px; }
+.remhead { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 9px 12px; border: 0; border-radius: 14px; background: rgba(37, 99, 235, 0.10); color: var(--accent); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.remhead.fechada { background: rgba(90, 100, 130, 0.14); color: var(--muted); }
+.remseta { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid currentColor; transition: transform .15s; flex: none; }
+.remhead.fechada .remseta { transform: rotate(-90deg); }
+
+/* ===== IA opcional (robô): só aparece para quem cadastrou a chave ===== */
+.iabot { display: inline-block; width: 1.3em; height: 1.3em; vertical-align: -0.3em; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='2.9' r='1.7' fill='%23fff'/%3E%3Crect x='11.2' y='4.2' width='1.6' height='2.8' rx='.6' fill='%23fff'/%3E%3Crect x='1' y='11' width='3.2' height='6.2' rx='1.6' fill='%23fff'/%3E%3Crect x='19.8' y='11' width='3.2' height='6.2' rx='1.6' fill='%23fff'/%3E%3Cpath d='M12 6.6c-4.8 0-8.4 3-8.4 7.4 0 4.3 3.6 7.2 8.4 7.2s8.4-2.9 8.4-7.2c0-4.4-3.6-7.4-8.4-7.4z' fill='%23fff'/%3E%3Crect x='6.2' y='11.5' width='11.6' height='5.2' rx='2.6' fill='%23323B4A'/%3E%3Ccircle cx='9.6' cy='14.1' r='1.35' fill='%23fff'/%3E%3Ccircle cx='14.4' cy='14.1' r='1.35' fill='%23fff'/%3E%3C/svg%3E") center / contain no-repeat; flex: none; }
+.iabot.esc { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='2.9' r='1.7' fill='%231F2937'/%3E%3Crect x='11.2' y='4.2' width='1.6' height='2.8' rx='.6' fill='%231F2937'/%3E%3Crect x='1' y='11' width='3.2' height='6.2' rx='1.6' fill='%231F2937'/%3E%3Crect x='19.8' y='11' width='3.2' height='6.2' rx='1.6' fill='%231F2937'/%3E%3Cpath d='M12 6.6c-4.8 0-8.4 3-8.4 7.4 0 4.3 3.6 7.2 8.4 7.2s8.4-2.9 8.4-7.2c0-4.4-3.6-7.4-8.4-7.4z' fill='%231F2937'/%3E%3Crect x='6.2' y='11.5' width='11.6' height='5.2' rx='2.6' fill='%23fff'/%3E%3Ccircle cx='9.6' cy='14.1' r='1.35' fill='%231F2937'/%3E%3Ccircle cx='14.4' cy='14.1' r='1.35' fill='%231F2937'/%3E%3C/svg%3E"); }
+.btn.ia { background: linear-gradient(135deg, #4B5563, #1F2937); color: #F8FAFC; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 4px 12px rgba(31, 41, 55, 0.35); }
+.btn.ia:disabled { opacity: 0.6; }
+.iahead { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; font-weight: 700; color: var(--muted); }
+
+/* ===== topo do cartão: ícones à direita (no lugar do campo de custas) ===== */
+.card .topico { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: 2px 0 6px; }
+.card .topico .btn { flex: 0 0 auto; min-height: 44px; height: 44px; }
+.card .topico .btn.iconbtn { min-width: 54px; }
 </style>
 </head>
 <body>
@@ -899,7 +921,7 @@ function audFlag(a, now) {
   var diff = Math.round((d - t) / 86400000);
   if (diff === 0) { return 'Audiência hoje'; }
   if (diff === 1) { return 'Audiência amanhã'; }
-  if (diff < 0) { return 'Data da audiência já passou'; }
+  if (diff < 0) { return 'Audiência já passou: devolva o mandado imediatamente'; }
   return '';
 }
 
@@ -1793,6 +1815,37 @@ function audDiasAte(it, agora) {
   var p = a.data.split('-'), d0 = new Date(agora); d0.setHours(0, 0, 0, 0);
   return Math.round((new Date(+p[0], +p[1] - 1, +p[2]).getTime() - d0.getTime()) / 86400000);
 }
+/* Todas as audiências dos mandados pendentes: as que já passaram (devolver já) e as próximas, da mais próxima para a mais distante */
+function audLista(items, agora) {
+  var perdidas = [], proximas = [];
+  (items || []).forEach(function (it) {
+    if (!it || it.status !== 'pendente') { return; }
+    var a = audDe(it);
+    if (!a || !a.data) { return; }
+    var h = horasAteAudiencia(a, agora);
+    if (h === null) { return; }
+    var p = a.data.split('-'), d0 = new Date(agora); d0.setHours(0, 0, 0, 0);
+    var df = Math.round((new Date(+p[0], +p[1] - 1, +p[2]).getTime() - d0.getTime()) / 86400000);
+    (h < -2 ? perdidas : proximas).push({ it: it, data: a.data, hora: a.hora || '', h: h, df: df });
+  });
+  perdidas.sort(function (x, y) { return y.h - x.h; });
+  proximas.sort(function (x, y) { return x.h - y.h; });
+  return { perdidas: perdidas, proximas: proximas };
+}
+/* Remessa = o conjunto de arquivos adicionados de uma vez. Mandados novos trazem `rem`; os antigos são agrupados pela hora em que entraram (intervalo de até 20 min). */
+function remessaChaves(items, janela) {
+  janela = janela || 20 * 60000;
+  var porId = {}, leg = [];
+  (items || []).forEach(function (it) { if (it.rem) { porId[it.id] = 'r' + it.rem; } else { leg.push(it); } });
+  leg.sort(function (a, b) { return (a.added || 0) - (b.added || 0); });
+  var ult = null, chave = null;
+  leg.forEach(function (it) {
+    var t = it.added || 0;
+    if (ult === null || t - ult > janela) { chave = 'l' + t; }
+    porId[it.id] = chave; ult = t;
+  });
+  return porId;
+}
 function icsEsc(t) { return String(t || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
 function icsDobra(linha) {
   var out = [], b = linha;
@@ -2574,6 +2627,129 @@ function parteLocal(parte, fala, it, ctx) {
   }
   return { modelo: key || 'ia', texto: texto, tipo: tipo, faltando: faltando, entendi: key ? 'Entendi como o modelo “' + ({ mudou: 'Mudou-se', naoconhece: 'Não conhece', numero: 'Não achei a numeração', ninguem: 'Não encontrei ninguém', pos: 'Citei/intimei por WhatsApp', neg: 'Tentei por WhatsApp e não deu certo' })[key] + '”.' : 'Não encontrei um dos seus modelos para este caso, então escrevi um texto livre.' };
 }
+
+/* ===== IA opcional: só entra em ação para quem cadastrar uma chave em Meus dados ===== */
+var IA_PROVEDORES = {
+  claude: { nome: 'Claude (Anthropic)', tipo: 'claude', modelo: 'claude-haiku-5-5', base: '' },
+  gemini: { nome: 'Gemini (Google), tem plano grátis', tipo: 'gemini', modelo: 'gemini-3.8-flash', base: '' },
+  groq: { nome: 'Groq, tem plano grátis', tipo: 'compat', modelo: 'llama-3.3-70b-versatile', base: 'https://api.groq.com/openai/v1' },
+  outro: { nome: 'Outro (compatível com OpenAI)', tipo: 'compat', modelo: '', base: '' }
+};
+function iaPedido(cfg, sistema, usuario) {
+  var pv = IA_PROVEDORES[cfg.prov] || IA_PROVEDORES.outro, modelo = String(cfg.modelo || pv.modelo || '').trim(), key = String(cfg.key || '').trim();
+  if (pv.tipo === 'claude') {
+    return { url: 'https://api.anthropic.com/v1/messages', init: { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: modelo, max_tokens: 1500, system: sistema, messages: [{ role: 'user', content: usuario }] }) } };
+  }
+  if (pv.tipo === 'gemini') {
+    return { url: 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modelo) + ':generateContent', init: { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+      body: JSON.stringify({ system_instruction: { parts: [{ text: sistema }] }, contents: [{ role: 'user', parts: [{ text: usuario }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 4096 } }) } };
+  }
+  var base = String(cfg.base || pv.base || '').trim().replace(/\/+$/, '');
+  return { url: base + '/chat/completions', init: { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + key },
+    body: JSON.stringify({ model: modelo, temperature: 0.2, max_tokens: 1500, messages: [{ role: 'system', content: sistema }, { role: 'user', content: usuario }] }) } };
+}
+function iaExtrair(cfg, j) {
+  var pv = IA_PROVEDORES[cfg.prov] || IA_PROVEDORES.outro;
+  try {
+    if (pv.tipo === 'claude') { return (j.content || []).filter(function (c) { return c.type === 'text'; }).map(function (c) { return c.text; }).join(''); }
+    if (pv.tipo === 'gemini') { return ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(function (x) { return x.text || ''; }).join(''); }
+    var m = ((j.choices || [])[0] || {}).message || {};
+    return typeof m.content === 'string' ? m.content : (Array.isArray(m.content) ? m.content.map(function (c) { return c.text || ''; }).join('') : '');
+  } catch (e) { return ''; }
+}
+function iaErro(status, j) {
+  var det = '';
+  try { var e0 = j && (j.error || j.message); det = String((e0 && e0.message) || e0 || '').slice(0, 140); } catch (e) {}
+  if (status === 401 || status === 403) { return 'A chave foi recusada. Confira a chave e o provedor escolhido.'; }
+  if (status === 404) { return 'Modelo não encontrado. Troque o nome do modelo em Meus dados > IA.'; }
+  if (status === 429) { return 'O limite do plano da IA foi atingido. Espere um pouco e tente de novo.'; }
+  if (status >= 500) { return 'O provedor da IA está com problema. Tente de novo daqui a pouco.'; }
+  return 'A IA recusou o pedido (' + status + ')' + (det ? ': ' + det : '') + '.';
+}
+function iaEscapar(x) { return String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function iaOcultarNome(t, nome) { var n = String(nome || '').trim(); if (!n) { return String(t || ''); } return String(t || '').replace(new RegExp(iaEscapar(n), 'gi'), '[NOME]'); }
+function iaRestaurarNome(t, nome) { return String(t || '').replace(/\[NOME\]/g, String(nome || '').toUpperCase()); }
+function iaLimpar(t) {
+  t = String(t || '').replace(/\r/g, '').trim();
+  t = t.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+  t = t.replace(/\*\*/g, '').replace(/^#+\s*/gm, '');
+  t = t.replace(/^(texto|certidão|resposta)\s*:\s*/i, '');
+  if (t.length > 2 && /^["“]/.test(t) && /["”]$/.test(t)) { t = t.slice(1, -1).trim(); }
+  return t;
+}
+function iaSepararTipo(txt) {
+  var t = String(txt || '').trim(), m = t.match(/^\s*TIPO\s*:\s*(POSITIVA|NEGATIVA)\s*\n?/i);
+  if (m) { return { tipo: m[1].toLowerCase() === 'positiva' ? 'positiva' : 'negativa', corpo: t.slice(m[0].length).trim() }; }
+  return { tipo: null, corpo: t };
+}
+/* o fecho (Dou fé, data, nome do oficial) nunca vai para a IA */
+function iaCortarFecho(texto) {
+  var t = String(texto || ''), k = t.search(/\n*O referido é verdade\. Dou fé\./);
+  if (k < 0) { return { corpo: t, fecho: '' }; }
+  return { corpo: t.slice(0, k).replace(/\s+$/, ''), fecho: t.slice(k).replace(/^\n+/, '') };
+}
+function iaMontarInteira(tipo, corpo, ctx) {
+  ctx = ctx || {};
+  var fecho = 'O referido é verdade. Dou fé.\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (ctx.oficial ? ctx.oficial + '\n' : '') + 'Oficial de Justiça';
+  return 'CERTIDÃO\n\n' + corpo + (tipo === 'negativa' ? '\n\nAnte o exposto devolvo o mandado para os devidos fins.' : '') + '\n\n' + fecho + (ctx.custas ? '\n\nDiligência a receber: R$ ' + ctx.custas : '');
+}
+function iaSistema(tipoAto) {
+  var ex = [], n = 'FULANO DE TAL', t = tipoAto || 'Citação e Intimação';
+  function add(rot, f) { try { var x = f(); if (x) { ex.push('--- ' + rot + ' ---\n' + x); } } catch (e) {} }
+  add('parte presencial: mudou-se', function () { return parteFisicaTexto('mudou', { pj: false, tipo: t, nome: n, morador: 'BELTRANO', paren: 'mãe do requerido' }); });
+  add('parte presencial: não conhece', function () { return parteFisicaTexto('naoconhece', { pj: false, tipo: t, nome: n, morador: 'BELTRANO' }); });
+  add('parte presencial: não achei a numeração', function () { return parteFisicaTexto('numero', { pj: false, tipo: t, nome: n }); });
+  add('parte presencial: ninguém atendeu', function () { return parteFisicaTexto('ninguem', { pj: false, tipo: t, nome: n, visitas: [] }); });
+  add('parte on-line negativa', function () { return parteOnlineTexto('neg', { pj: false, tipo: t, nome: n, just: 'documento', temFisica: true }); });
+  add('parte on-line positiva', function () { return parteOnlineTexto('pos', { pj: false, tipo: t, nome: n, data: '01/01/2026', idConf: true }); });
+  return [
+    'Você ajuda um Oficial de Justiça do Tribunal de Justiça do Paraná a redigir certidões. Você NÃO lê o mandado e não conhece o processo: recebe só o que o oficial falou ou escreveu, o tipo do ato e o nome da pessoa.',
+    'REGRAS:',
+    '1. Reescreva o que o oficial contou em linguagem formal de certidão, na 1ª pessoa do singular e no passado (“dirigi-me”, “tentei”, “informou”), de forma clara e objetiva.',
+    '2. Use SOMENTE os fatos que o oficial contou. Não invente nomes, datas, horários, endereços, números, parentescos nem resultado. Se faltar um dado necessário, escreva [INFORMAR: o que falta].',
+    '3. Use o nome da pessoa e o tipo do ato exatamente como informados. Se for empresa, escreva “a empresa NOME”, sem “Sr(a).”. Se o nome vier como [NOME], mantenha [NOME] no texto.',
+    '4. Siga o estilo e as fórmulas dos exemplos abaixo, que são os modelos do próprio oficial. Quando o caso for igual ao de um exemplo, mantenha a redação dele.',
+    '5. Trechos entre chaves, como {NOME}, são campos: mantenha-os exatamente.',
+    '6. Não escreva título, cabeçalho, “Ante o exposto”, “Dou fé”, local, data de fecho nem assinatura, a menos que o texto recebido já os tenha e o pedido seja só corrigi-lo.',
+    '7. Responda só com o texto pedido, sem explicações, sem aspas e sem markdown.',
+    '',
+    'EXEMPLOS DO ESTILO (os nomes são fictícios):',
+    ex.join('\n\n')
+  ].join('\n');
+}
+function iaUsuarioParte(d) {
+  return [
+    'TAREFA: escrever só a parte da certidão sobre o ' + (d.parte === 'fis' ? 'cumprimento presencial, no endereço' : 'contato on-line, por WhatsApp') + '.',
+    d.resultado ? 'RESULTADO (o oficial já escolheu): ' + d.resultado.toUpperCase() + '.' : 'RESULTADO: decida pelo que o oficial contou. Na primeira linha da resposta escreva exatamente “TIPO: POSITIVA” ou “TIPO: NEGATIVA”, e depois uma linha em branco e o texto.',
+    'TIPO DO ATO: ' + (d.tipoAto || '(não informado)'),
+    'PESSOA: ' + d.nome + (d.pj ? ' (empresa)' : ''),
+    d.data && d.parte !== 'fis' ? 'DATA DO CONTATO POR WHATSAPP: ' + d.data : '',
+    d.parte === 'fis' && d.visitas && d.visitas.length ? 'VISITAS REGISTRADAS: ' + d.visitas.join('; ') : '',
+    d.outra ? 'Já existe outra parte da certidão escrita antes desta: comece com “CERTIFICO ainda que”.' : 'Comece com “CERTIFICO que, em cumprimento ao r. mandado,”.',
+    'O QUE O OFICIAL CONTOU (ditado, pode ter erros):',
+    '"""', d.fala, '"""'
+  ].filter(function (x) { return x !== ''; }).join('\n');
+}
+function iaUsuarioInteira(d) {
+  return [
+    'TAREFA: escrever o corpo da certidão inteira (sem título nem fecho).',
+    'TIPO DO ATO: ' + (d.tipoAto || '(não informado)'),
+    'PESSOA: ' + d.nome + (d.pj ? ' (empresa)' : ''),
+    'FORMATO DA RESPOSTA: primeira linha exatamente “TIPO: POSITIVA” (o ato foi cumprido) ou “TIPO: NEGATIVA” (não foi cumprido); depois uma linha em branco e o texto, começando com “CERTIFICO que, em cumprimento ao r. mandado,”.',
+    'O QUE O OFICIAL CONTOU (ditado, pode ter erros):',
+    '"""', d.fala, '"""'
+  ].join('\n');
+}
+function iaUsuarioAjuste(d) {
+  return [
+    'TAREFA: corrigir o texto abaixo conforme o pedido do oficial. Mude só o que foi pedido, mantenha o restante igual (inclusive título e trechos entre chaves, se houver) e devolva o texto inteiro corrigido.',
+    'TIPO DO ATO: ' + (d.tipoAto || '(não informado)'),
+    'PESSOA: ' + d.nome + (d.pj ? ' (empresa)' : ''),
+    'TEXTO ATUAL:', '"""', d.texto, '"""',
+    'PEDIDO DO OFICIAL (ditado, pode ter erros):', '"""', d.pedido, '"""'
+  ].join('\n');
+}
 /*PURE-END*/
 
 (function () {
@@ -2584,6 +2760,7 @@ function parteLocal(parte, fala, it, ctx) {
   var tab = 'enviar';
   var q = '';
   var dsel = '';
+  var remAtual = null;
   var lastDev = null;
   var toastTimer = null;
   var runCtl = null;
@@ -3521,6 +3698,8 @@ function parteLocal(parte, fala, it, ctx) {
       var list = base.filter(matches).filter(function (i) { return !dsel || itemDay(i) === dsel; });
       var rk = function (c) { return c === 'enviar' ? 0 : (c === 'nao_enviar' ? 2 : 1); };
       var rg = function (i) { var g = grupoDe(i); return g === 'semcel' ? 3 : rk(g); };
+      var agrupaRem = tab === 'enviar' && state.cfg.ordemLista !== 'rota', remKey = {}, remOrd = {}, fechadas = state.cfg.remFechadas || {};
+      if (agrupaRem) { remKey = remessaChaves(state.items); Object.keys(remKey).forEach(function (id) { var k = remKey[id]; remOrd[k] = parseInt(k.slice(1), 10) || 0; }); }
       posRota = {};
       if (tab === 'enviar' && state.cfg.ordemLista === 'rota') {
         ordemRota(state.items.filter(function (i) { return i.status === 'pendente' && etipo(i) === 'local'; })).forEach(function (i, k) { posRota[i.id] = k + 1; });
@@ -3529,6 +3708,7 @@ function parteLocal(parte, fala, it, ctx) {
         var x = itemDay(a), y = itemDay(b);
         if (y < x) { return -1; }
         if (y > x) { return 1; }
+        if (agrupaRem) { var ra = remOrd[remKey[a.id]] || 0, rb = remOrd[remKey[b.id]] || 0; if (ra !== rb) { return rb - ra; } }
         if (tab !== 'enviar') { return 0; }
         var pa = posRota[a.id], pb = posRota[b.id];
         if (pa || pb) { return pa && pb ? pa - pb : (pa ? -1 : 1); }
@@ -3538,7 +3718,7 @@ function parteLocal(parte, fala, it, ctx) {
         if (rg(a) === 0) { return (etipo(a) !== 'local' ? 0 : 1) - (etipo(b) !== 'local' ? 0 : 1); }
         return rg(a) === 3 ? rk(a.cls) - rk(b.cls) : 0;
       });
-      ordemVisivel = list.map(function (i) { return i.id; });
+      ordemVisivel = list.filter(function (i) { return !(agrupaRem && fechadas[remKey[i.id]]); }).map(function (i) { return i.id; });
       if (!list.length && q) {
         html = '<p class="empty">Nenhum nome encontrado para “' + esc(q) + '”.</p>';
       } else if (!list.length) {
@@ -3562,17 +3742,29 @@ function parteLocal(parte, fala, it, ctx) {
         });
         list = [];
       }
-      var lastDay = null;
+      var lastDay = null, lastRem = null;
       list.forEach(function (i) {
         var dk = itemDay(i);
         if (dk !== lastDay) {
-          lastDay = dk;
+          lastDay = dk; lastRem = null;
           var cnt = list.filter(function (x) { return itemDay(x) === dk; }).length;
           var botoes = '<button class="btn small" data-act="selday" data-day="' + esc(dk) + '">Selecionar o dia</button>' +
             (tab === 'devolver'
               ? '<button class="btn small" data-act="zipday" data-day="' + esc(dk) + '">Baixar o dia</button>'
               : '<button class="btn small" data-act="printday" data-day="' + esc(dk) + '">Imprimir o dia</button>');
           html += '<div class="dayrow"><h2 class="day">' + esc(dayLabel(dk, new Date())) + ' (' + cnt + ')</h2><div class="dayact">' + botoes + '</div></div>' + valoresDia(dk, list);
+        }
+        if (agrupaRem) {
+          var rk = remKey[i.id];
+          if (rk !== lastRem) {
+            lastRem = rk;
+            var grp = list.filter(function (x) { return itemDay(x) === dk && remKey[x.id] === rk; }), arqs = {}, chavesDia = [];
+            grp.forEach(function (x) { if (x.fileId) { arqs[x.fileId] = true; } });
+            list.forEach(function (x) { if (itemDay(x) === dk && chavesDia.indexOf(remKey[x.id]) < 0) { chavesDia.push(remKey[x.id]); } });
+            var nArq = Object.keys(arqs).length, ts = new Date(remOrd[rk]), fech = !!fechadas[rk];
+            html += '<div class="remrow"><button class="remhead' + (fech ? ' fechada' : '') + '" data-act="remtoggle" data-rem="' + esc(rk) + '" aria-expanded="' + (!fech) + '"><span class="remseta" aria-hidden="true"></span>Remessa ' + (chavesDia.length - chavesDia.indexOf(rk)) + ' · ' + pad(ts.getHours()) + ':' + pad(ts.getMinutes()) + ' · ' + grp.length + (grp.length === 1 ? ' mandado' : ' mandados') + (nArq ? ' · ' + nArq + (nArq === 1 ? ' arquivo' : ' arquivos') : '') + (fech ? ' · recolhida (fora da fila e do “Selecionar”)' : '') + '</button></div>';
+          }
+          if (fechadas[rk]) { return; }
         }
         html += card(i);
       });
@@ -3623,6 +3815,7 @@ function parteLocal(parte, fala, it, ctx) {
     if (i.jaIntimado && i.status === 'pendente') { var jd = new Date(i.jaIntimado.quando || 0); flags.push(['Já intimado por WhatsApp em ' + pad(jd.getDate()) + '/' + pad(jd.getMonth() + 1) + '/' + jd.getFullYear() + ' (proc. ' + i.jaIntimado.proc + ', ' + i.jaIntimado.tel + '). Confirme que é a mesma pessoa.', false]); }
     if (posRota[i.id] && i.status === 'pendente') { flags.push(['Rota ' + posRota[i.id], 'ok']); }
     var ad = audDe(i), af = ad ? audFlag(ad.data.split('-').reverse().join('/'), new Date()) : '';
+    if (ad && i.status === 'pendente') { var hAud = horasAteAudiencia(ad, Date.now()); if (hAud !== null && hAud < -2) { af = 'Audiência já passou: devolva o mandado imediatamente'; } }
     if (af && !(i.status === 'pendente' && urg(i).some(function (u) { return u.tipo === 'audiencia'; }))) { flags.push([af + ' (' + ad.data.split('-').reverse().join('/') + (ad.hora ? ' ' + ad.hora : '') + ')', true, 'aud']); }
     if (/s\/n/i.test(i.endereco)) { flags.push(['Endereço sem número', false]); }
     if (i.tentativas && i.tentativas.length) {
@@ -3645,20 +3838,14 @@ function parteLocal(parte, fala, it, ctx) {
       var pn = partesNec(i), ph = i.partes || {};
       if (ph.fis) { flags.push(['Parte física pronta: ' + rotuloParte(ph.fis), 'ok']); }
       if (ph.on) { flags.push(['Parte on-line pronta: ' + rotuloParte(ph.on), 'ok']); }
-      partesFaltando(pn, ph).forEach(function (f) { if (ph.fis || ph.on) { flags.push(['Falta a parte ' + (f === 'fis' ? 'física' : 'on-line'), false]); } });
     }
     if (i.status === 'pendente') {
       var oi = onlineInfo(i, Date.now()), fOk = fisicaFeita(i), fDisp = fisicaDispensada(i, cidades());
       if (fOk) { var fd = new Date(i.fisica.data + 'T12:00:00'); flags.push(['Diligência física feita' + (isNaN(fd) ? '' : ' em ' + pad(fd.getDate()) + '/' + pad(fd.getMonth() + 1)) + ': ' + rotuloFis(i.fisica) + (i.fisica.morador ? ' (' + i.fisica.morador + ')' : ''), false]); }
       var semOn = fOk && !onlinePossivel(i);
       if (!fOk && i.visitas && i.visitas.length) { flags.push(['Tentativas no endereço: ' + i.visitas.map(function (t, k) { var d = new Date(t); return (k + 1) + 'ª ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }).join(' · '), false]); }
-      if (!fOk && !fDisp && oi.n > 0) { flags.push(['On-line já feito: falta a diligência física', false]); }
-      if (oi.n > 0 && !(fOk || fDisp)) { flags.push(['On-line: ' + Math.min(oi.n, 2) + ' de 2 tentativas', false]); }
       if (semOn) { flags.push(['PRONTO PARA CERTIFICAR: diligência física feita e não há número para a on-line', 'ok']); }
       else if ((fOk || fDisp) && oi.pronto) { flags.push(['PRONTO PARA CERTIFICAR: ' + (fOk ? 'diligência física e ' : '') + '2 tentativas on-line, sem resposta há mais de 48 h', 'ok']); }
-      else if ((fOk || fDisp) && oi.n >= 2) { flags.push(['2ª tentativa feita: pronto para certificar em ' + Math.ceil(oi.faltam) + ' h', false]); }
-      else if ((fOk || fDisp) && oi.n === 1 && !mr.repetir) { flags.push(['1ª tentativa on-line feita: repetir daqui a ' + Math.max(1, Math.ceil(24 - oi.horas)) + ' h', false]); }
-      else if (fOk && oi.n === 0) { flags.push(['Falta mandar a 1ª mensagem on-line', false]); }
     }
 
     var dilWa = {};
@@ -3707,7 +3894,10 @@ function parteLocal(parte, fala, it, ctx) {
     h += '<p class="meta proc">Proc. ' + esc(i.processo) + (vcu ? ' · ' + esc(vcu) : '') + '</p>';
     if (i.aviso && i.aviso.length > 70) { h += '<details class="orient"><summary>Orientações do mandado</summary><p>' + esc(i.aviso) + '</p></details>'; }
     h += '<p class="addr">' + esc(i.endereco) + (i.bairro ? ', ' + esc(i.bairro) : '') + '</p>' + tel;
-    if (i.status === 'pendente') { h += '<label class="custas">Custas (R$) <input type="text" inputmode="decimal" data-custas="1" value="' + esc(custasCard(i)) + '" placeholder="sem custas" aria-label="Custas em reais" autocomplete="off"></label>'; }
+    if (i.status === 'pendente') {
+      var topIc = (fileOk(i) ? '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>' : '') + (etipo(i) === 'local' ? '<button class="btn small" data-act="fisica" aria-label="Certidão física (foto)" title="Certidão física (foto)">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint" aria-label="Certidão física (print ou galeria)" title="Certidão física (print ou galeria)">Certidão física (print)</button>' : '');
+      if (topIc) { h += '<div class="topico">' + topIc + '</div>'; }
+    }
     if (flags.length) {
       /* avisos urgentes, de alerta e positivos sempre à vista; dos avisos neutros ficam 2 e o resto vai para “+N avisos” */
       var fh = function (f) { var cls = 'flag' + (f[1] === 'ok' ? ' okf' : (f[1] ? ' stop' : '')); return f[2] === 'aud' ? '<button class="' + cls + ' flagbtn" data-act="audinfo" aria-label="De onde veio a data da audiência">' + esc(f[0]) + ' ⓘ</button>' : '<span class="' + cls + '">' + esc(f[0]) + '</span>'; };
@@ -3724,22 +3914,20 @@ function parteLocal(parte, fala, it, ctx) {
       if (phones) { onl += '<div class="phones">' + phones + '</div>'; }
       onl += onlResp;
       if (temNumero) {
-        if ((i.cls === 'enviar' || temDil) && mr.n) { onb += '<button class="btn small ghost" data-act="unsent">Desfazer envio</button>'; }
-        if (fileOk(i)) { onb += '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>'; }
-        onb += '<button class="btn small" data-act="teldil">WhatsApp novo</button>';
+                onb += '<button class="btn small" data-act="teldil">WhatsApp novo</button>';
       } else {
         onb += '<button class="btn small primary" data-act="teldil">Inserir WhatsApp</button>';
       }
-      h += '<div class="grp on"><p class="grp-t">WhatsApp</p>' + onl + '<div class="actions">' + onb + '</div></div>';
+      h += '<div class="grp on"><p class="grp-t">WhatsApp Virtual</p>' + onl + '<div class="actions">' + onb + (iaAtiva() ? iaBtnHtml('on') : '') + '</div></div>';
       if (loc) {
-        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="fis" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="fis" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + '<button class="btn small" data-act="fisica">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint">Certidão física (print)</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
+        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="fis" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="fis" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + (iaAtiva() ? iaBtnHtml('fis') : '') + '</div></div>';
       }
       if (!((temNum && temNumero) || loc)) { h += '<div class="grp cer"><div class="actions"><button class="btn small primary wide" data-act="certmenu">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button></div></div>'; }
       var man = '';
-      if (fileOk(i)) { man += '<button class="btn small" data-act="ver">Ver mandado</button>'; }
+      if (!loc && fileOk(i)) { man += '<button class="btn small" data-act="ver">Ver mandado</button>'; }
       if (i.cls === 'conferir' || i.cls === 'nao_enviar') { man += '<button class="btn small" data-act="toenv">Marcar: pode enviar</button>'; }
-      man += '<button class="btn small ghost" data-act="del">Excluir</button>';
-      h += '<div class="grp man"><p class="grp-t">Mandado</p><div class="actions">' + man + '</div></div>';
+      if (!loc) { man += '<button class="btn small ghost" data-act="del">Excluir</button>'; }
+      if (man) { h += '<div class="grp man"><p class="grp-t">Mandado</p><div class="actions">' + man + '</div></div>'; }
     } else {
       h += '<p class="badge ' + i.certidao.tipo + '">Certidão ' + i.certidao.tipo + ' pronta' + (i.certidao.canal === 'wa' ? ' (WhatsApp)' : (i.certidao.canal === 'fisica' ? (i.certidao.origem === 'print' ? ' (feita por print)' : ' (feita à mão)') : (i.certidao.canal === 'externo' ? ' (feita fora da página, sem PDF)' : ''))) + (i.certidao.prints && i.certidao.prints.length ? ', ' + i.certidao.prints.length + (i.certidao.canal === 'fisica' && i.certidao.origem !== 'print' ? (i.certidao.prints.length === 1 ? ' foto' : ' fotos') : (i.certidao.prints.length === 1 ? ' print' : ' prints')) : '') + (i.baixada ? ', já baixada' : '') + '</p>';
       h += '<div class="actions">' + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small" data-act="viewcert">Ver certidão</button>' + (externo(i) ? '' : '<button class="btn small primary" data-act="baixar">Baixar PDF</button><button class="btn small" data-act="compart">Compartilhar</button>') + '<button class="btn small ghost" data-act="naocert">Mandado não certificado</button><button class="btn small ghost" data-act="purge">Excluir definitivamente</button></div>';
@@ -3782,7 +3970,7 @@ function parteLocal(parte, fala, it, ctx) {
       '<div class="actions"><button class="btn small" id="meMsgVer">Ver como fica</button><button class="btn small ghost" id="meMsgPad">Voltar ao texto padrão</button></div>' +
       '<pre id="meMsgPrev" class="note" style="white-space:pre-wrap" hidden></pre>' +
       '<label class="f" for="meAn">Texto do botão “Documentos em análise”</label><input type="text" id="meAn" value="' + esc(state.cfg.msgAnalise || 'Documentos em análise.') + '" autocomplete="off">' +
-      '<div class="actions"><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="mePrio">Prioridades da rota</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
+      '<div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="mePrio">Prioridades da rota</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
       '<p class="note">Toque em Salvar antes de abrir essas telas.</p>' +
       '<div class="actions"><button class="btn primary" id="meSave">Salvar</button></div>' +
       painelAtalho() + painelBackup());
@@ -3824,6 +4012,7 @@ function parteLocal(parte, fala, it, ctx) {
     document.getElementById('mePessoas').onclick = function () { abrirBancoPessoas(); };
     document.getElementById('meValores').onclick = function () { abrirValores(); };
     document.getElementById('meModelos').onclick = function () { abrirModelos(); };
+    document.getElementById('meIAbtn').onclick = function () { abrirIA(); };
     document.getElementById('mePrio').onclick = function () { abrirPrio(); };
     document.getElementById('meRota').onclick = function () { abrirMinhaRota(); };
     document.getElementById('meMsgVer').onclick = function () {
@@ -4009,8 +4198,9 @@ function parteLocal(parte, fala, it, ctx) {
     function $(id) { return document.getElementById(id); }
     openModal('Transporte e custas',
       '<p class="note"><strong>Indenização de transporte:</strong> vale para cada mandado com endereço físico nas cidades da sua comarca (veja em “Comarca e cidades”). Mandado só eletrônico vale zero.</p>' +
+      '<label class="f" for="vlCus">Custas padrão por mandado (R$)</label><input type="text" id="vlCus" inputmode="decimal" value="' + esc(String((state.me && state.me.diligencia) || '108,63')) + '" autocomplete="off">' +
       '<label class="f" for="vlTransp">Indenização de transporte por mandado (R$)</label><input type="text" id="vlTransp" inputmode="decimal" value="' + esc(String(transporte()).replace('.', ',')) + '" autocomplete="off">' +
-      '<p class="note"><strong>Custas:</strong> o valor padrão (R$ ' + esc(String((state.me && state.me.diligencia) || '108,63')) + ') está em Meus dados, no campo da diligência. Você ainda pode mudá-lo em cada certidão. Na soma entram só os mandados com estas palavras na vara ou no tipo do ato:</p>' +
+      '<p class="note"><strong>Custas:</strong> o valor padrão (R$ ' + esc(String((state.me && state.me.diligencia) || '108,63')) + ') é o campo acima (também aparece em Meus dados) e vale para todos os mandados. Em cada certidão você ainda pode mudá-lo na hora. Na soma entram só os mandados com estas palavras na vara ou no tipo do ato:</p>' +
       '<label class="f" for="vlInc">Contar custas quando tiver (separe por ponto e vírgula)</label><input type="text" id="vlInc" value="' + esc(state.cfg.custasIncluir == null ? CUSTAS_INCLUIR_PADRAO : state.cfg.custasIncluir) + '" autocomplete="off">' +
       '<label class="f" for="vlIse">Não cobrar custas quando tiver</label><input type="text" id="vlIse" value="' + esc(state.cfg.custasIsentas == null ? CUSTAS_ISENTAS_PADRAO : state.cfg.custasIsentas) + '" autocomplete="off">' +
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="vlGrat" style="width:24px;height:24px"' + (state.cfg.gratuito !== false ? ' checked' : '') + '> Também não cobrar quando o mandado disser “Gratuito”</label>' +
@@ -4018,6 +4208,8 @@ function parteLocal(parte, fala, it, ctx) {
       '<div class="actions"><button class="btn primary" id="vlSave">Salvar</button><button class="btn ghost" id="vlPad">Voltar ao padrão</button></div>');
     $('vlPad').onclick = function () { state.cfg.transporte = null; state.cfg.custasIncluir = null; state.cfg.custasIsentas = null; state.cfg.gratuito = true; save(); render(); closeModal(); toast('Valores no padrão.'); };
     $('vlSave').onclick = function () {
+      var cp = String($('vlCus').value || '').replace(/[^\d.,]/g, '').trim();
+      state.me = state.me || {}; state.me.diligencia = cp || '108,63';
       state.cfg.transporte = parseValor($('vlTransp').value);
       state.cfg.custasIncluir = $('vlInc').value.trim();
       state.cfg.custasIsentas = $('vlIse').value.trim();
@@ -4145,6 +4337,8 @@ function parteLocal(parte, fala, it, ctx) {
     if (act === 'delfile' && fc) { delFile(fc.getAttribute('data-fid')); return; }
     if (act === 'me') { openMe(); return; }
     if (act === 'selday' || act === 'printday' || act === 'zipday') { dayAction(act, b.getAttribute('data-day') || ''); return; }
+    if (act === 'vlabrir') { abrirValores(); return; }
+    if (act === 'remtoggle') { var rkt = b.getAttribute('data-rem'), ff = state.cfg.remFechadas = state.cfg.remFechadas || {}; if (ff[rkt]) { delete ff[rkt]; } else { ff[rkt] = true; } save(); render(); return; }
     var c = e.target.closest('.card');
     var it = byId(c.getAttribute('data-id'));
     if (!it) { return; }
@@ -4199,6 +4393,7 @@ function parteLocal(parte, fala, it, ctx) {
     else if (act === 'auto') { abrirAuto(it); }
     else if (act === 'atotipo') { abrirTipoAto(it); }
     else if (act === 'certmenu') { abrirCertificar(it); }
+    else if (act === 'iaparte') { abrirCertIA(it, b.getAttribute('data-p')); }
     else if (act === 'numx') { abrirNaoDeuCerto(it, b.getAttribute('data-tel')); }
     else if (act === 'resp') { abrirResposta(it, b.getAttribute('data-p'), b.getAttribute('data-t')); }
     else if (act === 'viewcert') { viewCert(it); }
@@ -4459,6 +4654,7 @@ function parteLocal(parte, fala, it, ctx) {
     try { iconizar(document.body); } catch (e) {}
     obs.observe(document.body, { childList: true, subtree: true, characterData: true });
   })();
+  try { (state.items || []).forEach(function (x) { Object.keys(x.partes || {}).forEach(function (k) { if (x.partes[k] && x.partes[k].ia) { delete x.partes[k].ia; } }); }); } catch (e) {}
   document.getElementById('btnSeq').onclick = function () { abrirSequencia(''); };
   document.getElementById('btnSeq2').onclick = function () { abrirSequencia('segunda'); };
   function registrarEnvio(it, tel, kind) {
@@ -4712,7 +4908,7 @@ function parteLocal(parte, fala, it, ctx) {
       aviso: String(m.aviso || '') + (Array.isArray(m.outros_nomes) && m.outros_nomes.length ? (m.aviso ? ' | ' : '') + 'Também: ' + m.outros_nomes.join(', ') : ''),
       audiencia: audValida(m.audiencia, m.audiencia_trecho) ? String(m.audiencia || '') : '', audTrecho: audValida(m.audiencia, m.audiencia_trecho) ? String(m.audiencia_trecho || '').slice(0, 160) : '', cls: sc.cls, motivo: sc.motivo,
       paginas: nums, contrafe: Array.isArray(m.paginas_contrafe) ? m.paginas_contrafe.map(Number).filter(function (n) { return n > 0; }) : [],
-      fileId: fileId || null, status: 'pendente', certidao: null, added: Date.now()
+      fileId: fileId || null, status: 'pendente', certidao: null, added: Date.now(), rem: remAtual || null
     };
   }
   var reatt = 0, dups = 0, volt = 0, semIA = null, rs = { esperados: 0, ia: 0, local: 0 };
@@ -4758,6 +4954,7 @@ function parteLocal(parte, fala, it, ctx) {
 
   async function readFiles(files) {
     var sample = null;
+    remAtual = Date.now();
     reatt = 0; dups = 0; volt = 0; semIA = null; rs = { esperados: 0, ia: 0, local: 0 };
     runCtl = new AbortController();
     var ctl = runCtl;
@@ -5341,11 +5538,11 @@ function parteLocal(parte, fala, it, ctx) {
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
       '<p class="note">Toque no microfone do teclado e conte o que aconteceu, do seu jeito. Pode ser curto ou uma explicação mais longa. Exemplos: “mudou-se, a atual moradora Josefa Pereira, mãe do requerido, informou”; “fui ao endereço, não encontrei, mandei mensagem e ele recebeu a contrafé”; “penhora negativa, só encontrei bem de família”. Depois de escrita, você lê, edita à mão ou pede uma troca de palavras, e só então salva.</p>' +
       '<textarea id="vzFala" style="min-height:130px" placeholder="Dite aqui o que aconteceu"></textarea>' +
-      '<div class="actions"><button class="btn primary" id="vzGo">Escrever a certidão</button></div>' +
+      '<div class="actions"><button class="btn ' + (iaAtiva() ? 'ia' : 'primary') + '" id="vzGo">' + (iaAtiva() ? '<span class="iabot"></span> ' : '') + 'Escrever a certidão</button></div>' +
       '<p class="note" id="vzNote"></p>' +
       '<div id="vzMudBox" hidden><label class="f" for="vzMud">Pedir uma troca (ditado ou texto)</label>' +
       '<textarea id="vzMud" style="min-height:80px" placeholder="Ex.: troque “morador” por “vizinho”; acrescente que o imóvel é bem de família; deixe mais curto"></textarea>' +
-      '<div class="actions"><button class="btn small primary" id="vzAjusta">Ajustar o texto</button><button class="btn small ghost" id="vzDesfaz" hidden>Voltar à versão anterior</button></div></div>' +
+      '<div class="actions"><button class="btn small ' + (iaAtiva() ? 'ia' : 'primary') + '" id="vzAjusta">' + (iaAtiva() ? '<span class="iabot"></span> ' : '') + 'Ajustar o texto</button><button class="btn small ghost" id="vzDesfaz" hidden>Voltar à versão anterior</button></div></div>' +
       '<label class="f" for="vzPrint">Print ou foto (opcional)</label><input type="file" id="vzPrint" accept="image/*" multiple>' +
       '<div class="thumbs" id="vzThumbs"></div>' +
       '<label class="f" for="vzCustas">Custas a receber, em R$ (em branco: não escreve na certidão)</label><input type="text" id="vzCustas" inputmode="decimal" value="' + esc(dilIni) + '" autocomplete="off">' +
@@ -5372,11 +5569,24 @@ function parteLocal(parte, fala, it, ctx) {
       var pedido = $('vzMud').value.trim(), atual = $('vzOut').value.trim();
       if (!atual) { toast('Escreva a certidão primeiro'); return; }
       if (!pedido) { toast('Diga o que quer mudar'); return; }
-      var loc0 = ajusteLocal(separarDil(atual).corpo, pedido), sep0 = separarDil(atual);
-      if (!loc0) { toast('Só consigo trocas simples, como “troque X por Y” ou “tire X”. Você pode editar o texto à mão.'); return; }
+      var sep0 = separarDil(atual), novo = null, nota = '';
+      if (iaAtiva()) {
+        $('vzAjusta').disabled = true; $('vzNote').textContent = 'A IA está ajustando…';
+        try {
+          var cf = iaCortarFecho(sep0.corpo), out = await iaAjuste(it, cf.corpo, pedido);
+          novo = (cf.fecho ? out + '\n\n' + cf.fecho : out) + (sep0.dil ? '\n\n' + sep0.dil : '');
+          nota = 'A IA ajustou o texto. Confira o resultado.';
+        } catch (e) { nota = (e && e.message ? e.message : 'A IA não respondeu.') + ' Tentei uma troca simples. '; }
+        $('vzAjusta').disabled = false;
+      }
+      if (novo == null) {
+        var loc0 = ajusteLocal(sep0.corpo, pedido);
+        if (!loc0) { if (nota) { $('vzNote').textContent = nota + 'Só consigo trocas simples, como “troque X por Y” ou “tire X”. Você pode editar o texto à mão.'; } else { toast('Só consigo trocas simples, como “troque X por Y” ou “tire X”. Você pode editar o texto à mão.'); } return; }
+        novo = sep0.dil ? loc0.texto + '\n\n' + sep0.dil : loc0.texto;
+        nota = nota + (loc0.remover ? 'Tirei “' + loc0.de + '”.' : 'Troquei “' + loc0.de + '” por “' + loc0.para + '”.') + ' Confira o resultado.';
+      }
       versoes.push($('vzOut').value);
-      $('vzOut').value = sep0.dil ? loc0.texto + '\n\n' + sep0.dil : loc0.texto; $('vzMud').value = ''; $('vzDesfaz').hidden = false;
-      $('vzNote').textContent = (loc0.remover ? 'Tirei “' + loc0.de + '”.' : 'Troquei “' + loc0.de + '” por “' + loc0.para + '”.') + ' Confira o resultado.';
+      $('vzOut').value = novo; $('vzMud').value = ''; $('vzDesfaz').hidden = false; $('vzNote').textContent = nota;
     };
     $('vzDesfaz').onclick = function () {
       if (!versoes.length) { return; }
@@ -5387,7 +5597,14 @@ function parteLocal(parte, fala, it, ctx) {
       if (!fala) { toast('Dite ou escreva o que aconteceu'); return; }
       var c = ctxVoz(), r = null, origem = '';
       $('vzNote').textContent = 'Escrevendo a certidão…';
-      r = vozLocal(fala, it, c); origem = 'Usei os seus modelos pelas palavras que você ditou. Confira o texto.';
+      var aviso = '';
+      if (iaAtiva()) {
+        $('vzGo').disabled = true; $('vzNote').textContent = 'A IA está escrevendo…';
+        try { r = await iaInteira(it, fala, c); origem = 'Texto organizado pela IA. Confira com atenção.'; }
+        catch (e) { aviso = (e && e.message ? e.message : 'A IA não respondeu.') + ' Usei os modelos da página. '; }
+        $('vzGo').disabled = false;
+      }
+      if (!r) { r = vozLocal(fala, it, c); origem = aviso + 'Usei os seus modelos pelas palavras que você ditou. Confira o texto.'; }
       mostrar(r, origem);
     };
     function drawThumbs() {
@@ -5401,7 +5618,7 @@ function parteLocal(parte, fala, it, ctx) {
       drawThumbs();
     });
     $('vzCopy').onclick = function () { copyText($('vzOut').value).then(function (ok) { toast(ok ? 'Certidão copiada' : 'Não foi possível copiar'); }); };
-    function falta() { if (!$('vzOut').value.trim()) { toast('Dite o que aconteceu e toque em “Escrever a certidão”'); return true; } return false; }
+    function falta() { if (!$('vzOut').value.trim()) { toast('Dite o que aconteceu e toque em “Escrever a certidão”'); return true; } if (/\[INFORMAR[^\]]*\]/.test($('vzOut').value)) { toast('Ainda há trechos [INFORMAR…] no texto. Complete antes de salvar.'); return true; } return false; }
     $('vzPdf').onclick = async function () {
       if (falta()) { return; }
       if (!(await ensureLib('pdflib'))) { toast('Ferramenta de PDF não carregou. Confira a internet.'); return; }
@@ -5450,10 +5667,117 @@ function parteLocal(parte, fala, it, ctx) {
     }
   }
   /* Ajustar o texto: o oficial diz (por voz ou texto) o que quer trocar; só trocas simples */
+
+  /* ===== IA opcional: tudo aqui só roda para quem cadastrou uma chave. Nada do que é falado, enviado ou respondido fica guardado. ===== */
+  function iaLer() { try { var c = JSON.parse(localStorage.getItem('mandados-ia') || 'null'); return c && typeof c === 'object' ? c : null; } catch (e) { return null; } }
+  function iaAtiva() { var c = iaLer(); return !!(c && c.key); }
+  function iaGravar(c) { try { if (c && c.key) { localStorage.setItem('mandados-ia', JSON.stringify(c)); } else { localStorage.removeItem('mandados-ia'); } return true; } catch (e) { return false; } }
+  async function iaChamar(sistema, usuario, cfgOpt) {
+    var cfg = cfgOpt || iaLer();
+    if (!cfg || !cfg.key) { throw new Error('Cadastre a chave da IA em Meus dados.'); }
+    var p = iaPedido(cfg, sistema, usuario), ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null, r;
+    var to = setTimeout(function () { if (ctrl) { ctrl.abort(); } }, 45000);
+    try { r = await fetch(p.url, ctrl ? Object.assign({}, p.init, { signal: ctrl.signal }) : p.init); }
+    catch (e) { clearTimeout(to); throw new Error(e && e.name === 'AbortError' ? 'A IA demorou demais. Tente de novo.' : 'Não consegui falar com a IA. Confira a internet. Dentro da página do Claude isso fica bloqueado: use o atalho instalado.'); }
+    clearTimeout(to);
+    var j = null; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) { throw new Error(iaErro(r.status, j)); }
+    var t = iaExtrair(cfg, j);
+    if (!String(t || '').trim()) { throw new Error('A IA não devolveu texto. Tente de novo.'); }
+    return t;
+  }
+  function iaFaltando(texto) {
+    var f = [];
+    if (/\[INFORMAR[^\]]*\]/.test(texto)) { f.push('complete os trechos [INFORMAR…]'); }
+    if (!/^\s*(CERTIDÃO\s+)?CERTIFICO/i.test(texto)) { f.push('o texto não começou com “CERTIFICO”'); }
+    return f;
+  }
+  async function iaParte(it, parte, resultado, fala, ctx) {
+    var cfg = iaLer() || {}, nome = String(it.nome || '').toUpperCase(), oc = !!cfg.escNome;
+    var d = { parte: parte, resultado: resultado || '', tipoAto: it.tipo || '', nome: oc ? '[NOME]' : nome, pj: ehEmpresaIt(it), outra: !!(ctx && ctx.outra), data: ctx && ctx.diaCont ? fmtDate(ctx.diaCont) : '', visitas: (ctx && ctx.visitas) || [], fala: oc ? iaOcultarNome(fala, nome) : fala };
+    var sep = iaSepararTipo(iaLimpar(await iaChamar(iaSistema(it.tipo), iaUsuarioParte(d))));
+    var texto = iaRestaurarNome(sep.corpo, nome);
+    return { modelo: 'ia', tipo: resultado || sep.tipo || 'negativa', texto: texto, faltando: iaFaltando(texto), entendi: 'A IA organizou o que você contou.' };
+  }
+  async function iaInteira(it, fala, c) {
+    var cfg = iaLer() || {}, nome = String(it.nome || '').toUpperCase(), oc = !!cfg.escNome;
+    var d = { tipoAto: it.tipo || '', nome: oc ? '[NOME]' : nome, pj: ehEmpresaIt(it), fala: oc ? iaOcultarNome(fala, nome) : fala };
+    var sep = iaSepararTipo(iaLimpar(await iaChamar(iaSistema(it.tipo), iaUsuarioInteira(d))));
+    var corpo = iaRestaurarNome(sep.corpo, nome).replace(/^\s*CERTIDÃO\s+/i, '');
+    var tipo = sep.tipo || (/DEIXEI DE|não (foi possível|localiz|encontr)/i.test(corpo) ? 'negativa' : 'positiva');
+    return { key: '', tipo: tipo, texto: iaMontarInteira(tipo, corpo, { oficial: c && c.oficial, custas: c && c.custas }), faltando: iaFaltando(corpo), entendi: 'A IA organizou o que você contou.' };
+  }
+  async function iaAjuste(it, texto, pedido) {
+    var cfg = iaLer() || {}, nome = String(it.nome || '').toUpperCase(), oc = !!cfg.escNome;
+    var d = { tipoAto: it.tipo || '', nome: oc ? '[NOME]' : nome, pj: ehEmpresaIt(it), texto: oc ? iaOcultarNome(texto, nome) : texto, pedido: oc ? iaOcultarNome(pedido, nome) : pedido };
+    var out = iaRestaurarNome(iaLimpar(await iaChamar(iaSistema(it.tipo), iaUsuarioAjuste(d))), nome);
+    if (!out.trim()) { throw new Error('A IA não devolveu texto. Tente de novo.'); }
+    return out;
+  }
+  function iaBtnHtml(p) { return '<button class="btn small ia wide" data-act="iaparte" data-p="' + p + '" aria-label="Certidão com IA"><span class="iabot" aria-hidden="true"></span> Certidão</button>'; }
+  /* Cadastro da chave (Meus dados > IA) */
+  function abrirIA() {
+    var c = iaLer() || {}, tem = !!c.key, prov = IA_PROVEDORES[c.prov] ? c.prov : 'groq';
+    var opts = Object.keys(IA_PROVEDORES).map(function (k) { return '<option value="' + k + '"' + (prov === k ? ' selected' : '') + '>' + esc(IA_PROVEDORES[k].nome) + '</option>'; }).join('');
+    openModal('IA (opcional)',
+      '<p class="iahead"><span class="iabot esc"></span> Robô que melhora a redação falada</p>' +
+      '<p class="note"><strong>A página funciona completa sem IA.</strong> Se você cadastrar uma chave, aparecem os botões do robô: com eles você fala o que aconteceu e a IA só melhora a redação da certidão. Sem chave, nada muda.</p>' +
+      '<p class="note">A IA <strong>não lê o mandado</strong>: recebe só o que você falar ou escrever, o tipo do ato e o nome da parte. A página <strong>não guarda</strong> o que foi enviado nem a resposta (só o texto final que você mandar salvar na certidão). A chave fica só neste aparelho e não entra no backup.</p>' +
+      '<p class="note">Atenção: quem recebe o texto é o provedor que você escolher. Em planos grátis ele pode usar o texto para melhorar o serviço; leia a política dele.</p>' +
+      '<label class="f" for="iaProv">Provedor</label><select id="iaProv" class="sel">' + opts + '</select>' +
+      '<label class="f" for="iaChave">Chave da API' + (tem ? ' (já há uma guardada: deixe em branco para manter)' : '') + '</label><input type="password" id="iaChave" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="' + (tem ? '•••••••• guardada neste aparelho' : 'cole a chave aqui') + '">' +
+      '<label class="f" for="iaModelo">Modelo</label><input type="text" id="iaModelo" autocomplete="off" autocapitalize="off" spellcheck="false">' +
+      '<div id="iaBaseBox" hidden><label class="f" for="iaBase">Endereço da API (termina em /v1)</label><input type="text" id="iaBase" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…/v1"></div>' +
+      '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="iaEsc" style="width:26px;height:26px"' + (c.escNome ? ' checked' : '') + '> <span>Não enviar o nome da parte à IA (a página coloca o nome depois)</span></label>' +
+      '<div class="actions"><button class="btn primary" id="iaSalvar">Testar e salvar</button><button class="btn" id="iaSalvar2" hidden>Salvar sem testar</button>' + (tem ? '<button class="btn" id="iaApagar">Apagar a chave</button>' : '') + '<button class="btn ghost" id="iaVolta">Voltar</button></div><p class="note" id="iaNote"></p>');
+    function $(id) { return document.getElementById(id); }
+    $('iaModelo').value = c.prov === prov && c.modelo ? c.modelo : (IA_PROVEDORES[prov].modelo || '');
+    $('iaBase').value = c.prov === 'outro' ? (c.base || '') : '';
+    function ajusta() { $('iaBaseBox').hidden = $('iaProv').value !== 'outro'; }
+    ajusta();
+    $('iaProv').onchange = function () {
+      var v = $('iaProv').value, atuais = Object.keys(IA_PROVEDORES).map(function (k) { return IA_PROVEDORES[k].modelo; });
+      if (!$('iaModelo').value.trim() || atuais.indexOf($('iaModelo').value.trim()) !== -1) { $('iaModelo').value = IA_PROVEDORES[v].modelo || ''; }
+      ajusta();
+    };
+    function ler() { return { prov: $('iaProv').value, key: ($('iaChave').value || '').trim() || c.key || '', modelo: ($('iaModelo').value || '').trim(), base: ($('iaBase').value || '').trim(), escNome: !!$('iaEsc').checked }; }
+    function valida(n) {
+      if (!n.key) { $('iaNote').textContent = 'Cole a chave da API.'; return false; }
+      if (!n.modelo) { $('iaNote').textContent = 'Escreva o nome do modelo.'; return false; }
+      if (n.prov === 'outro' && !/^https:\/\//.test(n.base)) { $('iaNote').textContent = 'Escreva o endereço da API, começando com https://'; return false; }
+      return true;
+    }
+    function gravar(n) { iaGravar(n); closeModal(); render(); toast('IA cadastrada. Os botões do robô já aparecem.'); }
+    $('iaSalvar').onclick = async function () {
+      var n = ler(); if (!valida(n)) { return; }
+      $('iaSalvar').disabled = true; $('iaNote').textContent = 'Testando a conexão…'; $('iaSalvar2').hidden = true;
+      try { await iaChamar('Responda apenas com a palavra: ok', 'Teste de conexão.', n); gravar(n); }
+      catch (e) { $('iaSalvar').disabled = false; $('iaNote').textContent = (e && e.message ? e.message : 'Não deu certo.') + ' Se quiser, salve mesmo assim.'; $('iaSalvar2').hidden = false; }
+    };
+    $('iaSalvar2').onclick = function () { var n = ler(); if (valida(n)) { gravar(n); } };
+    if ($('iaApagar')) { $('iaApagar').onclick = function () { iaGravar(null); closeModal(); render(); toast('Chave apagada. Os botões do robô saíram.'); }; }
+    $('iaVolta').onclick = closeModal;
+  }
+  /* Botão “Certidão” (robô) do bloco: positiva ou negativa, tipo do ato, depois o oficial conta o que aconteceu */
+  function abrirCertIA(it, parte) {
+    var fis = parte === 'fis';
+    openModal('Certidão ' + (fis ? 'presencial' : 'on-line'),
+      '<p class="iahead"><span class="iabot esc"></span> A IA só melhora a redação</p>' +
+      '<p><strong>' + esc(it.nome) + '</strong></p>' +
+      '<p class="note">Tipo do ato: <strong>' + esc(it.tipo || '(sem tipo)') + '</strong></p><div class="actions"><button class="btn small ghost" id="ciTipo">Trocar o tipo do ato</button></div>' +
+      '<p class="note" style="margin:12px 0 4px">Como foi?</p>' +
+      '<div class="actions" style="display:grid;grid-template-columns:1fr 1fr"><button class="btn negb" id="ciNeg">Negativa</button><button class="btn okb" id="ciPos">Positiva</button></div>' +
+      '<div class="actions"><button class="btn ghost" id="ciNo">Voltar</button></div>');
+    document.getElementById('ciNeg').onclick = function () { abrirParteIA(it, parte, 'negativa'); };
+    document.getElementById('ciPos').onclick = function () { abrirParteIA(it, parte, 'positiva'); };
+    document.getElementById('ciTipo').onclick = function () { abrirTipoAto(it, function () { abrirCertIA(it, parte); }); };
+    document.getElementById('ciNo').onclick = closeModal;
+  }
   function htmlEditarIA(pref) {
-    return '<div class="grp" id="' + pref + 'Box"><label class="f" for="' + pref + 'Mud">Ajustar o texto: diga o que quer trocar (por voz ou texto)</label>' +
-      '<textarea id="' + pref + 'Mud" style="min-height:70px" placeholder="Ex.: troque “atual morador” por “irmão”; tire “atual”"></textarea>' +
-      '<div class="actions"><button class="btn small primary" id="' + pref + 'Ajusta">Ajustar o texto</button><button class="btn small ghost" id="' + pref + 'Desfaz" hidden>Voltar à versão anterior</button></div>' +
+    var ia = iaAtiva();
+    return '<div class="grp" id="' + pref + 'Box"><label class="f" for="' + pref + 'Mud">' + (ia ? '<span class="iabot esc"></span> ' : '') + 'Ajustar o texto: diga o que quer mudar (por voz ou texto)</label>' +
+      '<textarea id="' + pref + 'Mud" style="min-height:70px" placeholder="' + (ia ? 'Ex.: acrescente que o morador é o pai; deixe mais curto; troque “atual morador” por “irmão”' : 'Ex.: troque “atual morador” por “irmão”; tire “atual”') + '"></textarea>' +
+      '<div class="actions"><button class="btn small ' + (ia ? 'ia' : 'primary') + '" id="' + pref + 'Ajusta">' + (ia ? '<span class="iabot"></span> ' : '') + 'Ajustar o texto</button><button class="btn small ghost" id="' + pref + 'Desfaz" hidden>Voltar à versão anterior</button></div>' +
       '<p class="note" id="' + pref + 'Note"></p></div>';
   }
   function ligarEditarIA(it, pref, getTxt, setTxt, parte) {
@@ -5464,12 +5788,24 @@ function parteLocal(parte, fala, it, ctx) {
       if (!atual) { toast('Não há texto para editar'); return; }
       if (!pedido) { toast('Diga o que quer mudar'); return; }
       var sep = parte ? { corpo: atual, dil: '' } : separarDil(atual), novo = null, nota = '';
-      var loc = ajusteLocal(sep.corpo, pedido);
-      if (loc) {
-        novo = sep.dil ? loc.texto + '\\n\\n' + sep.dil : loc.texto;
-        nota = (loc.remover ? 'Tirei “' + loc.de + '”.' : 'Troquei “' + loc.de + '” por “' + loc.para + '”.') + ' Confira o resultado.';
+      if (iaAtiva()) {
+        var bt = $(pref + 'Ajusta'); bt.disabled = true; $(pref + 'Note').textContent = 'A IA está ajustando…';
+        try {
+          var cf = parte ? { corpo: sep.corpo, fecho: '' } : iaCortarFecho(sep.corpo);
+          var out = await iaAjuste(it, cf.corpo, pedido);
+          novo = (cf.fecho ? out + '\n\n' + cf.fecho : out) + (sep.dil ? '\n\n' + sep.dil : '');
+          nota = 'A IA ajustou o texto. Confira o resultado.';
+        } catch (e) { nota = (e && e.message ? e.message : 'A IA não respondeu.') + ' Tentei uma troca simples.'; }
+        bt.disabled = false;
       }
-      if (novo == null) { $(pref + 'Note').textContent = 'Só consigo trocas simples, como “troque X por Y” ou “tire X”. Edite o texto à mão.'; return; }
+      if (novo == null) {
+        var loc = ajusteLocal(sep.corpo, pedido);
+        if (loc) {
+          novo = sep.dil ? loc.texto + '\n\n' + sep.dil : loc.texto;
+          nota = (nota ? nota + ' ' : '') + (loc.remover ? 'Tirei “' + loc.de + '”.' : 'Troquei “' + loc.de + '” por “' + loc.para + '”.') + ' Confira o resultado.';
+        }
+      }
+      if (novo == null) { $(pref + 'Note').textContent = (nota ? nota + ' ' : '') + 'Só consigo trocas simples, como “troque X por Y” ou “tire X”. Edite o texto à mão.'; return; }
       versoes.push(getTxt()); setTxt(novo);
       $(pref + 'Mud').value = ''; $(pref + 'Desfaz').hidden = false; $(pref + 'Note').textContent = nota;
     };
@@ -5587,35 +5923,45 @@ function parteLocal(parte, fala, it, ctx) {
     gerar(true);
   }
   /* Parte da certidão: o oficial conta brevemente e a página escreve só aquela parte, pelos modelos */
-  function abrirParteIA(it, parte) {
+  function abrirParteIA(it, parte, tipoPref) {
     var fis = parte === 'fis', ult = it.msgs && it.msgs.length ? it.msgs[it.msgs.length - 1] : null, diaCont = ult ? dayKey(ult.t) : '';
     var oficial = state.me && state.me.nome ? state.me.nome : '', hoje = (function () { var n = new Date(); return n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()); })();
-    var res = null;
+    var res = null, ia = iaAtiva();
     function $(id) { return document.getElementById(id); }
     openModal('Parte ' + (fis ? 'física' : 'on-line'),
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
-      '<p class="note">Conte brevemente o que aconteceu ' + (fis ? 'no endereço' : 'no contato por WhatsApp') + ', do seu jeito (pode ditar). A página escreve só esta parte, no estilo dos seus modelos; você confere e dá ok.</p>' +
+      (tipoPref ? '<p class="note">Certidão <strong>' + tipoPref + '</strong> · tipo do ato: <strong>' + esc(it.tipo || '(sem tipo)') + '</strong></p>' : '') +
+      '<p class="note">Toque no microfone do teclado e conte o que aconteceu ' + (fis ? 'no endereço' : 'no contato por WhatsApp') + ', do seu jeito. ' + (ia ? 'A IA melhora a redação' : 'A página escreve só esta parte, no estilo dos seus modelos') + '; você confere e dá ok. O que você falar não é guardado.</p>' +
       '<textarea id="piFala" style="min-height:110px" placeholder="' + (fis ? 'Ex.: o morador disse que ele se mudou há dois meses' : 'Ex.: mandei duas vezes e ela não respondeu') + '"></textarea>' +
-      '<div class="actions"><button class="btn primary" id="piGo">Escrever esta parte</button></div><p class="note" id="piNote"></p>' +
+      '<div class="actions"><button class="btn ' + (ia ? 'ia' : 'primary') + '" id="piGo">' + (ia ? '<span class="iabot"></span> ' : '') + 'Escrever esta parte</button></div><p class="note" id="piNote"></p>' +
       '<label class="f" for="piTxt">Texto desta parte (pode editar)</label><textarea id="piTxt" style="min-height:150px"></textarea>' + htmlEditarIA('pi') + htmlSalvarModelo('pi') +
       '<div class="actions"><button class="btn primary" id="piOk">Dar ok</button><button class="btn" id="piNo">Voltar</button></div>');
     $('piNo').onclick = closeModal;
     ligarEditarIA(it, 'pi', function () { return $('piTxt').value; }, function (v) { $('piTxt').value = v; }, true);
-    ligarSalvarModelo(it, 'pi', function () { return { onde: parte, tipo: res ? res.tipo : 'negativa', texto: $('piTxt').value }; });
+    ligarSalvarModelo(it, 'pi', function () { return { onde: parte, tipo: res ? res.tipo : (tipoPref || 'negativa'), texto: $('piTxt').value }; });
     $('piGo').onclick = async function () {
       var fala = $('piFala').value.trim();
       if (!fala) { toast('Conte o que aconteceu'); return; }
       var outra = fis ? (it.partes || {}).on : (it.partes || {}).fis;
       var ctx = { oficial: oficial, diaCont: diaCont, just: justDaTentativa(it.tentativas), temFisica: etipo(it) === 'local', visitas: (it.fisica && it.fisica.visitas) || (it.visitas || []).map(fmtVisita), outra: outra ? outra.texto : '' };
-      $('piNote').textContent = 'Escrevendo…';
-      var r = null, origem = '';
-      r = parteLocal(parte, fala, it, ctx); origem = 'Usei os seus modelos pelas palavras que você contou. Confira o texto.';
+      $('piNote').textContent = ia ? 'A IA está escrevendo…' : 'Escrevendo…'; $('piGo').disabled = true;
+      var r = null, origem = '', aviso = '';
+      if (ia) {
+        try { r = await iaParte(it, parte, tipoPref || '', fala, ctx); origem = 'Texto organizado pela IA. Confira com atenção.'; }
+        catch (e) { aviso = (e && e.message ? e.message : 'A IA não respondeu.') + ' '; }
+      }
+      if (!r) {
+        r = parteLocal(parte, fala, it, ctx); origem = (aviso ? 'Usei os modelos da página. ' : '') + 'Usei os seus modelos pelas palavras que você contou. Confira o texto.';
+        if (tipoPref && r.tipo !== tipoPref) { r.faltando = (r.faltando || []).concat(['o texto saiu ' + r.tipo + ', mas você escolheu ' + tipoPref]); }
+      }
+      $('piGo').disabled = false;
       res = r; $('piTxt').value = r.texto;
-      $('piNote').textContent = r.entendi + (r.faltando && r.faltando.length ? ' Confira: ' + r.faltando.join('; ') + '.' : '') + ' ' + origem;
+      $('piNote').textContent = aviso + r.entendi + (r.faltando && r.faltando.length ? ' Confira: ' + r.faltando.join('; ') + '.' : '') + ' ' + origem;
     };
     $('piOk').onclick = function () {
       if (!$('piTxt').value.trim()) { toast('Conte o que aconteceu e toque em “Escrever esta parte”'); return; }
-      guardarParte(it, parte, { modelo: res ? res.modelo : 'ia', texto: $('piTxt').value, tipo: res ? res.tipo : 'negativa', ia: { fala: $('piFala').value.trim() }, dados: { data: hoje, visitas: [] } });
+      if (/\[INFORMAR[^\]]*\]/.test($('piTxt').value)) { toast('Ainda há trechos [INFORMAR…] no texto. Complete antes de dar ok.'); return; }
+      guardarParte(it, parte, { modelo: res ? res.modelo : 'ia', texto: $('piTxt').value, tipo: res ? res.tipo : (tipoPref || 'negativa'), dados: { data: hoje, visitas: [] } });
     };
   }
   function openModelo(it, key, justIni) {
@@ -5988,7 +6334,7 @@ function parteLocal(parte, fala, it, ctx) {
     var fis = doDia.filter(function (x) { return etipo(x) === 'local'; }).length;
     var txt = 'Indenização de transporte: <strong>' + fmtReais(fis * transporte()) + '</strong> (' + fis + (fis === 1 ? ' mandado' : ' mandados') + ' com endereço físico)';
     if (tab === 'devolver') { txt += ' · Custas: <strong>' + fmtReais(somar(doDia, custasDe)) + '</strong>'; }
-    return '<p class="note dayval">' + txt + '</p>';
+    return '<p class="note dayval">' + txt + ' <button class="btn small ghost" data-act="vlabrir">Editar custas e transporte</button></p>';
   }
   function resumoMensal() {
     var por = {};
@@ -6007,7 +6353,8 @@ function parteLocal(parte, fala, it, ctx) {
 
   /* Ações por dia */
   function dayAction(act, dk) {
-    var lista = state.items.filter(function (i) { return inTab(i, tab); }).filter(matches).filter(function (i) { return itemDay(i) === dk; });
+    var rkm = tab === 'enviar' && state.cfg.ordemLista !== 'rota' ? remessaChaves(state.items) : null, fch = state.cfg.remFechadas || {};
+    var lista = state.items.filter(function (i) { return inTab(i, tab); }).filter(matches).filter(function (i) { return itemDay(i) === dk; }).filter(function (i) { return !(rkm && fch[rkm[i.id]]); });
     if (act === 'selday') {
       var todos = lista.length > 0 && lista.every(function (i) { return sel[i.id]; });
       lista.forEach(function (i) { if (todos) { delete sel[i.id]; } else { sel[i.id] = true; } });
@@ -6519,16 +6866,24 @@ function parteLocal(parte, fala, it, ctx) {
   var MOTIVOS_NUM = ['sem resposta', 'número sem WhatsApp', 'telefone inativo', 'não apresentou documento', 'número de outra pessoa, que não conhece o(a) destinatário(a)'];
   function abrirNaoDeuCerto(it, tel) {
     var jaTem = (it.tentativas || []).some(function (x) { return x.tel && normPhone(x.tel).wa === normPhone(tel).wa; });
+    var temEnvio = (it.msgs || []).some(function (m) { return m.kind !== 'analise' && m.tel && normPhone(m.tel).wa === normPhone(tel).wa; });
     openModal('Não deu certo',
       '<p><strong>' + esc(it.nome) + '</strong> · ' + esc(tel) + '</p><p class="note">Toque no que aconteceu com este número. Entra na certidão. Para mandar a mensagem, toque no número.</p>' +
       '<div class="actions" style="display:grid;grid-template-columns:1fr">' + MOTIVOS_NUM.map(function (m, k) { return '<button class="btn" data-mot="' + k + '">' + esc(m) + '</button>'; }).join('') +
       '<input type="text" id="nxOut" placeholder="Outro: escreva em poucas palavras" autocomplete="off"><button class="btn" data-mot="outro">Registrar o outro</button>' +
+      (temEnvio ? '<button class="btn" data-mot="desfazer">Desfazer o último envio para este número</button>' : '') +
       (jaTem ? '<button class="btn ghost" data-mot="limpar">Tirar a marcação deste número</button>' : '') + '<button class="btn ghost" data-mot="nao">Cancelar</button></div>');
     document.getElementById('mbody').onclick = function (e) {
       var b = e.target.closest ? e.target.closest('[data-mot]') : null;
       if (!b) { return; }
       var v = b.getAttribute('data-mot'), w = normPhone(tel).wa, m = '';
       if (v === 'nao') { closeModal(); return; }
+      if (v === 'desfazer') {
+        var ms = it.msgs || [], ix = -1;
+        for (var q = ms.length - 1; q >= 0; q--) { if (ms[q].kind !== 'analise' && ms[q].tel && normPhone(ms[q].tel).wa === w) { ix = q; break; } }
+        if (ix >= 0) { ms.splice(ix, 1); it.msgs = ms; save(); closeModal(); render(); toast('Envio desfeito para ' + tel); }
+        return;
+      }
       if (v === 'limpar') { it.tentativas = (it.tentativas || []).filter(function (x) { return !(x.tel && normPhone(x.tel).wa === w); }); it.semZap = (it.semZap || []).filter(function (x) { return x !== w; }); save(); closeModal(); render(); toast('Marcação tirada.'); return; }
       if (v === 'outro') { m = String(document.getElementById('nxOut').value || '').trim(); if (!m) { toast('Escreva o que aconteceu'); return; } }
       else { m = MOTIVOS_NUM[+v]; }
@@ -6682,18 +7037,55 @@ function parteLocal(parte, fala, it, ctx) {
       urg(i).forEach(function (u) { if (u.tipo === 'afastamento' || u.tipo === 'saude') { urgs.push({ it: i, tipo: u.tipo }); } });
     });
     aud.sort(function (x, y) { return (x.data + ' ' + (x.hora || '99:99')).localeCompare(y.data + ' ' + (y.hora || '99:99')); });
-    return { aud: aud, urgs: urgs, futuras: futuras };
+    return { aud: aud, urgs: urgs, futuras: futuras, perdidas: audLista(state.items, agora).perdidas };
   }
   function renderHoje() {
     var el = document.getElementById('hoje');
     if (tab !== 'enviar') { el.hidden = true; return; }
-    var d = hojeDados(), qtd = d.aud.length + d.urgs.length;
+    var d = hojeDados(), qtd = d.aud.length + d.urgs.length + d.perdidas.length;
     if (!qtd && !d.futuras) { el.hidden = true; return; }
-    var itens = d.aud.map(function (x) { return '<li><strong>' + (x.df <= 0 ? 'Hoje' : 'Amanhã') + (x.hora ? ' ' + esc(x.hora) : '') + '</strong> · audiência de ' + esc(x.it.nome) + (x.it.vara ? '<br><span class="note">' + esc(varaCurta(x.it.vara)) + '</span>' : '') + '</li>'; })
+    function dm(x) { var p = x.data.split('-'); return p[2] + '/' + p[1] + (x.hora ? ' ' + x.hora : ''); }
+    var perd = d.perdidas.map(function (x) { return '<li><strong class="urgtxt">Audiência já passou (' + esc(dm(x)) + ')</strong> · ' + esc(x.it.nome) + ' — devolva o mandado imediatamente</li>'; });
+    var itens = perd.concat(d.aud.map(function (x) { return '<li><strong>' + (x.df <= 0 ? 'Hoje' : 'Amanhã') + (x.hora ? ' ' + esc(x.hora) : '') + '</strong> · audiência de ' + esc(x.it.nome) + (x.it.vara ? '<br><span class="note">' + esc(varaCurta(x.it.vara)) + '</span>' : '') + '</li>'; }))
       .concat(d.urgs.map(function (x) { return '<li><strong class="urgtxt">' + (x.tipo === 'saude' ? 'Liminar de saúde' : 'Afastamento do lar') + '</strong> · ' + esc(x.it.nome) + '</li>'; })).join('');
+    var totAud = d.perdidas.length + d.futuras;
     el.hidden = false;
     el.innerHTML = '<details class="chk" open><summary><strong>Hoje e amanhã</strong>' + (qtd ? ' (' + qtd + ')' : '') + '</summary>' + (itens ? '<ul>' + itens + '</ul>' : '<p class="note">Nada para hoje nem amanhã.</p>') +
-      (d.futuras ? '<div class="actions"><button class="btn small" data-hjcal="1">Adicionar ' + (d.futuras === 1 ? 'a audiência' : 'as ' + d.futuras + ' audiências') + ' ao Calendário</button></div><p class="note">O Calendário do iPhone avisa na véspera e 1 hora antes.</p>' : '') + '</details>';
+      '<div class="actions">' + (totAud ? '<button class="btn small" data-hjlista="1">Ver todas as audiências (' + totAud + ')</button>' : '') +
+      (d.futuras ? '<button class="btn small" data-hjcal="1">Adicionar ' + (d.futuras === 1 ? 'a audiência' : 'as ' + d.futuras + ' audiências') + ' ao Calendário</button>' : '') + '</div>' +
+      (d.futuras ? '<p class="note">O Calendário do iPhone avisa na véspera e 1 hora antes.</p>' : '') + '</details>';
+  }
+  /* Lista de todas as audiências: primeiro as que já passaram (devolver já), depois as próximas, da mais próxima para a mais distante */
+  function abrirListaAudiencias() {
+    var Lz = audLista(state.items, Date.now()), tot = Lz.perdidas.length + Lz.proximas.length;
+    function quando(x, perd) {
+      if (perd) { return x.df === 0 ? 'hoje, já passou' : 'há ' + Math.abs(x.df) + (Math.abs(x.df) === 1 ? ' dia' : ' dias'); }
+      return x.df <= 0 ? 'hoje' : (x.df === 1 ? 'amanhã' : 'em ' + x.df + ' dias');
+    }
+    function linha(x, perd) {
+      var p = x.data.split('-');
+      return '<button class="audrow' + (perd ? ' perd' : '') + '" data-aud="' + esc(x.it.id) + '"><strong>' + p[2] + '/' + p[1] + (x.hora ? ' ' + esc(x.hora) : '') + '</strong> · ' + esc(x.it.nome) + '<br><span class="note">' + (x.it.vara ? esc(varaCurta(x.it.vara)) + ' · ' : '') + esc(quando(x, perd)) + '</span></button>';
+    }
+    openModal('Audiências (' + tot + ')',
+      (Lz.perdidas.length ? '<p class="stopnote"><strong>Perderam a data (' + Lz.perdidas.length + '): devolva o mandado imediatamente.</strong></p>' + Lz.perdidas.map(function (x) { return linha(x, true); }).join('') : '') +
+      (Lz.proximas.length ? '<p class="note" style="margin:12px 0 4px">Próximas, da mais próxima para a mais distante (' + Lz.proximas.length + ')</p>' + Lz.proximas.map(function (x) { return linha(x, false); }).join('') : '') +
+      (!tot ? '<p class="note">Nenhuma audiência marcada nos mandados pendentes.</p>' : '') + '<p class="note">Toque numa audiência para ir ao mandado.</p>');
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-aud]') : null;
+      if (b) { irParaCard(b.getAttribute('data-aud')); }
+    };
+  }
+  /* Vai até o cartão de um mandado: muda para a aba certa, tira filtros e rola até ele */
+  function irParaCard(id) {
+    var it = byId(id);
+    if (!it) { return; }
+    closeModal();
+    tab = inTab(it, 'enviar') ? 'enviar' : (inTab(it, 'aguardando') ? 'aguardando' : 'devolver');
+    q = ''; dsel = ''; repOnly = false; clsF = '';
+    var fr = state.cfg.remFechadas, rkj = remessaChaves(state.items)[id]; if (fr && rkj && fr[rkj]) { delete fr[rkj]; save(); }
+    render();
+    var el = document.querySelector('[data-id="' + id + '"]');
+    if (el && el.scrollIntoView) { el.scrollIntoView({ block: 'start' }); }
   }
   async function baixarCalendario() {
     var r = icsAudiencias(state.items, Date.now());
@@ -6701,7 +7093,10 @@ function parteLocal(parte, fala, it, ctx) {
     var ok = await salvarLocal('Audiencias-Mandados.ics', r.txt, 'text/calendar');
     if (ok) { toast('Calendário pronto: ' + r.n + (r.n === 1 ? ' audiência.' : ' audiências.') + ' Abra o arquivo e toque em Adicionar.'); }
   }
-  document.getElementById('hoje').addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-hjcal]')) { baixarCalendario(); } });
+  document.getElementById('hoje').addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('[data-hjcal]')) { baixarCalendario(); }
+    else if (e.target.closest && e.target.closest('[data-hjlista]')) { abrirListaAudiencias(); }
+  });
 
   /* ---- Modo rota: uma parada por vez, com Navegar, Positiva, Negativa e Voz ---- */
   function sigRota(i) { return i.status + '|' + (fisicaFeita(i) ? 1 : 0) + '|' + Object.keys(i.partes || {}).join(',') + '|' + ((i.visitas || []).length) + '|' + (i.certidao ? 1 : 0); }
