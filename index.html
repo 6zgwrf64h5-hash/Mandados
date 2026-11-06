@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mandados do dia</title>
-<meta name="theme-color" content="#1859C9">
+<meta name="theme-color" content="#13265E">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mandados">
@@ -65,6 +65,7 @@
   }
 }
 :root[data-theme="dark"] {
+  --grp-bg: rgba(255, 255, 255, 0.07);
   --bg: #0F1522;
   --surface: #18202F;
   --ink: #EEF1F7;
@@ -343,6 +344,73 @@ a.btn.seqgo { display: block; text-align: center; text-decoration: none; padding
 .card .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 0; }
 .card .actions .btn { flex: none; min-height: 38px; padding: 6px 8px; font-size: 14px; line-height: 1.15; }
 .card .badge { margin: 6px 0 0; }
+
+/* ===== Tema moderno: cantos redondos, cores vivas, símbolos ===== */
+:root {
+  --bg: #EEF1FA; --surface: #FFFFFF; --ink: #101A33; --muted: #5A6482; --line: #DCE2F0;
+  --accent: #2563EB; --done: #12B76A; --neg: #E5484D; --pend: #F59E0B;
+  --ok-bg: #E7F8EE; --ok-line: #86DDAA; --stop-bg: #FDECEC; --warn-bg: #FFF1D6;
+  --yel-bg: #FFF8D6; --yel-line: #E8B93A; --sem-bg: #F0ECFC; --sem-line: #8B6CEF;
+  --voz: #7C3AED; --grp-bg: rgba(255, 255, 255, 0.72); --rad: 20px; --sombra: 0 8px 22px rgba(24, 44, 100, 0.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0E1424; --surface: #19223A; --ink: #EEF2FF; --muted: #A9B3D0; --line: #2B3656; --accent: #6EA0FF; --ok-bg: #12352A; --stop-bg: #44202A; --sem-bg: #2A2548; --yel-bg: #3A3512; --grp-bg: rgba(255, 255, 255, 0.07); --sombra: 0 8px 22px rgba(0,0,0,.35); }
+}
+body { background: linear-gradient(180deg, #DCE6FF 0, var(--bg) 340px) no-repeat, var(--bg); }
+header { background: linear-gradient(135deg, #13265E 0%, #2563EB 100%); color: #fff; margin: -16px -14px 0; padding: 22px 18px 20px; border-radius: 0 0 28px 28px; box-shadow: 0 10px 26px rgba(19, 38, 94, 0.28); }
+header h1 { color: #fff; font-size: 30px; font-weight: 800; }
+header p, header .note, header .hint, header #syncLine { color: rgba(255, 255, 255, 0.9) !important; }
+header .btn.ghost { color: #fff; border-color: rgba(255, 255, 255, 0.5); }
+header p { color: rgba(255, 255, 255, 0.86); font-weight: 600; }
+.btn { color: var(--ink); border-radius: 16px; border: 0; background: var(--surface); box-shadow: 0 2px 8px rgba(24, 44, 100, 0.12); min-height: 48px; transition: transform .08s; }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #fff; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35); }
+.btn.ghost { background: transparent; box-shadow: none; border: 1.5px solid var(--line); }
+.btn.okb { background: #12B76A; color: #fff; } .btn.negb { background: #E5484D; color: #fff; }
+.bar .btn { box-shadow: 0 3px 10px rgba(255, 255, 255, 0.0), 0 2px 8px rgba(24, 44, 100, 0.14); }
+.tabs { border-bottom: 0; background: rgba(37, 99, 235, 0.09); padding: 5px; border-radius: 18px; gap: 4px; }
+.tab { border-radius: 14px; border-bottom: 0; margin: 0; padding: 10px 14px; font-weight: 800; }
+.tab[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: 0 3px 10px rgba(24, 44, 100, 0.16); }
+.card { border: 0; border-left: 9px solid var(--pend); border-radius: var(--rad); box-shadow: var(--sombra); padding: 16px 14px 14px; }
+.card.enviar { background: var(--ok-bg); border-left-color: #12B76A; }
+.card.conferir { background: var(--yel-bg); border-left-color: #F5B400; }
+.card.nao_enviar { background: var(--stop-bg); border-left-color: #E5484D; }
+.card.semcel { background: var(--sem-bg); border-left-color: #7C5CE0; }
+.card h3 { font-weight: 800; letter-spacing: -0.01em; }
+.flag { border-radius: 999px; padding: 4px 12px; }
+.grp { border: 0; background: var(--grp-bg, rgba(255, 255, 255, 0.72)); border-radius: 18px; padding: 12px 12px 10px; margin: 12px 0 0; }
+.grp-t { font-weight: 800; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.grp-t::before { content: ""; width: 22px; height: 22px; border-radius: 8px; background: var(--accent) center / 14px no-repeat; flex: none; }
+.grp.on .grp-t { color: #0E9F6E; } .grp.on .grp-t::before { background-color: #25D366; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2z'/%3E%3C/svg%3E"); }
+.grp.fis .grp-t { color: #D97706; } .grp.fis .grp-t::before { background-color: #F59E0B; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z'/%3E%3C/svg%3E"); }
+.grp.cer .grp-t { color: #2563EB; } .grp.cer .grp-t::before { background-color: #2563EB; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V8h4.5zM8 13l2.5 2.5L16 10l1.4 1.4-6.9 7-3.9-3.9z'/%3E%3C/svg%3E"); }
+.resp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 8px; }
+.rbtn { display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 18px; min-height: 58px; font-size: 18px; font-weight: 800; color: #fff; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); }
+.rbtn.neg { background: linear-gradient(135deg, #F0555A, #D63A40); }
+.rbtn.pos { background: linear-gradient(135deg, #1FC47A, #0E9F6E); }
+.rbtn:active { transform: scale(0.97); }
+.selhid { display: none; }
+.card .btn[data-act="certia"] { background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff; box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35); }
+.card .btn[data-act="cert"] { background: #12B76A; color: #fff; }
+.card .btn[data-act="visita"] { background: #F59E0B; color: #1F1300; }
+.card .btn[data-act="teldil"], .card .btn[data-act="certwa"], .card .btn[data-act="watry"] { background: var(--surface); }
+/* Verde do WhatsApp (#25D366) nos botões que mandam mensagem: o número no cartão, “Documentos em análise”, o da fila e o da lista de telefones */
+.wa, a.seqgo[data-sqgo] { border: 0; border-radius: 16px; background: #25D366; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28); box-shadow: 0 6px 16px rgba(37, 211, 102, 0.42); font-weight: 800; }
+.wa.off, .wa.stopwa { background: linear-gradient(135deg, #F0555A, #D63A40); box-shadow: 0 6px 16px rgba(214, 58, 64, 0.30); }
+.card .btn[data-act="del"], .card .btn[data-act="unsent"], .card .btn[data-act="ver"], .card .btn[data-act="viewcert"] { font-size: 0; min-width: 54px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; }
+.card .btn[data-act="del"]::before, .card .btn[data-act="unsent"]::before, .card .btn[data-act="ver"]::before, .card .btn[data-act="viewcert"]::before { content: ""; width: 24px; height: 24px; background: currentColor; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+.card .btn[data-act="del"] { color: #E5484D; }
+.card .btn[data-act="del"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 3h6l1 2h4v2H4V5h4zM6 9h12l-1 12H7z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 3h6l1 2h4v2H4V5h4zM6 9h12l-1 12H7z'/%3E%3C/svg%3E"); }
+.card .btn[data-act="unsent"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5V1L6 6l6 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5V1L6 6l6 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z'/%3E%3C/svg%3E"); }
+.card .btn[data-act="ver"]::before, .card .btn[data-act="viewcert"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5C7 5 2.7 8.1 1 12c1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5C7 5 2.7 8.1 1 12c1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z'/%3E%3C/svg%3E"); }
+.sheet { border-radius: 28px 28px 0 0; box-shadow: 0 -12px 40px rgba(10, 20, 60, 0.30); }
+.sheet::before { content: ""; display: block; width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: -4px auto 10px; }
+.modal { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+input[type="text"], input[type="date"], input[type="time"], textarea, select.sel { border-radius: 14px; border: 1.5px solid var(--line); }
+.dock { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding: 10px 12px; border: 0; border-radius: 24px; box-shadow: 0 10px 30px rgba(10, 20, 60, 0.28); }
+.toast { border-radius: 18px; }
+.rota-banner, .hoje { border-radius: 20px; box-shadow: var(--sombra); }
+.seg .btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
 </style>
 </head>
 <body>
@@ -1152,6 +1220,71 @@ function parseTelefonesTexto(text) {
     });
   }
   return out;
+}
+/* ---- Telefones por parte: só vale o telefone ligado ao NOME do destinatário do mandado ----
+   Regra: o telefone da contrafé ("Parte: NOME  Telefone(s): ...") é do destinatário. No corpo do mandado, um
+   "Telefone(s)" só é do destinatário se o NOME dele aparece antes (até 500 caracteres) e, entre o nome e o telefone,
+   não aparece outro rótulo de parte (Requerente, Autor, Advogado, OAB, nº MP...). Telefone de OUTRA parte identificada é descartado;
+   só o telefone sem dono identificável vai para "precisa confirmar" (nunca é usado sem confirmação manual). */
+function normIdx(s) {
+  var out = '', str = String(s || '').normalize('NFC');
+  for (var i = 0; i < str.length; i++) {
+    var d = str.charAt(i).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    out += d.length ? d.charAt(0).toLowerCase() : ' ';
+  }
+  return out;
+}
+var RE_ROTULO_PARTE = /\b(?:autor[ae]?|requerente|requerid[oa]|reu|re|promovente|promovid[oa]|executad[oa]|exequente|embargante|embargad[oa]|reclamante|reclamad[oa]|testemunha|vitima|investigad[oa]|indiciad[oa]|denunciad[oa]|acusad[oa]|intimand[oa]|citand[oa]|devedor|credor|ofendid[oa]|representad[oa]|advogad[oa]|procurador[a]?|defensor[a]?|impetrante|impetrad[oa]|assistid[oa]|parte)(?:\([a-z]{1,3}\))*\s*:|\boab\b|\bn[o°º]?\s*mp\b/g;
+function telefonesDaParte(texto, nome) {
+  var t = String(texto || '').split('\n').filter(function (l) { return !/\bFone\s*:|E-mail\s*:/i.test(l); }).join(' ').replace(/\s+/g, ' ').normalize('NFC');
+  var N = normIdx(t), nn = normIdx(nome).replace(/\s+/g, ' ').trim();
+  var toks = function (x) { return normIdx(x).split(/[^a-z]+/).filter(function (w) { return w.length >= 3 && !/^(?:das?|dos?|del|von|van)$/.test(w); }); };
+  var meus = toks(nome), nomes = [], rots = [], seg = [], duv = [], fora = 0, m, p;
+  var rr = new RegExp(RE_ROTULO_PARTE.source, 'g');
+  while ((m = rr.exec(N))) { rots.push({ i: m.index, fim: m.index + m[0].length }); }
+  if (nn.length >= 5) {
+    p = N.indexOf(nn);
+    while (p >= 0) {
+      var a = p > 0 ? N.charAt(p - 1) : ' ', z = N.charAt(p + nn.length) || ' ';
+      /* "MARIA SOUZA" não vale dentro de "MARIA SOUZA LIMA" nem de "ANA MARIA SOUZA": o nome tem de começar e terminar ali */
+      var dep = /^\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{2,})(?![A-Za-zÀ-ÿ0-9])/.exec(t.slice(p + nn.length)), ant = /([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{2,})\s+$/.exec(t.slice(Math.max(0, p - 40), p));
+      var contNome = function (x) { return !!x && !/^(?:cpf|cnpj|rg|ssp|oab|mp|pr|sp|cep|ddd|ltda|epp)$/.test(norm(x[1])); };
+      /* o nome só vale como dono se vier logo depois de um rótulo de parte ("Parte:", "Promovido:", "nº MP") ou de "intimar/citar/da parte" */
+      var temRot = rots.some(function (r) { return r.fim <= p && p - r.fim <= 30; }) || /(?:\bda parte|\bintimar|\bcitar|\bnotificar|\bintimacao de|\bcitacao de|\bnotificacao de)\s*$/.test(N.slice(Math.max(0, p - 25), p));
+      if (temRot && !/[a-z0-9]/.test(a) && !/[a-z0-9]/.test(z) && !contNome(dep) && !contNome(ant)) { nomes.push(p + nn.length); }
+      p = N.indexOf(nn, p + 1);
+    }
+  }
+  var re = /telefones?(?:\(s\))?\s*:?\s*((?:[\d()\s.\-\/;,]|\be\b|\bou\b){8,90})/gi;
+  while ((m = re.exec(t))) {
+    var ini = m.index, ult = -1, dono = 'incerto';
+    nomes.forEach(function (e) { if (e <= ini && ini - e <= 500 && e > ult) { ult = e; } });
+    if (ult >= 0 && !rots.some(function (r) { return r.i >= ult && r.i < ini; })) { dono = 'destinatario'; }
+    else {
+      var rl = null;
+      rots.forEach(function (r) { if (r.i < ini && ini - r.i <= 500 && (!rl || r.i > rl.i)) { rl = r; } });
+      if (rl) {
+        /* a parte que o rótulo anuncia ("Requerente: JOÃO …") é outra pessoa, a não ser que o nome seja parecido (mesmo primeiro nome e mais um nome igual); família com o mesmo sobrenome não conta */
+        var seu = toks(N.slice(rl.fim, Math.min(ini, rl.fim + 90)).split(/[,(;:]| telefone| endereco| cpf| rg /)[0]);
+        var comuns = meus.filter(function (w) { return seu.indexOf(w) !== -1; }).length;
+        dono = (meus.length && seu.indexOf(meus[0]) !== -1 && comuns >= Math.min(2, meus.length)) ? 'incerto' : 'outro';
+      }
+    }
+    m[1].split(/\s*(?:[\/;,]|\be\b|\bou\b)\s*/).forEach(function (tok) {
+      tok = tok.trim().replace(/[\s.,;]+$/, '');
+      if (tok.replace(/\D/g, '').length >= 8 && normPhone(tok).ok) {
+        if (dono === 'destinatario') { seg.push(tok); } else if (dono === 'incerto') { duv.push(tok); } else { fora++; }
+      }
+    });
+  }
+  var ks = mergePhones([], seg);
+  return { seguros: ks, duvidosos: mergePhones([], duv).filter(function (d) { return mergePhones(ks, [d]).length > ks.length; }), descartados: fora };
+}
+/* O número que vai receber a mensagem pertence mesmo a este destinatário (e não só ao processo)? */
+function telDoDestinatario(it, tel) {
+  var w = normPhone(tel).wa;
+  if (!it || !w) { return false; }
+  return telefonesUnicos((it.telefones || []).concat(it.telDilig || [])).some(function (u) { return u.n.ok && u.n.wa === w; });
 }
 function classificarLocal(l, txt, regras) {
   var n = norm(txt || '');
@@ -3443,10 +3576,11 @@ function parteLocal(parte, fala, it, ctx) {
     h += '<p class="addr">' + esc(i.endereco) + (i.bairro ? ', ' + esc(i.bairro) : '') + '</p>' + tel;
     if (i.status === 'pendente') { h += '<label class="custas">Custas (R$) <input type="text" inputmode="decimal" data-custas="1" value="' + esc(custasCard(i)) + '" placeholder="sem custas" aria-label="Custas em reais" autocomplete="off"></label>'; }
     if (flags.length) { h += '<div class="flags">' + flags.map(function (f) { var cls = 'flag' + (f[1] === 'ok' ? ' okf' : (f[1] ? ' stop' : '')); return f[2] === 'aud' ? '<button class="' + cls + ' flagbtn" data-act="audinfo" aria-label="De onde veio a data da audiência">' + esc(f[0]) + ' ⓘ</button>' : '<span class="' + cls + '">' + esc(f[0]) + '</span>'; }).join('') + '</div>'; }
+    h += telCandHtml(i);
     if (i.status === 'pendente') {
       var temNum = onlinePossivel(i), loc = etipo(i) === 'local', onl = '', onb = '';
       var temNumero = telefonesUnicos(i.telefones).some(function (u) { return u.n.ok; }) || !!temDil;
-      if (temNum && temNumero) { onl += selParte('on'); }
+      if (temNum && temNumero) { onl += '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="on" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="on" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('on') + '</div>'; }
       if (phones) { onl += '<div class="phones">' + phones + '</div>'; }
       if (temNumero) {
         if (i.cls === 'enviar' || temDil) { onb += (mr.n ? '<button class="btn small ghost" data-act="unsent">Desfazer envio</button>' : '') + '<button class="btn small" data-act="watry">WhatsApp não deu certo</button>'; }
@@ -3456,9 +3590,9 @@ function parteLocal(parte, fala, it, ctx) {
       } else {
         onb += '<button class="btn small primary" data-act="teldil">Inserir WhatsApp</button>';
       }
-      h += '<div class="grp on"><p class="grp-t">On-line (WhatsApp)</p>' + onl + '<div class="actions">' + onb + '</div></div>';
+      h += '<div class="grp on"><p class="grp-t">WhatsApp</p>' + onl + '<div class="actions">' + onb + '</div></div>';
       if (loc) {
-        h += '<div class="grp fis"><p class="grp-t">Física (no endereço)</p>' + selParte('fis') + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + '<button class="btn small" data-act="fisica">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint">Certidão física (print)</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
+        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="fis" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="fis" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + '<button class="btn small" data-act="fisica">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint">Certidão física (print)</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
       }
       var cb = '<button class="btn small' + (pronto(i) ? ' primary' : '') + '" data-act="cert">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button><button class="btn small" data-act="externo">Certificada em outro meio (sem PDF)</button><button class="btn small ghost" data-act="atotipo">Trocar o tipo do ato</button>';
       cb = '<button class="btn small primary wide" data-act="certia">Certificar por voz</button>' + cb;
@@ -3861,6 +3995,7 @@ function parteLocal(parte, fala, it, ctx) {
     if (wa) {
       var wc = e.target.closest('.card');
       var wit = wc ? byId(wc.getAttribute('data-id')) : null;
+      if (wit && !telDoDestinatario(wit, wa.getAttribute('data-tel'))) { if (e.preventDefault) { e.preventDefault(); } toast('Esse número não está confirmado para ' + wit.nome + '. Não enviei.'); return; }
       if (wit) {
         if (wit.cls === 'nao_enviar' && !wa.getAttribute('data-an')) { wit.motivoOrig = wit.motivo || ''; wit.cls = 'enviar'; wit.motivo = ''; wit.manual = true; }
         registrarEnvio(wit, wa.getAttribute('data-tel'), wa.getAttribute('data-an') ? 'analise' : 'link'); setTimeout(render, 600);
@@ -3912,8 +4047,22 @@ function parteLocal(parte, fala, it, ctx) {
     else if (act === 'visdel') { if (it.visitas && it.visitas.length) { it.visitas.pop(); save(); render(); toast('Última visita desfeita.'); } }
     else if (act === 'visfim') { fecharVisitas(it); }
     else if (act === 'teldil') { abrirTelDil(it); }
+    else if (act === 'telconf') {
+      var tc = b.getAttribute('data-tel');
+      if (window.confirm && !window.confirm('Confirma que o número ' + tc + ' é de ' + it.nome + ', o destinatário deste mandado? Se for do requerente, de advogado ou de outra pessoa, toque em Cancelar.')) { return; }
+      it.telefones = mergePhones(it.telefones || [], [tc]);
+      it.telCandidatos = (it.telCandidatos || []).filter(function (x) { return normPhone(x).wa !== normPhone(tc).wa; });
+      it.telConfirmados = (it.telConfirmados || []).concat([tc]);
+      save(); render(); toast('Número confirmado para ' + it.nome + '.');
+    }
+    else if (act === 'telnao') {
+      var tn = b.getAttribute('data-tel');
+      it.telCandidatos = (it.telCandidatos || []).filter(function (x) { return normPhone(x).wa !== normPhone(tn).wa; });
+      save(); render(); toast('Número descartado.');
+    }
     else if (act === 'auto') { abrirAuto(it); }
     else if (act === 'atotipo') { abrirTipoAto(it); }
+    else if (act === 'resp') { abrirResposta(it, b.getAttribute('data-p'), b.getAttribute('data-t')); }
     else if (act === 'viewcert') { viewCert(it); }
     else if (act === 'ver') { viewMandado(it); }
     else if (act === 'share') { shareMandado(it); }
@@ -3965,7 +4114,7 @@ function parteLocal(parte, fala, it, ctx) {
     var u = it ? numerosSeq(it).filter(function (x) { return x.n.wa === wa; })[0] : null;
     return { id: id, wa: wa, it: it, u: u };
   }
-  function seqGuarda() { state.seqAtiva = seq ? { ents: seq.ents, t0: seq.t0, pul: seq.pul, modo: seqModo } : null; save(); }
+  function seqGuarda() { state.seqAtiva = seq ? { ents: seq.ents, t0: seq.t0, pul: seq.pul, modo: seqModo, atual: seq.ents[seq.k], semz: seq.semz || [] } : null; save(); }
   function seqOpcoes() {
     var verdes = [], jaMsg = [], extras = [], semZap = 0;
     ordemVisivel.forEach(function (id) {
@@ -4040,7 +4189,7 @@ function parteLocal(parte, fala, it, ctx) {
     var n = seq.ents.length, pct = Math.round(seq.k / n * 100), jaReg = !!seq.reg[key], rsm = resumoAto(it), vcu = varaCurta(it.vara);
     var doMesmo = seq.ents.filter(function (x) { return x.slice(0, x.indexOf('|')) === it.id; }), pos = doMesmo.indexOf(key) + 1;
     var link = 'https://wa.me/' + u.n.wa + '?text=' + encodeURIComponent(message(it.nome));
-    var jaNum = recebeuNum(it, u) && !jaReg;
+    var jaNum = recebeuNum(it, u) && !jaReg, jaSz = (seq.semz || []).indexOf(key) !== -1;
     document.getElementById('mbody').innerHTML =
       '<div class="seqbar"><div style="width:' + pct + '%"></div></div>' +
       '<p class="note">' + (seq.k + 1) + ' de ' + n + (seq.feitos ? ' · ' + seq.feitos + (seq.feitos === 1 ? ' aberta' : ' abertas') : '') + (doMesmo.length > 1 ? ' · número ' + pos + ' de ' + doMesmo.length + ' desta pessoa' : '') + '</p>' +
@@ -4049,9 +4198,10 @@ function parteLocal(parte, fala, it, ctx) {
       (it.cls !== 'enviar' ? '<p class="stopnote">Este está marcado como ' + (it.cls === 'nao_enviar' ? 'NÃO enviar' : 'em dúvida') + (it.motivo ? ' (' + esc(it.motivo) + ')' : '') + '. Ao tocar no WhatsApp, passa a “pode enviar”.</p>' : '') +
       (jaNum ? '<p class="note">Este número já recebeu mensagem. Tocar registra mais uma tentativa.</p>' : '') +
       '<a class="btn primary seqgo" data-sqgo="1" data-tel="' + esc(u.n.label) + '" href="' + link + '">' + (jaReg ? 'Abrir de novo' : 'Abrir WhatsApp') + ': ' + esc(u.n.label) + (u.n.fixo ? ' (fixo)' : '') + '</a>' +
-      (jaReg ? '<p class="note">Já registrado como enviado. <button class="btn small ghost" data-sq="desf">Não enviei: desfazer</button></p>' : '') +
-      '<div class="actions"><button class="btn" data-sq="prev"' + (seq.k ? '' : ' disabled') + '>Voltar</button><button class="btn" data-sq="skip">Pular</button></div>' +
-      (seqModo ? '' : '<div class="actions"><button class="btn" data-sq="semzap">Telefone sem WhatsApp</button></div>') +
+      (jaReg ? '<p class="note">Já registrado como enviado. <button class="btn small ghost" data-sq="desf" data-key="' + esc(key) + '">Não enviei: desfazer</button></p><div class="actions"><button class="btn primary" data-sq="next" data-key="' + esc(key) + '">Mensagem enviada — Próximo destinatário</button></div>' : '') +
+      (jaSz ? '<p class="note"><strong>Registrado: este número não tem WhatsApp.</strong> A fila só segue quando você tocar em “Próximo destinatário”.</p><div class="actions"><button class="btn primary" data-sq="next" data-key="' + esc(key) + '">Próximo destinatário</button></div>' : '') +
+      '<div class="actions"><button class="btn" data-sq="prev"' + (seq.k ? '' : ' disabled') + '>Voltar</button><button class="btn" data-sq="skip" data-key="' + esc(key) + '">Pular</button></div>' +
+      (seqModo || jaSz ? '' : '<div class="actions"><button class="btn" data-sq="semzap" data-key="' + esc(key) + '">Telefone sem WhatsApp</button></div>') +
       '<div class="actions"><button class="btn ghost" data-sq="stop">Parar aqui</button></div>';
     document.getElementById('mbody').onclick = seqClique;
     document.getElementById('mbody').onchange = null;
@@ -4066,7 +4216,7 @@ function parteLocal(parte, fala, it, ctx) {
     var certSz = [];
     (s2.semz || []).forEach(function (k) { var id = k.slice(0, k.indexOf('|')), i = byId(id); if (i && i.status === 'pendente' && certSz.indexOf(id) === -1 && numerosSeq(i).length && numerosSeq(i).every(function (u) { return (i.semZap || []).indexOf(u.n.wa) !== -1; })) { certSz.push(id); } });
     if (certSz.length) {
-      document.getElementById('mbody').innerHTML = document.getElementById('mbody').innerHTML + '<p class="note"><strong>Telefone sem WhatsApp:</strong> toque para certificar (parte on-line negativa, “o número não possui WhatsApp”).</p><div class="actions" style="grid-template-columns:1fr">' + certSz.map(function (id) { return '<button class="btn" data-szcert="' + esc(id) + '">' + esc(byId(id).nome) + '</button>'; }).join('') + '</div>';
+      document.getElementById('mbody').innerHTML = document.getElementById('mbody').innerHTML + '<p class="note"><strong>Telefone sem WhatsApp:</strong> toque para certificar (parte on-line negativa, “o número não possui WhatsApp”).</p><div class="actions" style="display:grid;grid-template-columns:1fr">' + certSz.map(function (id) { return '<button class="btn" data-szcert="' + esc(id) + '">' + esc(byId(id).nome) + '</button>'; }).join('') + '</div>';
     }
     document.getElementById('sqFim').onclick = function () { closeModal(); };
     document.getElementById('mbody').onclick = certSz.length ? function (e) { var b = e.target.closest ? e.target.closest('[data-szcert]') : null; if (b) { var iz = byId(b.getAttribute('data-szcert')); if (iz) { iz.tentativas = (iz.tentativas || []).concat([{ t: Date.now(), motivo: 'sem WhatsApp' }]); save(); abrirParte(iz, 'on', 'neg'); } } } : null;
@@ -4079,22 +4229,29 @@ function parteLocal(parte, fala, it, ctx) {
       var go = e.target.closest ? e.target.closest('[data-sqgo]') : null;
       if (go) {
         var key = seq.ents[seq.k], inf = entInfo(key), it = inf.it;
+        if (it && !telDoDestinatario(it, go.getAttribute('data-tel'))) { if (e.preventDefault) { e.preventDefault(); } toast('Esse número não está confirmado para ' + it.nome + '. Não enviei.'); return; }
         if (it && !seq.reg[key]) {
           if (it.cls !== 'enviar') { it.motivoOrig = it.motivo || ''; it.cls = 'enviar'; it.motivo = ''; it.manual = true; }
-          registrarEnvio(it, go.getAttribute('data-tel'), 'link'); seq.reg[key] = true; seq.feitos++;
+          registrarEnvio(it, go.getAttribute('data-tel'), 'link'); seq.reg[key] = true; seq.feitos++; seqGuarda();
         }
-        setTimeout(function () { if (seq && seq.ents[seq.k] === key) { seq.k++; seqGuarda(); seqMostra(); } }, 450);
+        /* só redesenha esta mesma tela (mostra “Mensagem enviada — Próximo destinatário”); NÃO avança */
+        setTimeout(function () { if (seq && seq.ents[seq.k] === key) { seqMostra(); } }, 450);
         return;
       }
       var b = e.target.closest ? e.target.closest('[data-sq]') : null;
       if (!b || b.disabled) { return; }
-      var a = b.getAttribute('data-sq');
+      var a = b.getAttribute('data-sq'), bkey = b.getAttribute('data-key');
+      if (bkey && bkey !== seq.ents[seq.k]) { seqMostra(); return; }   /* a tela estava velha: não registra em outro destinatário */
       if (a === 'semzap') {
         var kz = seq.ents[seq.k], iz = entInfo(kz);
-        if (iz.it && iz.u) { iz.it.semZap = (iz.it.semZap || []).filter(function (w) { return w !== iz.wa; }).concat([iz.wa]); seq.semz = (seq.semz || []).concat([kz]); save(); }
-        seq.k++; seqGuarda(); seqMostra(); return;
+        if (iz.it && iz.u) {
+          iz.it.semZap = (iz.it.semZap || []).filter(function (w) { return w !== iz.wa; }).concat([iz.wa]);
+          seq.semz = (seq.semz || []).filter(function (x) { return x !== kz; }).concat([kz]); save(); seqGuarda();
+        }
+        seqMostra(); return;   /* registra e fica nesta tela; quem avança é o botão “Próximo destinatário” */
       }
-      if (a === 'skip') { var pk = seq.ents[seq.k]; if (pk) { seq.pul.push(pk); } seq.pulados++; seq.k++; seqGuarda(); seqMostra(); }
+      if (a === 'next') { seq.k++; seqGuarda(); seqMostra(); }
+      else if (a === 'skip') { var pk = seq.ents[seq.k]; if (pk && !seq.reg[pk] && (seq.semz || []).indexOf(pk) === -1) { seq.pul.push(pk); seq.pulados++; } seq.k++; seqGuarda(); seqMostra(); }
       else if (a === 'prev') { if (seq.k > 0) { seq.k--; seqMostra(); } }
       else if (a === 'stop') { seqFim(true); }
       else if (a === 'desf') {
@@ -4113,17 +4270,20 @@ function parteLocal(parte, fala, it, ctx) {
     var sa = state.seqAtiva;
     if (!sa || !sa.ents) { return; }
     if (Date.now() - sa.t0 > 12 * 3600000) { state.seqAtiva = null; save(); return; }
-    var pul = sa.pul || [], feitos = 0;
+    var pul = sa.pul || [], feitos = 0, semz = sa.semz || [], atual = sa.atual;
     var rest = sa.ents.filter(function (key) {
       var inf = entInfo(key), i = inf.it;
       if (!i || i.status !== 'pendente' || !inf.u) { return false; }
       var enviou = (i.msgs || []).some(function (m) { return m.kind !== 'analise' && m.t >= sa.t0 && normPhone(m.tel).wa === inf.wa; });
+      if (key === atual) { if (enviou) { feitos++; } return pul.indexOf(key) < 0; }   /* o destinatário em que parou continua na tela, mesmo já registrado */
       if (enviou) { feitos++; return false; }
+      if (semz.indexOf(key) >= 0) { return false; }
       return pul.indexOf(key) < 0;
     });
     if (!rest.length) { state.seqAtiva = null; save(); return; }
     seqModo = sa.modo === 'segunda' ? 'segunda' : '';
-    seq = { ents: rest, k: 0, feitos: feitos, pulados: pul.length, reg: {}, t0: sa.t0, pul: pul };
+    seq = { ents: rest, k: Math.max(0, rest.indexOf(atual)), feitos: feitos, pulados: pul.length, reg: {}, t0: sa.t0, pul: pul, semz: semz.filter(function (x) { return rest.indexOf(x) >= 0; }) };
+    if (atual && rest.indexOf(atual) >= 0) { var infA = entInfo(atual); if (infA.it && (infA.it.msgs || []).some(function (m) { return m.kind !== 'analise' && m.t >= sa.t0 && normPhone(m.tel).wa === infA.wa; })) { seq.reg[atual] = true; } }
     openModal(seqModo ? '2ª mensagem em sequência' : 'Citações/intimações em sequência', '');
     seqMostra();
     toast('Continuando a fila de onde parou.');
@@ -4487,9 +4647,11 @@ function parteLocal(parte, fala, it, ctx) {
       if (l.cidade) { mm.cidade = l.cidade; }
       if (l.cep) { mm.cep = l.cep; }
       var txtM = x.pags.map(function (i) { return pages[i].text; }).join('\n');
-      mm.telefones = mergePhones(mergePhones(mm.telefones, l.telefones), parseTelefonesTexto(txtM));
+      var tpd = telefonesDaParte(txtM, mm.nome);
+      mm.telefones = mergePhones(mergePhones(mm.telefones, l.telefones), tpd.seguros);
       var telEnd = telefonesDoEndereco(mm.endereco);
       if (telEnd.length) { mm.telefones = mergePhones(mm.telefones, telEnd); mm.endereco = limpaEndereco(mm.endereco, telEnd); }
+      mm.telCandidatos = tpd.duvidosos.filter(function (d) { return mergePhones(mm.telefones, [d]).length > mm.telefones.length; });
       mm.paginas = x.pags.map(function (i) { return pages[i].n; });
       mm.paginas_contrafe = [pages[x.cf].n];
       mm.texto = txtM;
@@ -4499,6 +4661,7 @@ function parteLocal(parte, fala, it, ctx) {
       }
       if (l.urgente && !/urgente/i.test(mm.aviso || '')) { mm.aviso = (mm.aviso ? mm.aviso + ' | ' : '') + l.urgente; }
       var it = toItem(mm, fileId);
+      if (mm.telCandidatos && mm.telCandidatos.length) { it.telCandidatos = mm.telCandidatos; }
       var sc2 = safeClass(Object.assign({}, mm, { tipo: (mm.tipo || '') + ' ' + (l.tipo || '') }), regras());
       it.cls = sc2.cls; it.motivo = sc2.motivo;
       var rTxt = acharRegra(Object.assign({}, mm, { tipo: (mm.tipo || '') + ' ' + (l.tipo || '') }), regras().filter(function (r) { return r.onde === 'txt'; }));
@@ -5149,7 +5312,7 @@ function parteLocal(parte, fala, it, ctx) {
     if (!nums.length) { toast('Este mandado não tem número de WhatsApp'); return; }
     openModal('Documentos em análise',
       '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha o número que vai receber o aviso de que os documentos estão em análise. Isso não conta como a mensagem de citação ou intimação.</p>' +
-      '<div class="actions" style="grid-template-columns:1fr">' + nums.map(function (u, k) {
+      '<div class="actions" style="display:grid;grid-template-columns:1fr">' + nums.map(function (u, k) {
         return '<a class="btn wa ghost" id="an' + k + '" data-tel="' + esc(u.n.label) + '" href="https://wa.me/' + u.n.wa + '?text=' + encodeURIComponent(msgAnalise(it.nome)) + '">' + esc(u.n.label) + (u.n.fixo ? ' (fixo)' : '') + '</a>';
       }).join('') + '</div><div class="actions"><button class="btn ghost" id="anNo">Voltar</button></div>');
     nums.forEach(function (u, k) { document.getElementById('an' + k).onclick = function () { registrarEnvio(it, u.n.label, 'analise'); setTimeout(render, 600); }; });
@@ -6151,12 +6314,40 @@ function parteLocal(parte, fala, it, ctx) {
     save(); render();
     toast('Voltou para a lista de pendentes, na aba Mandados.');
   }
+  /* Negativo / Positivo (WhatsApp ou presencial): abre a lista de certidões daquele tipo */
+  function opcoesResposta(parte, tipo) {
+    var pos = parte === 'on' ? 'pos' : 'pospres', base = parte === 'on' ? OPC_ONLINE : OPC_FISICA;
+    var l = base.filter(function (o) { return (o[0] === pos) === (tipo === 'pos'); }).map(function (o) { return [o[0], o[1]]; });
+    modelos().filter(function (m) { return m.onde === parte && ((m.tipo === 'positiva') === (tipo === 'pos')); }).forEach(function (m) { l.push(['m:' + m.id, m.nome]); });
+    return l;
+  }
+  function abrirResposta(it, parte, tipo) {
+    var l = opcoesResposta(parte, tipo);
+    openModal((parte === 'on' ? 'WhatsApp' : 'Presencial') + ': ' + (tipo === 'pos' ? 'positivo' : 'negativo'),
+      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha a certidão:</p><div class="actions" style="display:grid;grid-template-columns:1fr">' +
+      l.map(function (o) { return '<button class="btn ' + (tipo === 'pos' ? 'okb' : 'negb') + '" data-op="' + esc(o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '<button class="btn ghost" data-op="__x">Cancelar</button></div>');
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-op]') : null;
+      if (!b) { return; }
+      var v = b.getAttribute('data-op');
+      if (v === '__x') { closeModal(); return; }
+      abrirParte(it, parte, v);
+    };
+  }
+  /* Telefone achado no mandado sem ligação clara com o destinatário: só entra depois da confirmação manual */
+  function telCandHtml(i) {
+    if (i.status !== 'pendente' || !(i.telCandidatos || []).length) { return ''; }
+    var lst = i.telCandidatos.filter(function (t) { return mergePhones(i.telefones || [], [t]).length > (i.telefones || []).length; });
+    if (!lst.length) { return ''; }
+    return '<div class="stopnote" style="grid-column:1/-1">Achei telefone no mandado que não consegui ligar a <strong>' + esc(i.nome) + '</strong> (pode ser do requerente, de advogado ou de outra pessoa). <strong>Ele não entra no WhatsApp</strong> até você confirmar.' +
+      lst.map(function (t) { return '<div class="actions"><button class="btn small" data-act="telconf" data-tel="' + esc(t) + '">É do(a) destinatário(a): ' + esc(t) + '</button><button class="btn small ghost" data-act="telnao" data-tel="' + esc(t) + '">Descartar</button></div>'; }).join('') + '</div>';
+  }
   /* Trocar o tipo do ato: quando a leitura errar, o oficial escolhe e a certidão e o auto seguem a escolha */
   var TIPOS_ATO = [['Citação e Intimação', 'Citar/intimar (comum)'], ['Citação', 'Citar'], ['Intimação', 'Intimar'], ['Penhora', 'Penhorar'], ['Remoção', 'Remover'], ['Avaliação', 'Avaliar'], ['Penhora e Avaliação', 'Penhorar e avaliar'], ['Remoção e Avaliação', 'Remover e avaliar'], ['Penhora, Remoção e Avaliação', 'Penhorar, remover e avaliar']];
   function abrirTipoAto(it) {
     openModal('Tipo do ato',
       '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Agora: <strong>' + esc(it.tipo || '(sem tipo)') + '</strong>. Escolha o que o mandado manda fazer. Para <strong>penhora, remoção ou avaliação</strong> como objeto principal, a certidão sai “deixei de penhorar/remover o bem indicado” e o auto vem junto. Se for citar/intimar e só depois penhorar, deixe como citação/intimação.</p>' +
-      '<div class="actions" style="grid-template-columns:1fr">' + TIPOS_ATO.map(function (t, k) { return '<button class="btn" data-ato="' + k + '">' + esc(t[1]) + '</button>'; }).join('') + (it.tipoOrig ? '<button class="btn ghost" data-ato="orig">Voltar ao original: ' + esc(it.tipoOrig) + '</button>' : '') + '<button class="btn ghost" data-ato="nao">Cancelar</button></div>');
+      '<div class="actions" style="display:grid;grid-template-columns:1fr">' + TIPOS_ATO.map(function (t, k) { return '<button class="btn" data-ato="' + k + '">' + esc(t[1]) + '</button>'; }).join('') + (it.tipoOrig ? '<button class="btn ghost" data-ato="orig">Voltar ao original: ' + esc(it.tipoOrig) + '</button>' : '') + '<button class="btn ghost" data-ato="nao">Cancelar</button></div>');
     document.getElementById('mbody').onclick = function (e) {
       var b = e.target.closest ? e.target.closest('[data-ato]') : null;
       if (!b) { return; }
