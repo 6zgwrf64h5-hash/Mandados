@@ -539,6 +539,14 @@ header h1 { font-size: 26px; }
 .card .topico { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: 2px 0 6px; }
 .card .topico .btn { flex: 0 0 auto; min-height: 44px; height: 44px; }
 .card .topico .btn.iconbtn { min-width: 54px; }
+
+/* ===== par único Negativo | Positivo (com o ícone do WhatsApp no canto do Positivo) ===== */
+.card .grp.cert2 { padding: 6px; }
+.rpos { display: flex; min-width: 0; }
+.rpos .rbtn.pos { flex: 1 1 auto; min-width: 0; }
+.rpos .rbtn.pos:not(:only-child) { border-radius: 14px 0 0 14px; }
+.rpos .rbtn.rwa { flex: 0 0 56px; background: #25D366; border-radius: 0 14px 14px 0; border-left: 2px solid rgba(255, 255, 255, 0.55); padding: 0; }
+.rpos .rbtn.rwa .wai { width: 28px; height: 28px; }
 </style>
 </head>
 <body>
@@ -2821,7 +2829,7 @@ function iaUsuarioAjuste(d) {
   function transporte() { return state.cfg.transporte != null && state.cfg.transporte !== '' ? parseValor(state.cfg.transporte) : 40; }
   function custasPadraoTxt(i) { return isentoIt(i) ? '' : ((state.me && state.me.diligencia) || '108,63'); }
   function custasCard(i) { return i.custasCard != null ? String(i.custasCard) : custasPadraoTxt(i); }
-  function partesNec(i) { return { fis: etipo(i) === 'local', on: onlinePossivel(i) }; }
+  function partesNec(i) { return { fis: etipo(i) === 'local', on: onlinePossivel(i) && !i.semOnline }; }
   function modelos() { return state.cfg.modelos || []; }
   function modeloPorId(v) { var id = String(v || '').replace(/^m:/, ''); return modelos().filter(function (m) { return m.id === id; })[0] || null; }
   var ONDE_TXT = { fis: 'Lista da certidão física', on: 'Lista da certidão on-line', inteira: 'Certificar (certidão inteira)' };
@@ -3910,7 +3918,7 @@ function iaUsuarioAjuste(d) {
     if (i.status === 'pendente') {
       var temNum = onlinePossivel(i), loc = etipo(i) === 'local', onl = '', onb = '';
       var temNumero = telefonesUnicos(i.telefones).some(function (u) { return u.n.ok; }) || !!temDil;
-      var onlResp = ''; if (temNum && temNumero) { onlResp = '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="on" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="on" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('on') + '</div>'; }
+      var temOn2 = temNum && temNumero, parPrin = loc ? 'fis' : (temOn2 ? 'on' : ''), onlResp = ''; if (temOn2) { onlResp = '<div class="selhid">' + selParte('on') + '</div>'; }
       if (phones) { onl += '<div class="phones">' + phones + '</div>'; }
       onl += onlResp;
       if (temNumero) {
@@ -3919,8 +3927,9 @@ function iaUsuarioAjuste(d) {
         onb += '<button class="btn small primary" data-act="teldil">Inserir WhatsApp</button>';
       }
       h += '<div class="grp on"><p class="grp-t">WhatsApp Virtual</p>' + onl + '<div class="actions">' + onb + (iaAtiva() ? iaBtnHtml('on') : '') + '</div></div>';
+      if (parPrin) { h += '<div class="grp cert2"><div class="resp"><button class="rbtn neg" data-act="resp" data-p="' + parPrin + '" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><div class="rpos"><button class="rbtn pos" data-act="resp" data-p="' + parPrin + '" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button>' + (loc && temOn2 ? '<button class="rbtn rwa" data-act="resp" data-p="on" data-t="pos" aria-label="Positivo virtual (WhatsApp)" title="Positivo virtual (WhatsApp)"><span class="wai" aria-hidden="true"></span></button>' : '') + '</div></div></div>'; }
       if (loc) {
-        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="fis" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="fis" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + (iaAtiva() ? iaBtnHtml('fis') : '') + '</div></div>';
+        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + (iaAtiva() ? iaBtnHtml('fis') : '') + '</div></div>';
       }
       if (!((temNum && temNumero) || loc)) { h += '<div class="grp cer"><div class="actions"><button class="btn small primary wide" data-act="certmenu">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button></div></div>'; }
       var man = '';
@@ -4350,15 +4359,15 @@ function iaUsuarioAjuste(d) {
       toast('Marcado: mensagem enviada. Lembro de repetir em 24 h.', function () { it.msgs.pop(); save(); render(); });
     } else if (act === 'unsent') { it.msgs = (it.msgs || []).slice(0, -1); save(); render(); toast('Envio desfeito'); }
     else if (act === 'cert') { openCert(it); }
-    else if (act === 'fisica') { openFisica(it); }
+    else if (act === 'fisica') { tirarFoto(it); }
     else if (act === 'externo') { abrirExterno(it); }
-    else if (act === 'fisicaprint') { openFisica(it, 'print'); }
+    else if (act === 'fisicaprint') { abrirGaleria(it); }
     else if (act === 'fisneg') { abrirFisNeg(it); }
     else if (act === 'certia') { openVoz(it); }
     else if (act === 'audinfo') { abrirAudInfo(it); }
     else if (act === 'analise') { abrirAnalise(it); }
     else if (act === 'partesjuntar') { abrirFinal(it); }
-    else if (act === 'partesundo') { it.partes = null; save(); render(); toast('As partes foram desfeitas.'); }
+    else if (act === 'partesundo') { it.partes = null; delete it.semOnline; save(); render(); toast('As partes foram desfeitas.'); }
     else if (false && (act === 'prioini' || act === 'priofim' || act === 'prionormal' || act === 'prioauto')) {
       if (act === 'prioauto') { delete it.prio; } else { it.prio = act === 'prioini' ? 'inicio' : (act === 'priofim' ? 'fim' : 'normal'); }
       save(); render(); toast(act === 'prioini' ? 'A rota começa por este mandado.' : (act === 'priofim' ? 'Este mandado fica por último na rota.' : (act === 'prionormal' ? 'Não conta mais como prioridade.' : 'Prioridade automática.')));
@@ -5532,7 +5541,8 @@ function iaUsuarioAjuste(d) {
     var diaCont = ult ? dayKey(ult.t) : '';
     var oficial = state.me && state.me.nome ? state.me.nome : '';
     var dilIni = custasCard(it);
-    var prints = [], tipoCert = 'negativa';
+    var prints = (printsPend.id === it.id && Date.now() - (printsPend.t || 0) < 1800000) ? printsPend.imgs.slice() : [], tipoCert = 'negativa';
+    if (printsPend.id === it.id) { printsPend = { id: '', imgs: [], t: 0 }; }
     openModal('Certidão por voz',
       '<div class="actions"><button class="btn small ghost" id="vzBack">Escolher um modelo</button></div>' +
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
@@ -5611,6 +5621,7 @@ function iaUsuarioAjuste(d) {
       $('vzThumbs').innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Anexo ' + (i + 1) + ' (toque para remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para remover.</p>' : '');
     }
     $('vzThumbs').addEventListener('click', function (e) { var im = e.target.closest('img'); if (!im) { return; } prints.splice(+im.getAttribute('data-i'), 1); drawThumbs(); });
+    if (prints.length) { drawThumbs(); }
     $('vzPrint').addEventListener('change', async function () {
       var files = Array.prototype.slice.call(this.files || []);
       this.value = '';
@@ -5857,6 +5868,20 @@ function iaUsuarioAjuste(d) {
     if (completoPartes(it)) { abrirFinal(it); }
     else { toast('Parte ' + (parte === 'fis' ? 'física' : 'on-line') + ' guardada. Falta a ' + (parte === 'fis' ? 'on-line' : 'física') + '.'); }
   }
+  /* Números que tiveram tentativa, com o dia e a hora da última (para a certidão “número a número”) */
+  function waNumerosTxt(it) {
+    var out = [], todos = [];
+    telefonesUnicos(it.telefones).forEach(function (u) {
+      if (!u.n.ok) { return; }
+      todos.push(u.n.label);
+      var inf = infoNumero(it, u.n);
+      if (!inf.envios && !inf.motivo) { return; }
+      var d = new Date(inf.ultimo || 0);
+      out.push(u.n.label + (inf.envios ? ' (em ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ', às ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ')' : ''));
+    });
+    if (!out.length) { out = todos; }
+    return out.length > 1 ? out.slice(0, -1).join(', ') + ' e ' + out[out.length - 1] : (out[0] || '');
+  }
   function abrirParte(it, parte, val) {
     var fis = parte === 'fis', lista = fis ? OPC_FISICA : OPC_ONLINE, tpl = String(val).indexOf('m:') === 0 ? modeloPorId(val) : null, rot = tpl ? [val, tpl.nome] : lista.filter(function (x) { return x[0] === val; })[0];
     if (!rot) { return; }
@@ -5865,11 +5890,12 @@ function iaUsuarioAjuste(d) {
     var mor = tpl ? /\{MORADOR\}/.test(tpl.texto) : fis && (val === 'mudou' || val === 'naoconhece'), par = !tpl && fis && val === 'mudou', vis = !tpl && fis && val === 'ninguem';
     var visIni = vis ? ((it.fisica && it.fisica.visitas && it.fisica.visitas.length) ? it.fisica.visitas : (it.visitas || []).map(fmtVisita)) : [];
     var outra = fis ? (it.partes || {}).on : (it.partes || {}).fis, oficial = state.me && state.me.nome ? state.me.nome : '';
+    var oiw = onlineInfo(it, Date.now()), waBox = fis && tipoParte() === 'negativa' && onlinePossivel(it) && !(it.partes || {}).on, waPadrao = oiw.n > 0 || (it.tentativas || []).length > 0;
     function $(id) { return document.getElementById(id); }
     openModal((fis ? 'Parte física: ' : 'Parte on-line: ') + (tpl ? tpl.nome : rot[1].replace(/ \(.*$/, '')),
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptPj" style="width:24px;height:24px"' + (ehEmpresaIt(it) ? ' checked' : '') + '> É empresa (tira o “Sr(a).” e adapta o texto)</label>' +
-      '<p class="note">Confira o texto desta parte. Depois de dar ok, ' + (outra ? 'a certidão inteira aparece para você conferir.' : (fis ? (onlinePossivel(it) ? 'falta só a parte on-line.' : 'a certidão inteira aparece para você conferir.') : (etipo(it) === 'local' ? 'falta só a parte física.' : 'a certidão inteira aparece para você conferir.'))) + '</p>' +
+      '<p class="note">Confira o texto desta parte. Depois de dar ok, ' + (outra ? 'a certidão inteira aparece para você conferir.' : (fis ? (onlinePossivel(it) && !waBox ? 'falta só a parte on-line.' : 'a certidão inteira aparece para você conferir.') : (etipo(it) === 'local' ? 'falta só a parte física.' : 'a certidão inteira aparece para você conferir.'))) + '</p>' +
       (mor ? '<label class="f" for="ptMor">Nome de quem informou (morador atual)</label><input type="text" id="ptMor" value="' + esc((it.fisica && it.fisica.morador) || '') + '" autocomplete="off">' : '') +
       (!tpl && fis && val === 'naoconhece' ? '<div id="ptEmpBox"' + (ehEmpresaIt(it) ? '' : ' hidden') + '><label class="f" for="ptEmpL">Empresa que está no local</label><input type="text" id="ptEmpL" placeholder="Nome da empresa que funciona no endereço" value="' + esc((it.fisica && it.fisica.empLocal) || '') + '" autocomplete="off"><p class="note">Em “Nome de quem informou”, escreva o colaborador que disse não conhecer a empresa do mandado.</p></div>' : '') +
       (par ? '<label class="f" for="ptPar">Quem é</label><select id="ptPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select><div id="ptOutBox" hidden><input type="text" id="ptOut" placeholder="Ex.: tio(a), avô(ó), sogro(a)" autocomplete="off"></div>' : '') +
@@ -5877,12 +5903,31 @@ function iaUsuarioAjuste(d) {
       ((!fis && val === 'pos') || (fis && val === 'pospres') || (tpl && /\{DATA\}/.test(tpl.texto)) ? '<label class="f" for="ptData">Dia ' + (fis ? 'da diligência' : 'do contato por WhatsApp') + '</label><input type="date" id="ptData" value="' + diaCont + '">' + (!fis && (val === 'pos' || (tpl && tpl.tipo === 'positiva')) ? '<p class="note">A frase “a identidade foi confirmada previamente” entra sempre na certidão por WhatsApp.</p>' : '') : '') +
       (!tpl && !fis && val === 'pos' && etipo(it) === 'local' ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptFis" style="width:24px;height:24px"' + ((it.fisica && it.fisica.feita) ? ' checked' : '') + '> Antes, fui ao endereço físico e não encontrei (isso entra no começo da certidão)</label>' : '') +
       (!tpl && !fis && val === 'neg' ? '<label class="f" for="ptJus">O que aconteceu na tentativa</label><select id="ptJus" class="sel"><option value="documento">A pessoa não apresentou documento</option><option value="inativo">O telefone está inativo</option><option value="semzap">O número não tem WhatsApp</option><option value="semretorno">Sem retorno até agora</option></select>' : '') +
+      (waBox ? '<div class="grp" id="ptWaBox"><label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptWa" style="width:26px;height:26px"' + (waPadrao ? ' checked' : '') + '> <span>Incluir na certidão o que aconteceu no WhatsApp</span></label>' +
+        '<div id="ptWaOp"><label class="f" for="ptWaModo">Como escrever</label><select id="ptWaModo" class="sel"><option value="geral">Resumo geral</option><option value="numeros">Número a número, com dia e hora</option></select>' +
+        '<label class="f" for="ptWaJus">O que aconteceu</label><select id="ptWaJus" class="sel"><option value="documento">A pessoa não apresentou documento</option><option value="inativo">O telefone está inativo</option><option value="semzap">O número não tem WhatsApp</option><option value="semretorno">Sem retorno até agora</option></select></div>' +
+        '<p class="note" id="ptWaNote"></p></div>' : '') +
       '<label class="f" for="ptTxt">Texto desta parte (pode editar)</label><textarea id="ptTxt" style="min-height:150px"></textarea>' +
       '<div class="actions"><button class="btn small ghost" id="ptRefaz">Refazer o texto com as opções</button></div>' + htmlEditarIA('pt') + htmlSalvarModelo('pt') +
       '<label class="f">Como fica a certidão até aqui</label><pre id="ptPrev" class="note" style="white-space:pre-wrap"></pre>' +
       '<div class="actions"><button class="btn primary" id="ptOk">Dar ok</button><button class="btn" id="ptNo">Voltar</button></div>');
     if (par) { $('ptPar').value = (it.fisica && it.fisica.paren) || 'atual'; }
     if (!fis && val === 'neg') { $('ptJus').value = justDaTentativa(it.tentativas); }
+    function waParte() {
+      if (!waBox || !$('ptWa') || !$('ptWa').checked) { return null; }
+      var d0 = { pj: !!$('ptPj').checked, tipo: it.tipo, nome: String(it.nome || '').toUpperCase(), just: $('ptWaJus').value, temFisica: true };
+      var tx = parteOnlineTexto('neg', d0);
+      if ($('ptWaModo').value === 'numeros') {
+        var lst = waNumerosTxt(it);
+        if (lst) { tx = /via whatsapp/i.test(tx) ? tx.replace(/via whatsapp/i, 'via whatsapp nos números ' + lst) : tx + ' Números: ' + lst + '.'; }
+      }
+      return { modelo: 'neg', texto: tx, tipo: 'negativa', dados: { just: d0.just, modo: $('ptWaModo').value } };
+    }
+    if (waBox) {
+      $('ptWaJus').value = justDaTentativa(it.tentativas);
+      $('ptWaNote').textContent = oiw.n === 0 ? 'Ainda não há tentativa registrada pelo WhatsApp. Se não houve, deixe desmarcado.' : (oiw.n === 1 ? 'Só 1 tentativa pelo WhatsApp até agora (o padrão é repetir depois de 24 h). Você pode certificar mesmo assim.' : (oiw.pronto ? 'Tentativas completas: 2 mensagens e mais de 48 h sem resposta.' : 'Faltam cerca de ' + Math.max(1, Math.ceil(oiw.faltam)) + ' h para completar as 2 tentativas + 48 h. Você pode certificar mesmo assim.'));
+      $('ptWaOp').hidden = !$('ptWa').checked;
+    }
     function dados() {
       var d = { pj: $('ptPj').checked, tipo: it.tipo, nome: String(it.nome || '').toUpperCase(), data: '', oficial: oficial };
       if (mor) { d.morador = $('ptMor').value.trim().toUpperCase(); }
@@ -5904,10 +5949,10 @@ function iaUsuarioAjuste(d) {
     }
     function previa() {
       var mine = { modelo: val, texto: $('ptTxt').value, tipo: tipoParte() };
-      var f = fis ? mine : (it.partes || {}).fis, o = fis ? (it.partes || {}).on : mine;
+      var f = fis ? mine : (it.partes || {}).fis, o = fis ? (waParte() || (it.partes || {}).on) : mine;
       $('ptPrev').textContent = montarCertidaoPartes(f, o, { oficial: oficial, diligencia: custasCard(it).replace(/[^\d.,]/g, '') });
     }
-    ['ptMor', 'ptPar', 'ptOut', 'ptVis', 'ptData', 'ptId', 'ptJus', 'ptFis', 'ptEmpL'].forEach(function (id) { var el = $(id); if (el) { el.addEventListener('input', function () { gerar(); }); el.addEventListener('change', function () { gerar(); }); } });
+    ['ptMor', 'ptPar', 'ptOut', 'ptVis', 'ptData', 'ptId', 'ptJus', 'ptFis', 'ptEmpL', 'ptWa', 'ptWaModo', 'ptWaJus'].forEach(function (id) { var el = $(id); if (el) { el.addEventListener('input', function () { gerar(); }); el.addEventListener('change', function () { gerar(); }); } });
     $('ptPj').addEventListener('change', function () { it.pj = this.checked; save(); gerar(true); });
     $('ptTxt').addEventListener('input', function () { editado = true; previa(); });
     $('ptRefaz').onclick = function () { gerar(true); toast('Texto refeito'); };
@@ -5918,6 +5963,7 @@ function iaUsuarioAjuste(d) {
       var d = dados();
       if (mor && !d.morador) { toast('Escreva o nome de quem informou'); return; }
       if (tpl && marcadoresDe($('ptTxt').value).length) { toast('Ainda há trechos entre chaves no texto. Troque pelo que for certo.'); return; }
+      var wp = waParte(); if (wp) { it.partes = it.partes || {}; it.partes.on = wp; delete it.semOnline; } else if (waBox) { it.semOnline = true; }
       guardarParte(it, parte, { modelo: val, texto: $('ptTxt').value, tipo: tipoParte(), dados: { morador: d.morador || '', empLocal: d.empLocal || '', paren: d.parOp || '', parenOut: d.parOut || '', visitas: d.visitas || [], data: hoje } });
     };
     gerar(true);
@@ -6086,10 +6132,92 @@ function iaUsuarioAjuste(d) {
   }
   /* Certidão física: foto do mandado com a diligência escrita à mão */
   async function identificarFoto(blob) { return null; }
-  function openFisica(it, modo) {
+  /* prints do comprovante do WhatsApp escolhidos na galeria: ficam só na memória, só deste mandado, até a certidão positiva abrir */
+  var printsPend = { id: '', imgs: [], t: 0 };   /* só na memória; vale 30 minutos e só para o mesmo mandado */
+  function abrirGaleria(it) {
+    if (!onlinePossivel(it)) { openFisica(it, 'print'); return; }
+    openModal('Galeria',
+      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">O que você vai juntar?</p>' +
+      '<div class="actions" style="display:grid;grid-template-columns:1fr"><button class="btn primary" id="glFis">Print da certidão física (já é a certidão)</button><button class="btn" id="glWa">Print do comprovante do WhatsApp</button><button class="btn ghost" id="glNo">Voltar</button></div>');
+    document.getElementById('glFis').onclick = function () { openFisica(it, 'print'); };
+    document.getElementById('glWa').onclick = function () { abrirWaPrints(it); };
+    document.getElementById('glNo').onclick = closeModal;
+  }
+  function abrirWaPrints(it) {
+    var imgs = [];
+    printsPend = { id: '', imgs: [], t: 0 };
+    openModal('Print do WhatsApp',
+      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha o print da conversa (o comprovante). Depois você faz a certidão positiva pelo WhatsApp e o print já vai anexado.</p>' +
+      '<div class="actions"><button class="btn primary" id="wpGal">Escolher os prints (galeria)</button></div><input type="file" id="wpIn" accept="image/*" multiple hidden>' +
+      '<div class="thumbs" id="wpThumbs"></div>' +
+      '<div class="actions"><button class="btn primary" id="wpGo">Continuar: certidão positiva</button><button class="btn ghost" id="wpNo">Voltar</button></div>');
+    function $(id) { return document.getElementById(id); }
+    function draw() { $('wpThumbs').innerHTML = imgs.map(function (p, i) { return '<img data-i="' + i + '" alt="Print ' + (i + 1) + ' (toque para remover)" src="' + p.url + '">'; }).join('') + (imgs.length ? '<p class="note" style="width:100%">Toque numa miniatura para remover.</p>' : ''); }
+    $('wpGal').onclick = function () { $('wpIn').click(); };
+    $('wpThumbs').addEventListener('click', function (e) { var im = e.target.closest ? e.target.closest('img') : null; if (!im) { return; } imgs.splice(+im.getAttribute('data-i'), 1); draw(); });
+    $('wpIn').addEventListener('change', async function () {
+      var fl = Array.prototype.slice.call(this.files || []); this.value = '';
+      for (var k = 0; k < fl.length; k++) { try { imgs.push(await shrinkImage(fl[k])); } catch (e) { toast('Não consegui ler uma das imagens'); } }
+      draw();
+    });
+    $('wpGo').onclick = function () {
+      if (!imgs.length) { toast('Escolha ao menos um print'); return; }
+      printsPend = { id: it.id, imgs: imgs, t: Date.now() };
+      abrirResposta(it, 'on', 'pos');
+    };
+    $('wpNo').onclick = closeModal;
+  }
+  /* Ícone da câmera: tira a foto e pergunta se deseja certificar (a foto vai anexada) ou se a foto já é a certidão */
+  function tirarFoto(it, acum) {
+    var inp = document.getElementById('camIn');
+    if (!inp) {
+      inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.setAttribute('capture', 'environment'); inp.id = 'camIn'; inp.hidden = true;
+      document.body.appendChild(inp);
+    }
+    inp.value = '';
+    inp.onchange = async function () {
+      var fonte = this && this.files ? this : inp, f = fonte.files && fonte.files[0];
+      inp.value = '';
+      if (!f) { return; }
+      try { var pf = await shrinkImage(f); abrirPerguntaFoto(it, (acum || []).concat([pf])); }
+      catch (e) { toast('Não consegui ler a foto'); }
+    };
+    inp.click();
+  }
+  function abrirPerguntaFoto(it, imgs) {
+    openModal('Foto tirada',
+      '<p><strong>' + esc(it.nome) + '</strong></p><div class="thumbs" id="pfThumbs"></div>' +
+      '<div class="actions"><button class="btn small" id="pfMais">Tirar outra foto</button></div>' +
+      '<p class="note" style="margin:12px 0 4px">Deseja certificar?</p>' +
+      '<div class="actions" style="display:grid;grid-template-columns:1fr"><button class="btn primary" id="pfSim">Sim, quero certificar (a foto vai anexada)</button><button class="btn" id="pfNao">Não, já certifiquei (a foto é a certidão)</button><button class="btn ghost" id="pfNo">Cancelar</button></div>');
+    function $(id) { return document.getElementById(id); }
+    function draw() { $('pfThumbs').innerHTML = imgs.map(function (x, i) { return '<img data-i="' + i + '" alt="Foto ' + (i + 1) + ' (toque para remover)" src="' + x.url + '">'; }).join('') + (imgs.length ? '<p class="note" style="width:100%">' + imgs.length + (imgs.length === 1 ? ' foto' : ' fotos') + '. Toque numa miniatura para remover.</p>' : ''); }
+    draw();
+    $('pfThumbs').addEventListener('click', function (e) { var im = e.target.closest ? e.target.closest('img') : null; if (!im) { return; } imgs.splice(+im.getAttribute('data-i'), 1); draw(); });
+    $('pfMais').onclick = function () { tirarFoto(it, imgs); };
+    $('pfSim').onclick = function () { if (!imgs.length) { toast('Tire ao menos uma foto'); return; } abrirComoFoi(it, imgs); };
+    $('pfNao').onclick = function () { if (!imgs.length) { toast('Tire ao menos uma foto'); return; } openFisica(it, '', imgs); };
+    $('pfNo').onclick = closeModal;
+  }
+  /* “Sim, quero certificar”: escolhe como foi e segue pelos modelos de sempre, com a foto anexada na certidão final */
+  function abrirComoFoi(it, imgs) {
+    var loc = etipo(it) === 'local', onl = onlinePossivel(it), par = loc ? 'fis' : (onl ? 'on' : '');
+    printsPend = { id: it.id, imgs: imgs, t: Date.now() };
+    if (!par) { abrirCertificar(it); return; }
+    openModal('Certificar com a foto',
+      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Como foi? A foto vai anexada à certidão. Depois você escolhe o modelo.</p>' +
+      '<div class="actions" style="display:grid;grid-template-columns:1fr 1fr"><button class="btn negb" id="cfNeg">Negativo</button><button class="btn okb" id="cfPos">Positivo</button></div>' +
+      (loc && onl ? '<div class="actions"><button class="btn" id="cfWa">Positivo pelo WhatsApp (virtual)</button></div>' : '') +
+      '<div class="actions"><button class="btn ghost" id="cfNo">Voltar</button></div>');
+    document.getElementById('cfNeg').onclick = function () { abrirResposta(it, par, 'neg'); };
+    document.getElementById('cfPos').onclick = function () { abrirResposta(it, par, 'pos'); };
+    if (document.getElementById('cfWa') && loc && onl) { document.getElementById('cfWa').onclick = function () { abrirResposta(it, 'on', 'pos'); }; }
+    document.getElementById('cfNo').onclick = closeModal;
+  }
+  function openFisica(it, modo, inicial) {
     var prt = modo === 'print', now = new Date();
     var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-    var prints = [], res = '', lido = false, salvando = false;
+    var prints = inicial ? inicial.slice() : [], res = '', lido = false, salvando = false;
     var pend = state.items.filter(function (x) { return x.status === 'pendente'; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
     var alvo = it
       ? '<p><strong>' + esc(it.nome) + '</strong><br><span class="note">Processo ' + esc(it.processo) + '</span></p>'
@@ -6120,6 +6248,7 @@ function iaUsuarioAjuste(d) {
       t.innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Foto ' + (i + 1) + ' (toque para remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">' + prints.length + (prt ? (prints.length === 1 ? ' print' : ' prints') : (prints.length === 1 ? ' foto' : ' fotos')) + '. Toque numa miniatura para remover.</p>' : '');
     }
     $('fiThumbs').addEventListener('click', function (e) { var im = e.target.closest('img'); if (!im) { return; } prints.splice(+im.getAttribute('data-i'), 1); drawThumbs(); });
+    if (prints.length) { drawThumbs(); }
     async function reconhecer() {
       var nt = $('fiNote');
       if (!nt) { return; }
@@ -6847,7 +6976,7 @@ function iaUsuarioAjuste(d) {
     else if (v === '__cert') { openCert(it); }
     else if (v === '__externo') { abrirExterno(it); }
     else if (v === '__juntar') { abrirFinal(it); }
-    else if (v === '__desfazer') { it.partes = null; save(); render(); closeModal(); toast('As partes foram desfeitas.'); }
+    else if (v === '__desfazer') { it.partes = null; delete it.semOnline; save(); render(); closeModal(); toast('As partes foram desfeitas.'); }
     else if (v === '__tipo') { abrirTipoAto(it, function () { abrirCertificar(it); }); }
     else { return false; }
     return true;

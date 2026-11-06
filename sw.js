@@ -1,6 +1,6 @@
 /* Mandados do dia: guarda o aplicativo no aparelho para abrir sem sinal.
    Troque o número da versão abaixo a cada atualização para o iPhone pegar a nova. */
-const VERSAO = 'mandados-pwa-v18';
+const VERSAO = 'mandados-pwa-v20';
 const CASCA = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(CASCA)).then(() => self.skipWaiting()));
