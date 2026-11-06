@@ -547,6 +547,52 @@ header h1 { font-size: 26px; }
 .rpos .rbtn.pos:not(:only-child) { border-radius: 14px 0 0 14px; }
 .rpos .rbtn.rwa { flex: 0 0 56px; background: #25D366; border-radius: 0 14px 14px 0; border-left: 2px solid rgba(255, 255, 255, 0.55); padding: 0; }
 .rpos .rbtn.rwa .wai { width: 28px; height: 28px; }
+
+/* ===== cartão no formato novo (v21): topo em duas colunas, mapa no endereço, WhatsApp verde/vermelho ===== */
+.card.enviar, .card.nao_enviar, .card.conferir, .card.semcel { background: var(--surface); border-color: var(--line); border-left-width: 1px; border-left-color: var(--line); }
+.card .chead { display: flex; gap: 10px; align-items: flex-start; }
+.card .cmain { flex: 1 1 auto; min-width: 0; }
+.card .cside { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.card .cside .pick { position: static; padding: 0; }
+.card .cside .pick input { width: 32px; height: 32px; }
+.card h3, .card .trata { padding-right: 0; }
+.card .topico { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0; }
+.card .topico .btn { width: 50px; min-width: 50px; height: 50px; min-height: 50px; padding: 0; border-radius: 15px; background: var(--surface); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14); }
+.card .topico .btn.iconbtn.primary { background: var(--surface); color: #2563EB; }
+.card a.addr.maplink { display: flex; align-items: flex-start; gap: 8px; color: var(--ink); text-decoration: none; }
+.card a.addr.maplink .pin { flex: none; line-height: 0; margin-top: 0; }
+.card a.addr.maplink .at { min-width: 0; overflow-wrap: anywhere; }
+.card a.addr.maplink:active { opacity: 0.6; }
+.grp.on .grp-h { display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin: 0 0 8px; }
+.grp.on .grp-h .grp-t { margin: 0; }
+.plusbtn { width: 40px; min-width: 40px; height: 40px; min-height: 40px; padding: 0; border: 0; border-radius: 12px; background: #16A34A; color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(22, 163, 74, 0.35); flex: none; }
+.card .grp .actions .btn.plusbtn { min-height: 40px; padding: 0; }
+.grp.on.wa-stop .plusbtn { background: #D63A40; box-shadow: 0 3px 8px rgba(214, 58, 64, 0.35); }
+.grp.on.wa-conf .plusbtn { background: #D99A00; box-shadow: 0 3px 8px rgba(217, 154, 0, 0.35); }
+.grp.on.wa-sem .plusbtn { background: #7C3AED; box-shadow: 0 3px 8px rgba(124, 58, 237, 0.35); }
+.card .grp .phones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+.card .grp .phones .wn { grid-column: auto; min-width: 0; }
+.card .grp .phones .wn:only-child { grid-column: 1 / -1; }
+.card .grp .phones .wn .wa { min-height: 50px; padding: 6px 28px 6px 6px; font-size: 15px; gap: 5px; }
+.card .grp .phones .wn .wa .wn1 { white-space: nowrap; font-size: 15px; letter-spacing: -0.2px; }
+.wa.confwa { background: linear-gradient(135deg, #FBBF24, #D99A00); color: #3A2A00; box-shadow: 0 6px 16px rgba(217, 154, 0, 0.32); }
+.grp.cert2 .grp-t { color: var(--ink); }
+.grp.cert2 .grp-t::before { display: none; }
+.grp.fis > .grp-t { display: none; }
+
+/* ajustes do cartão v21: botão "+" e números cabendo lado a lado */
+.card .grp.on .grp-h .plusbtn { background: #16A34A !important; color: #fff !important; width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+.card .grp.on.wa-stop .grp-h .plusbtn { background: #D63A40 !important; }
+.card .grp.on.wa-conf .grp-h .plusbtn { background: #D99A00 !important; }
+.card .grp.on.wa-sem .grp-h .plusbtn { background: #7C3AED !important; }
+.card .grp .phones .wn .wa { padding: 5px 26px 5px 8px; gap: 4px; }
+.card .grp .phones .wn .wa .wn1 { font-size: 13.5px; letter-spacing: -0.3px; }
+.card .grp .phones .wn .wa:not(.ghost):not(.off):not(.stopwa)::before { width: 13px; height: 13px; }
+.card .grp .phones .wn .wa .wnote { font-size: 10px; }
+
+.card .grp.on.wa-stop .grp-h .grp-t { color: #D63A40; }
+.card .grp.on.wa-conf .grp-h .grp-t { color: #B7791F; }
+.card .grp.on.wa-sem .grp-h .grp-t { color: #7C3AED; }
 </style>
 </head>
 <body>
@@ -3876,7 +3922,7 @@ function iaUsuarioAjuste(d) {
         var linkAn = 'https://wa.me/' + n.wa + '?text=' + encodeURIComponent(msgAnalise(i.nome));
         var inf = infoNumero(i, n), ud = new Date(inf.ultimo || 0);
         var tiny = (inf.envios ? inf.envios + 'x ' + pad(ud.getDate()) + '/' + pad(ud.getMonth() + 1) + ' ' + pad(ud.getHours()) + ':' + pad(ud.getMinutes()) : '') + (inf.motivoCurto ? (inf.envios ? ' · ' : '') + inf.motivoCurto : '');
-        return '<div class="wn' + (inf.motivoCurto ? ' fail' : '') + '"><a class="wa' + (verm ? ' stopwa' : '') + '" data-tel="' + esc(n.label) + '" href="' + link + '"><span class="wlbl">WhatsApp </span><span class="wtxt"><span class="wn1">' + esc(n.label) + (note.length ? ' (' + note.join(', ') + ')' : '') + '</span>' + (tiny ? '<span class="wnote">' + esc(tiny) + '</span>' : '') + '</span></a><button class="wx" data-act="numx" data-tel="' + esc(n.label) + '" aria-label="Não deu certo neste número" title="Não deu certo neste número">×</button></div>';
+        return '<div class="wn' + (inf.motivoCurto ? ' fail' : '') + '"><a class="wa' + (verm ? ' stopwa' : (i.cls === 'conferir' ? ' confwa' : '')) + '" data-tel="' + esc(n.label) + '" href="' + link + '"><span class="wlbl">WhatsApp </span><span class="wtxt"><span class="wn1">' + esc(n.label) + (note.length ? ' (' + note.join(', ') + ')' : '') + '</span>' + (tiny ? '<span class="wnote">' + esc(tiny) + '</span>' : '') + '</span></a><button class="wx" data-act="numx" data-tel="' + esc(n.label) + '" aria-label="Não deu certo neste número" title="Não deu certo neste número">×</button></div>';
       }).join('');
       if (verm) { phones = '<p class="stopnote">Se tocar no número, o mandado passa a “pode enviar”. Só mande se tiver certeza.</p>' + phones; }
       if (!phones && i.cls === 'enviar') { phones = '<span class="wa off">Sem telefone no mandado</span>'; }
@@ -3893,19 +3939,22 @@ function iaUsuarioAjuste(d) {
     }
 
     var h = '<article class="card ' + (i.certidao ? i.certidao.tipo : grupoDe(i)) + '" data-id="' + i.id + '">';
-    if (i.status === 'pendente' || i.status === 'certidao') {
-      h += '<label class="pick"><input type="checkbox" data-act="pick" aria-label="Selecionar ' + esc(i.nome) + '"' + (sel[i.id] ? ' checked' : '') + '></label>';
-    } else { h += '<span></span>'; }
-    h += '<div><h3>' + esc(i.nome) + '</h3>';
+    var pickHtml = (i.status === 'pendente' || i.status === 'certidao') ? '<label class="pick"><input type="checkbox" data-act="pick" aria-label="Selecionar ' + esc(i.nome) + '"' + (sel[i.id] ? ' checked' : '') + '></label>' : '';
+    h += '<span></span>';
+    h += '<div><div class="chead"><div class="cmain"><h3>' + esc(i.nome) + '</h3>';
     var rsm = resumoAto(i), vcu = varaCurta(i.vara);
     if (rsm) { h += '<p class="trata">' + esc(rsm) + '</p>'; }
     h += '<p class="meta proc">Proc. ' + esc(i.processo) + (vcu ? ' · ' + esc(vcu) : '') + '</p>';
     if (i.aviso && i.aviso.length > 70) { h += '<details class="orient"><summary>Orientações do mandado</summary><p>' + esc(i.aviso) + '</p></details>'; }
-    h += '<p class="addr">' + esc(i.endereco) + (i.bairro ? ', ' + esc(i.bairro) : '') + '</p>' + tel;
+    var endTxt = esc(i.endereco) + (i.bairro ? ', ' + esc(i.bairro) : '');
+    if (etipo(i) !== 'eletronico' && /\S/.test(i.endereco || '')) {
+      h += '<a class="addr maplink" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(textoParada(i)) + '" target="_blank" rel="noopener" aria-label="Abrir no Google Maps: ' + endTxt + '"><span class="pin" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26"><path fill="#16A34A" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.8" fill="#fff"/></svg></span><span class="at">' + endTxt + '</span></a>' + tel;
+    } else { h += '<p class="addr">' + endTxt + '</p>' + tel; }
+    var topIc = '';
     if (i.status === 'pendente') {
-      var topIc = (fileOk(i) ? '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>' : '') + (etipo(i) === 'local' ? '<button class="btn small" data-act="fisica" aria-label="Certidão física (foto)" title="Certidão física (foto)">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint" aria-label="Certidão física (print ou galeria)" title="Certidão física (print ou galeria)">Certidão física (print)</button>' : '');
-      if (topIc) { h += '<div class="topico">' + topIc + '</div>'; }
+      topIc = (fileOk(i) ? '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>' : '') + (etipo(i) === 'local' ? '<button class="btn small" data-act="fisica" aria-label="Certidão física (foto)" title="Certidão física (foto)">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint" aria-label="Certidão física (print ou galeria)" title="Certidão física (print ou galeria)">Certidão física (print)</button>' : '');
     }
+    h += '</div><div class="cside">' + pickHtml + (topIc ? '<div class="topico">' + topIc + '</div>' : '') + '</div></div>';
     if (flags.length) {
       /* avisos urgentes, de alerta e positivos sempre à vista; dos avisos neutros ficam 2 e o resto vai para “+N avisos” */
       var fh = function (f) { var cls = 'flag' + (f[1] === 'ok' ? ' okf' : (f[1] ? ' stop' : '')); return f[2] === 'aud' ? '<button class="' + cls + ' flagbtn" data-act="audinfo" aria-label="De onde veio a data da audiência">' + esc(f[0]) + ' ⓘ</button>' : '<span class="' + cls + '">' + esc(f[0]) + '</span>'; };
@@ -3921,15 +3970,13 @@ function iaUsuarioAjuste(d) {
       var temOn2 = temNum && temNumero, parPrin = loc ? 'fis' : (temOn2 ? 'on' : ''), onlResp = ''; if (temOn2) { onlResp = '<div class="selhid">' + selParte('on') + '</div>'; }
       if (phones) { onl += '<div class="phones">' + phones + '</div>'; }
       onl += onlResp;
-      if (temNumero) {
-                onb += '<button class="btn small" data-act="teldil">WhatsApp novo</button>';
-      } else {
-        onb += '<button class="btn small primary" data-act="teldil">Inserir WhatsApp</button>';
-      }
-      h += '<div class="grp on"><p class="grp-t">WhatsApp Virtual</p>' + onl + '<div class="actions">' + onb + (iaAtiva() ? iaBtnHtml('on') : '') + '</div></div>';
-      if (parPrin) { h += '<div class="grp cert2"><div class="resp"><button class="rbtn neg" data-act="resp" data-p="' + parPrin + '" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><div class="rpos"><button class="rbtn pos" data-act="resp" data-p="' + parPrin + '" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button>' + (loc && temOn2 ? '<button class="rbtn rwa" data-act="resp" data-p="on" data-t="pos" aria-label="Positivo virtual (WhatsApp)" title="Positivo virtual (WhatsApp)"><span class="wai" aria-hidden="true"></span></button>' : '') + '</div></div></div>'; }
+      var addTxt = temNumero ? 'Adicionar outro WhatsApp' : 'Inserir WhatsApp';
+      var addBtn = '<button class="btn small plusbtn" data-act="teldil" aria-label="' + addTxt + '" title="' + addTxt + '"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>';
+      var corWa = i.cls === 'nao_enviar' ? 'wa-stop' : (i.cls === 'conferir' ? 'wa-conf' : (temNumero ? 'wa-ok' : 'wa-sem'));
+      h += '<div class="grp on ' + corWa + '"><div class="grp-h"><p class="grp-t">WhatsApp Virtual</p>' + addBtn + '</div>' + onl + (iaAtiva() ? '<div class="actions">' + iaBtnHtml('on') + '</div>' : '') + '</div>';
+      if (parPrin) { h += '<div class="grp cert2"><p class="grp-t">Certificar</p><div class="resp"><button class="rbtn neg" data-act="resp" data-p="' + parPrin + '" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><div class="rpos"><button class="rbtn pos" data-act="resp" data-p="' + parPrin + '" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button>' + (loc && temOn2 ? '<button class="rbtn rwa" data-act="resp" data-p="on" data-t="pos" aria-label="Positivo virtual (WhatsApp)" title="Positivo virtual (WhatsApp)"><span class="wai" aria-hidden="true"></span></button>' : '') + '</div></div></div>'; }
       if (loc) {
-        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + (iaAtiva() ? iaBtnHtml('fis') : '') + '</div></div>';
+        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z"/></svg> Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª diligência física</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' diligências</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + (iaAtiva() ? iaBtnHtml('fis') : '') + '</div></div>';
       }
       if (!((temNum && temNumero) || loc)) { h += '<div class="grp cer"><div class="actions"><button class="btn small primary wide" data-act="certmenu">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button></div></div>'; }
       var man = '';
@@ -6179,6 +6226,7 @@ function iaUsuarioAjuste(d) {
       var fonte = this && this.files ? this : inp, f = fonte.files && fonte.files[0];
       inp.value = '';
       if (!f) { return; }
+      toast('Lendo a foto…');
       try { var pf = await shrinkImage(f); abrirPerguntaFoto(it, (acum || []).concat([pf])); }
       catch (e) { toast('Não consegui ler a foto'); }
     };
