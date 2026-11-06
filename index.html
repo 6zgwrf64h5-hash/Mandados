@@ -660,6 +660,48 @@ header h1 { font-size: 26px; }
 .card .grp .phones .wn .wa:not(.ghost):not(.off):not(.stopwa)::before { width: 18px; height: 18px; }
 .card .grp .phones .wn .wa .wn1 { font-size: 14px; letter-spacing: -0.3px; }
 .card .grp .phones .wn .wa { padding: 5px 28px 5px 7px; gap: 5px; }
+
+/* ===== v23: aviso de backup, painel do dia, saída pelo GPS ===== */
+.bkpbar { margin: 8px 0; padding: 10px 12px; border-radius: 16px; border: 2px solid; }
+.bkpbar p { margin: 0 0 8px; font-size: 15px; line-height: 1.3; }
+.bkpbar .actions { display: flex; gap: 8px; margin: 0; }
+.bkpbar .actions .btn { flex: 1 1 auto; min-height: 42px; }
+.bkpbar.amb { background: #FFF6DD; border-color: #E6A100; color: #5A3A00; }
+.bkpbar.verm { background: #FFE9EA; border-color: #D63A40; color: #7A0F14; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bkpbar.amb { background: #3A3512; color: #FFE9A8; } :root:not([data-theme="light"]) .bkpbar.verm { background: #44202A; color: #FFD3D6; } }
+:root[data-theme="dark"] .bkpbar.amb { background: #3A3512; color: #FFE9A8; }
+:root[data-theme="dark"] .bkpbar.verm { background: #44202A; color: #FFD3D6; }
+#btnPainel { margin-top: 6px; }
+.pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.pcard { border-radius: 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(40, 40, 70, 0.08); text-align: left; font: inherit; color: var(--ink); }
+.pcard strong { display: block; font-size: 28px; line-height: 1.1; }
+.pcard span { font-size: 13px; color: var(--muted); }
+.pcard.ok strong { color: #0E9F6E; } .pcard.neg strong { color: #D63A40; } .pcard.zap strong { color: #16A34A; } .pcard.pend strong { color: #2563EB; }
+button.pcard { cursor: pointer; }
+.saidabox .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.saidabox .seg .btn[aria-pressed="true"] { background: #2563EB; color: #fff; border-color: #2563EB; }
+.saidabox input { margin: 6px 0; }
+
+/* cores da faixa de backup (o cabeçalho escuro força letra branca) */
+header .bkpbar.amb p, header .bkpbar.amb strong, header .bkpbar.amb .btn.ghost { color: #5A3A00 !important; }
+header .bkpbar.verm p, header .bkpbar.verm strong, header .bkpbar.verm .btn.ghost { color: #7A0F14 !important; }
+header .bkpbar .btn.ghost { background: transparent !important; border: 2px solid currentColor !important; box-shadow: none !important; font-weight: 800; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) header .bkpbar.amb p, :root:not([data-theme="light"]) header .bkpbar.amb strong, :root:not([data-theme="light"]) header .bkpbar.amb .btn.ghost { color: #FFE9A8 !important; } :root:not([data-theme="light"]) header .bkpbar.verm p, :root:not([data-theme="light"]) header .bkpbar.verm strong, :root:not([data-theme="light"]) header .bkpbar.verm .btn.ghost { color: #FFD3D6 !important; } }
+:root[data-theme="dark"] header .bkpbar.amb p, :root[data-theme="dark"] header .bkpbar.amb strong, :root[data-theme="dark"] header .bkpbar.amb .btn.ghost { color: #FFE9A8 !important; }
+:root[data-theme="dark"] header .bkpbar.verm p, :root[data-theme="dark"] header .bkpbar.verm strong, :root[data-theme="dark"] header .bkpbar.verm .btn.ghost { color: #FFD3D6 !important; }
+
+.saidabox .grp-t::before { display: none; }
+
+/* v24: botão único no tamanho padrão; texto que não estoura o botão */
+.card .grp .phones .wn:only-child { grid-column: auto !important; }
+.card .grp .phones .wn .wa .wtxt { min-width: 0; max-width: 100%; }
+.card .grp .phones .wn .wa .wn1 { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.card .grp .phones .wn .wa .wnote { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+/* v24: mais espaço para o número no botão de meia largura */
+.card .grp .phones .wn .wa { padding: 5px 27px 5px 6px; gap: 4px; }
+.card .grp .phones .wn .wa:not(.ghost):not(.off):not(.stopwa)::before { width: 15px; height: 15px; }
+.card .grp .phones .wn .wa .wn1 { font-size: 13.5px; letter-spacing: -0.4px; }
 </style>
 </head>
 <body>
@@ -667,7 +709,9 @@ header h1 { font-size: 26px; }
   <header>
     <h1>Mandados do dia</h1>
     <p id="summary"></p>
+    <button class="btn small" id="btnPainel" type="button">Painel do dia</button>
     <p class="note" id="syncLine" style="margin-top:4px"></p>
+    <div class="bkpbar" id="bkpBar" hidden></div>
     <div class="salvando" id="salvandoBar" hidden></div>
     <div class="bar">
       <button class="btn primary" id="btnPdf">Adicionar PDF</button>
@@ -3159,7 +3203,7 @@ function iaUsuarioAjuste(d) {
     definirDicas({ bairros: state.cfg.bairroPts, ceps: state.cfg.cepPts, cepBairro: state.cfg.cepBairro });
     aprenderBairros(state.items);
     var o = state.origin ? pontosRua(state.origin, ['F', 'S']) : null;
-    var auto = ordenarPrioridade(list, prioIt, o ? o[0] : pontoIni(), fimEf(), zonasAtivas(), zonasAtivas() ? raioCasa() : 0, modoRota(), primeiros());
+    var auto = ordenarPrioridade(list, prioIt, (saidaGpsOn() && gpsFresco()) || (o ? o[0] : pontoIni()), fimEf(), zonasAtivas(), zonasAtivas() ? raioCasa() : 0, modoRota(), primeiros());
     return aplicarManual(auto, state.cfg.rotaManual);
   }
   function nomeDoBairro(k) {
@@ -3635,6 +3679,96 @@ function iaUsuarioAjuste(d) {
     document.getElementById('bkJunta').onclick = function () { aplicar(false); };
     document.getElementById('bkTroca').onclick = function () { aplicar(true); };
   };
+
+  /* ===== v23 ===== */
+  /* 1) Aviso de backup bem visível (só no atalho): amarelo a partir de 3 dias, vermelho a partir de 7 */
+  function renderBackupBanner() {
+    var el = document.getElementById('bkpBar');
+    if (!el) { return; }
+    var t = state.ultimoBackup, dias = t ? Math.floor((Date.now() - t) / 86400000) : null, nivel = '';
+    if (MODO_ATALHO && state.items.length && !state.sample) {
+      var maisAntigo = Math.min.apply(null, state.items.map(function (i) { return i.added || Date.now(); }));
+      if (!t) { if (Date.now() - maisAntigo > 6 * 3600000) { nivel = 'amb'; } }
+      else if (dias >= 7) { nivel = 'verm'; } else if (dias >= 3) { nivel = 'amb'; }
+    }
+    var sl = document.getElementById('syncLine');
+    if (!nivel || Date.now() < ((state.cfg && state.cfg.bkpAdiar) || 0)) { el.hidden = true; el.innerHTML = ''; if (sl) { sl.style.display = ''; } return; }
+    if (sl) { sl.style.display = 'none'; }
+    el.hidden = false; el.className = 'bkpbar ' + nivel;
+    el.innerHTML = '<p><strong>' + (!t ? 'Você ainda não fez backup.' : 'Faz ' + dias + ' dias sem backup.') + '</strong> ' + (nivel === 'verm' ? 'Se o iPhone apagar os dados, você perde mandados e certidões.' : 'Salve um arquivo para não perder o andamento.') + '</p><div class="actions"><button class="btn primary" data-bk="fazer" type="button">Fazer backup agora</button><button class="btn ghost" data-bk="depois" type="button">Depois</button></div>';
+  }
+  document.getElementById('bkpBar').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-bk]') : null;
+    if (!b) { return; }
+    if (b.getAttribute('data-bk') === 'fazer') { exportarBackup(); return; }
+    state.cfg.bkpAdiar = Date.now() + (this.className.indexOf('verm') > -1 ? 6 : 24) * 3600000; save(); renderBackupBanner();
+  });
+  /* 2) Painel do dia */
+  function painelDados() {
+    var hk = dayKey(Date.now()), it = state.items;
+    var pend = it.filter(function (i) { return i.status === 'pendente'; });
+    var cert = it.filter(function (i) { return i.status === 'certidao' && i.certidao; });
+    var pos = cert.filter(function (i) { return i.certidao.tipo === 'positiva'; }), neg = cert.filter(function (i) { return i.certidao.tipo === 'negativa'; });
+    var zap = pos.filter(function (i) { return i.certidao.canal === 'wa' || (i.partes && i.partes.on && i.partes.on.tipo === 'positiva'); });
+    var hoje = cert.filter(function (i) { return i.certidao.data === hk; }), msgsHoje = 0;
+    it.forEach(function (i) { (i.msgs || []).forEach(function (m) { if (m.kind !== 'analise' && dayKey(m.t) === hk) { msgsHoje++; } }); });
+    var al = audLista(pend, Date.now());
+    return { total: it.length, pend: pend.length, cert: cert.length, pos: pos.length, neg: neg.length, zap: zap.length,
+      hoje: hoje.length, hojePos: hoje.filter(function (i) { return i.certidao.tipo === 'positiva'; }).length, hojeNeg: hoje.filter(function (i) { return i.certidao.tipo === 'negativa'; }).length,
+      aguard: it.filter(function (i) { return inTab(i, 'aguardando'); }).length, prontos: it.filter(pronto).length, repetir: it.filter(precisaRepetir).length,
+      perdidas: al.perdidas.length, msgsHoje: msgsHoje };
+  }
+  function abrirPainel() {
+    var d = painelDados(), pct = d.total ? Math.round(d.cert / d.total * 100) : 0;
+    var sa = state.seqAtiva && state.seqAtiva.ents && Date.now() - state.seqAtiva.t0 <= 12 * 3600000 ? state.seqAtiva : null;
+    var ra = state.rotaAtiva, restRota = ra ? rotaRestantes().length : 0;
+    function card(n, rotulo, cls, aba) { return '<' + (aba ? 'button type="button" data-pt="' + aba + '"' : 'div') + ' class="pcard ' + cls + '"><strong>' + n + '</strong><span>' + rotulo + '</span></' + (aba ? 'button' : 'div') + '>'; }
+    var retomar = '';
+    if (sa) { retomar += '<button class="btn primary wide" type="button" data-pn="fila">Continuar a fila de mensagens</button>'; }
+    if (ra && restRota) { retomar += '<button class="btn primary wide" type="button" data-pn="rota">Continuar a rota (parada ' + (ra.ids.length - restRota + 1) + ' de ' + ra.ids.length + ')</button>'; }
+    openModal('Painel do dia',
+      '<div class="seqbar"><div style="width:' + pct + '%"></div></div><p class="note">' + d.cert + ' de ' + d.total + (d.total === 1 ? ' mandado' : ' mandados') + ' com certidão (' + pct + '%).</p>' +
+      '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.pos, 'Cumpridos (positivas)', 'ok', 'devolver') + card(d.neg, 'Negativos', 'neg', 'devolver') + card(d.zap, 'Intimados por WhatsApp', 'zap', 'devolver') +
+      card(d.aguard, 'Aguardando on-line', '', 'aguardando') + card(d.prontos, 'Prontos para certificar', '', 'enviar') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + '</div>' +
+      '<p class="note"><strong>Hoje:</strong> ' + d.hoje + (d.hoje === 1 ? ' certidão' : ' certidões') + ' (' + d.hojePos + (d.hojePos === 1 ? ' positiva, ' : ' positivas, ') + d.hojeNeg + (d.hojeNeg === 1 ? ' negativa' : ' negativas') + '). Mensagens abertas hoje: ' + d.msgsHoje + '.</p>' +
+      (retomar ? '<p class="note" style="margin:10px 0 4px"><strong>Retomar de onde parei</strong></p><div class="actions">' + retomar + '</div>' : '<p class="note">Nada em andamento: nenhuma fila nem rota aberta.</p>') +
+      '<div class="actions"><button class="btn ghost" type="button" id="pnFecha">Fechar</button></div>');
+    document.getElementById('pnFecha').onclick = closeModal;
+    document.getElementById('mbody').onclick = function (e) {
+      var c = e.target.closest ? e.target.closest('[data-pt]') : null, n = e.target.closest ? e.target.closest('[data-pn]') : null;
+      if (c) { tab = c.getAttribute('data-pt'); closeModal(); render(); return; }
+      if (n) { var a = n.getAttribute('data-pn'); closeModal(); if (a === 'fila') { retomarSequencia(); } else { mostrarRota(); } }
+    };
+  }
+  document.getElementById('btnPainel').onclick = abrirPainel;
+  /* 3) Saída da rota pelo GPS (a posição fica só neste aparelho, só na memória) */
+  var gpsPos = null;
+  function saidaGpsOn() { return !!(state.cfg && state.cfg.saidaGps); }
+  function gpsFresco() { return gpsPos && Date.now() - gpsPos.t < 15 * 60000 ? gpsPos.pt : null; }
+  function pegarGps(cb) {
+    if (!navigator.geolocation) { toast('Este aparelho não oferece localização aqui.'); cb(null); return; }
+    navigator.geolocation.getCurrentPosition(function (pp) { gpsPos = { pt: [pp.coords.latitude, pp.coords.longitude], t: Date.now() }; cb(gpsPos.pt); },
+      function (er) { toast(er && er.code === 1 ? 'Localização negada. No iPhone: Ajustes > Privacidade > Serviços de Localização.' : 'Não consegui a sua posição agora.'); cb(null); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  }
+  function saidaBox() {
+    var g = saidaGpsOn(), f = g && gpsPos ? new Date(gpsPos.t) : null;
+    return '<div class="grp saidabox"><p class="grp-t">Saindo de</p>' +
+      '<div class="seg"><button class="btn" type="button" data-sd="gps" aria-pressed="' + g + '">Onde estou agora</button><button class="btn" type="button" data-sd="end" aria-pressed="' + !g + '">Endereço de saída</button></div>' +
+      (g ? '<p class="note">' + (f ? 'Posição lida às ' + pad(f.getHours()) + ':' + pad(f.getMinutes()) + '. A rota começa pela parada mais perto de você; o Google Maps sai de onde você estiver ao navegar. A posição fica só neste aparelho.' : 'Lendo a sua posição…') + '</p><div class="actions"><button class="btn small" type="button" data-sd="atualizar">Atualizar minha posição</button></div>'
+        : '<input type="text" id="rsOrigin" placeholder="Rua e número de saída (vazio: onde você estiver ao navegar)" value="' + esc(state.origin || '') + '" autocomplete="off"><div class="actions"><button class="btn small" type="button" data-sd="salvarend">Usar este endereço</button></div>') +
+      '</div>';
+  }
+  /* O número do WhatsApp sempre aparece inteiro: se não couber no botão, a letra diminui só o necessário */
+  function ajustarNumeros() {
+    var els = document.querySelectorAll('.phones .wn1');
+    for (var k = 0; k < els.length; k++) {
+      var e = els[k]; e.style.fontSize = '';
+      var fs = parseFloat(window.getComputedStyle(e).fontSize) || 13.5;
+      while (e.scrollWidth > e.clientWidth + 1 && fs > 10) { fs -= 0.5; e.style.fontSize = fs + 'px'; }
+    }
+  }
+  window.addEventListener('resize', function () { ajustarNumeros(); });
   function linhaAtalho() {
     if (!state.items.length || state.sample) { return ''; }
     if (!state.cfg.ddd && state.items.some(function (i) { return (i.telefones || []).some(function (t) { return normPhone(t).semDDD; }); })) { return 'Há telefones sem DDD. Informe o seu DDD em Meus dados para eles virarem link do WhatsApp.'; }
@@ -3766,6 +3900,7 @@ function iaUsuarioAjuste(d) {
     if (nRep) { document.getElementById('summary').textContent += ', ' + nRep + ' para repetir a mensagem'; }
     document.getElementById('btnRep').hidden = !nRep || (tab !== 'enviar' && tab !== 'aguardando');
     document.getElementById('btnRep').textContent = 'Repetir mensagem (' + nRep + ')';
+    renderBackupBanner();
     document.getElementById('btnRep').setAttribute('aria-pressed', repOnly);
     var lg = document.getElementById('legend');
     lg.hidden = tab !== 'enviar';
@@ -3892,6 +4027,7 @@ function iaUsuarioAjuste(d) {
     }
     if (tab === 'devolver' && list.length) { html = resumoMensal() + html; }
     document.getElementById('list').innerHTML = html;
+    ajustarNumeros();
 
     var ce = tab === 'devolver';
     var alvo = ce ? 'certidao' : 'pendente';
@@ -3983,13 +4119,13 @@ function iaUsuarioAjuste(d) {
         var note = [];
         if (n.fixo) { note.push('fixo'); }
         if (dilWa[n.wa]) { note.push('novo'); }
-        if (n.added9) { note.push('9 incluído'); }
-        if (n.intl) { note.push('exterior'); } else if (n.ddd !== '45') { note.push('DDD ' + n.ddd); }
+        if (n.intl) { note.push('exterior'); }
         var link = 'https://wa.me/' + n.wa + '?text=' + encodeURIComponent(message(i.nome));
         var linkAn = 'https://wa.me/' + n.wa + '?text=' + encodeURIComponent(msgAnalise(i.nome));
         var inf = infoNumero(i, n), ud = new Date(inf.ultimo || 0);
         var tiny = (inf.envios ? inf.envios + 'x ' + pad(ud.getDate()) + '/' + pad(ud.getMonth() + 1) + ' ' + pad(ud.getHours()) + ':' + pad(ud.getMinutes()) : '') + (inf.motivoCurto ? (inf.envios ? ' · ' : '') + inf.motivoCurto : '');
-        return '<div class="wn' + (inf.motivoCurto ? ' fail' : '') + '"><a class="wa' + (verm ? ' stopwa' : (i.cls === 'conferir' ? ' confwa' : '')) + '" data-tel="' + esc(n.label) + '" href="' + link + '"><span class="wlbl">WhatsApp </span><span class="wtxt"><span class="wn1">' + esc(n.label) + (note.length ? ' (' + note.join(', ') + ')' : '') + '</span>' + (tiny ? '<span class="wnote">' + esc(tiny) + '</span>' : '') + '</span></a><button class="wx" data-act="numx" data-tel="' + esc(n.label) + '" aria-label="Não deu certo neste número" title="Não deu certo neste número">×</button></div>';
+        if (note.length) { tiny += (tiny ? ' · ' : '') + note.join(', '); }
+        return '<div class="wn' + (inf.motivoCurto ? ' fail' : '') + '"><a class="wa' + (verm ? ' stopwa' : (i.cls === 'conferir' ? ' confwa' : '')) + '" data-tel="' + esc(n.label) + '" href="' + link + '"><span class="wlbl">WhatsApp </span><span class="wtxt"><span class="wn1">' + esc(n.label) + '</span>' + (tiny ? '<span class="wnote">' + esc(tiny) + '</span>' : '') + '</span></a><button class="wx" data-act="numx" data-tel="' + esc(n.label) + '" aria-label="Não deu certo neste número" title="Não deu certo neste número">×</button></div>';
       }).join('');
       if (verm) { phones = '<p class="stopnote">Se tocar no número, o mandado passa a “pode enviar”. Só mande se tiver certeza.</p>' + phones; }
       if (!phones && i.cls === 'enviar') { phones = '<span class="wa off">Sem telefone no mandado</span>'; }
@@ -5327,7 +5463,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('tdNo').onclick = closeModal;
     document.getElementById('tdNum').addEventListener('input', function () {
       var n = normPhone(this.value);
-      document.getElementById('tdPrev').textContent = this.value.trim() ? (n.ok ? 'Fica assim: ' + n.label + (n.fixo ? ' (fixo)' : '') + (n.added9 ? ' (9 incluído)' : '') : 'Número não reconhecido.') : '';
+      document.getElementById('tdPrev').textContent = this.value.trim() ? (n.ok ? 'Fica assim: ' + n.label + (n.fixo ? ' (fixo)' : '') : 'Número não reconhecido.') : '';
     });
     document.getElementById('tdAdd').onclick = function () {
       var raw = document.getElementById('tdNum').value.trim();
@@ -5675,6 +5811,7 @@ function iaUsuarioAjuste(d) {
       '<div class="actions"><button class="btn" id="vzCopy">Copiar texto</button><button class="btn" id="vzPdf">Baixar PDF</button><button class="btn primary" id="vzSave">Salvar e baixar PDF</button><button class="btn" id="vzSaveOnly">Só salvar</button></div>');
     function $(id) { return document.getElementById(id); }
     $('vzBack').onclick = function () { openCert(it); };
+    if (!(opt && opt.final)) { try { $('vzFala').focus(); } catch (e) {} }
     ligarSalvarModelo(it, 'vz', function () { return { onde: 'inteira', tipo: tipoCert, texto: separarDil($('vzOut').value).corpo }; });
     function ctxVoz() {
       return { visitas: (it.fisica && it.fisica.visitas) || (it.visitas || []).map(fmtVisita), oficial: oficial, diaCont: diaCont, custas: $('vzCustas').value.replace(/[^\d.,]/g, '').trim(), temCel: temTelefone(it) || !!(it.tentativas && it.tentativas.length), just: justDaTentativa(it.tentativas),
@@ -6097,6 +6234,7 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="piTxt">Texto desta parte (pode editar)</label><textarea id="piTxt" style="min-height:150px"></textarea>' + htmlEditarIA('pi') + htmlSalvarModelo('pi') +
       '<div class="actions"><button class="btn primary" id="piOk">Dar ok</button><button class="btn" id="piNo">Voltar</button></div>');
     $('piNo').onclick = closeModal;
+    try { $('piFala').focus(); } catch (e) {}
     ligarEditarIA(it, 'pi', function () { return $('piTxt').value; }, function (v) { $('piTxt').value = v; }, true);
     ligarSalvarModelo(it, 'pi', function () { return { onde: parte, tipo: res ? res.tipo : (tipoPref || 'negativa'), texto: $('piTxt').value }; });
     $('piGo').onclick = async function () {
@@ -6921,7 +7059,7 @@ function iaUsuarioAjuste(d) {
   var modoReord = false;
   function routeHtml() {
     var arr = rotaSel();
-    var origin = String(state.origin || '').trim();
+    var origin = saidaGpsOn() ? '' : String(state.origin || '').trim();
     var out = '', prev = origin, prevB = origin, zm = zonaMapa(arr), zmap = zm.z, zlivre = zm.livre, zs = zonasAtivas();
     var perto = pertoDaCasa(arr, fimEf(), zonasAtivas() ? raioCasa() : 0);
     var modo = modoRota(), bg = modo === 'bairro' ? agruparBairros(arr) : null, num = 0;
@@ -6984,7 +7122,7 @@ function iaUsuarioAjuste(d) {
   }
   function marcadasRota() { var mk = state.cfg.rotaMarcadas || {}; return rotaSel().filter(function (i) { return mk[i.id]; }); }
   function selRotaDados() {
-    var m = marcadasRota(), origin = String(state.origin || '').trim(), prev = origin;
+    var m = marcadasRota(), origin = saidaGpsOn() ? '' : String(state.origin || '').trim(), prev = origin;
     var blocos = m.length ? quebrarBlocos(m, tamRota(), function () { return 0; }) : [], links = [];
     blocos.forEach(function (ch) { links.push(mapsUrl(prev, ch)); prev = textoParada(ch[ch.length - 1]); });
     var txt = links.length === 1 ? 'Rota selecionada: ' + links[0] : links.map(function (u, k) { return 'Rota selecionada ' + (k + 1) + ': ' + u; }).join('\n');
@@ -7057,7 +7195,7 @@ function iaUsuarioAjuste(d) {
     var man = state.cfg.rotaManual && state.cfg.rotaManual.length ? state.cfg.rotaManual.length : 0, nap = (state.cfg.rotasEnsinadas || []).length, apOff = state.cfg.aprender === false;
     var linhas = [
       ['Ordem', modoRota() === 'zonas' ? 'na ordem dos meus bairros' : 'em linha reta, bairro por bairro'],
-      ['Começa perto de', iniTxt()], ['Bairros que vêm primeiro', primTxt()], ['Termina perto de', fimTxt()],
+      ['Começa perto de', saidaGpsOn() ? 'onde você está (GPS)' + (gpsFresco() ? '' : ', posição ainda não lida') : iniTxt()], ['Bairros que vêm primeiro', primTxt()], ['Termina perto de', fimTxt()],
       ['Ajuste à mão', man ? man + (man === 1 ? ' parada' : ' paradas') + ' (a ordem que você arrumou vale primeiro)' : 'nenhum']
     ];
     return '<details class="chk"><summary><strong>Como esta rota foi montada</strong></summary>' + linhas.map(function (l) { return '<p class="note" style="margin:4px 0"><strong>' + l[0] + ':</strong> ' + esc(l[1]) + '</p>'; }).join('') +
@@ -7418,7 +7556,7 @@ function iaUsuarioAjuste(d) {
     var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
     return lista.length ? '<div class="actions"><button class="btn primary wide" data-rinicia="1">Iniciar rota (' + lista.length + (lista.length === 1 ? ' parada' : ' paradas') + ')</button></div>' : '';
   }
-  function rotaCorpo() { return iniciarBox() + reordBox() + comoRotaHtml() + manualNota() + foraDaRota() + '<div id="rOut">' + routeHtml() + '</div>' + listasBox() + mapaBox() + zapBox() + '<div id="rSelBox">' + selRotaHtml() + '</div>'; }
+  function rotaCorpo() { return saidaBox() + iniciarBox() + reordBox() + comoRotaHtml() + manualNota() + foraDaRota() + '<div id="rOut">' + routeHtml() + '</div>' + listasBox() + mapaBox() + zapBox() + '<div id="rSelBox">' + selRotaHtml() + '</div>'; }
   function zapBox() {
     var txt = rotaLinks.map(function (u, k) { return 'Rota ' + (k + 1) + ': ' + u; }).join('\n');
     if (!rotaLinks.length) { return ''; }
@@ -7444,6 +7582,16 @@ function iaUsuarioAjuste(d) {
       '<div class="actions"><button class="btn ghost" id="rAjustes">Ajustes da rota (Meus dados)</button></div>');
     function $(id) { return document.getElementById(id); }
     function refaz() { $('rBody').innerHTML = rotaCorpo(); }
+    $('rBody').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-sd]') : null;
+      if (!b) { return; }
+      var a = b.getAttribute('data-sd');
+      if (a === 'gps') { state.cfg.saidaGps = true; save(); refaz(); pegarGps(function () { refaz(); render(); }); }
+      else if (a === 'atualizar') { pegarGps(function () { refaz(); render(); }); }
+      else if (a === 'end') { state.cfg.saidaGps = false; save(); refaz(); render(); }
+      else if (a === 'salvarend') { var v = ($('rsOrigin').value || '').trim(); state.origin = v; state.cfg.saidaGps = false; save(); refaz(); render(); toast(v ? 'Saída: ' + v : 'Saída: onde você estiver ao navegar.'); }
+    });
+    if (saidaGpsOn() && !gpsFresco()) { pegarGps(function () { refaz(); render(); }); }
     $('rPrint').onclick = function () { imprimir(rotaSel()); };
     $('rAjustes').onclick = function () { abrirMinhaRota(true); };
     aprenderBairros(state.items);
@@ -7623,7 +7771,9 @@ function iaUsuarioAjuste(d) {
         var w = document.createElement('span');
         w.className = 'xw' + (el.tagName === 'TEXTAREA' ? ' xta' : '');
         if (cs && pcs && /flex/.test(pcs.display)) { w.style.flex = cs.flex; w.style.maxWidth = cs.maxWidth; w.style.minWidth = '0'; }
+        var tinhaFoco = document.activeElement === el;
         pai.insertBefore(w, el); w.appendChild(el);
+        if (tinhaFoco) { try { el.focus(); } catch (e) {} }
         var b = document.createElement('button');
         b.type = 'button'; b.className = 'xclr'; b.tabIndex = -1; b.textContent = '×';
         b.setAttribute('aria-label', 'Apagar o que foi digitado');
