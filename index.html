@@ -713,14 +713,66 @@ header .bkpbar .btn.ghost { background: transparent !important; border: 2px soli
 :root[data-theme="light"] .card.enviar, :root[data-theme="light"] .card.nao_enviar, :root[data-theme="light"] .card.conferir, :root[data-theme="light"] .card.semcel { background: #fff; border: 1px solid #C9D0E4; box-shadow: 0 8px 22px rgba(30, 40, 90, 0.18); }
 :root[data-theme="light"] .card .grp { background: #F3F5FB; border: 1px solid #E1E6F3; box-shadow: none; }
 :root[data-theme="light"] body { background: linear-gradient(180deg, #D3DDFA 0, #E2E6F2 340px) no-repeat, #E2E6F2; }
+
+/* ===== v26: topo reformulado (mockup do usuário) ===== */
+header .htop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+header .htxt { min-width: 0; flex: 1 1 auto; }
+header .htxt h1 { margin: 0; }
+header .htxt #summary { margin: 4px 0 0; font-size: 14px; line-height: 1.25; }
+header #btnPainel { flex: 0 0 auto; margin: 0; display: inline-flex; align-items: center; gap: 8px; padding: 11px 15px; min-height: 46px; border-radius: 24px; background: #fff; color: #0E1840; font-weight: 800; font-size: 15px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); }
+header #btnPainel::before { content: ""; width: 21px; height: 21px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 20v-8M12 20V5M19 20v-11' stroke-width='3.4'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 20v-8M12 20V5M19 20v-11' stroke-width='3.4'/%3E%3C/svg%3E") center / contain no-repeat; }
+header .bar { display: flex; flex-wrap: nowrap; gap: 8px; }
+header .bar .btn { flex: 1 1 auto; min-width: 0; white-space: nowrap; font-size: clamp(12.5px, 3.45vw, 15px); padding: 0 8px; min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+header .bar .btn[hidden] { display: none !important; }
+header .bar .btn::before { content: ""; flex: none; width: 21px; height: 21px; background: currentColor; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+#btnPdf::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 3v5h5'/%3E%3Cpath d='M12 11v6M9 14h6'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 3v5h5'/%3E%3Cpath d='M12 11v6M9 14h6'/%3E%3C/svg%3E"); }
+#btnMe::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7'/%3E%3C/svg%3E"); }
+#btnSalvar::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5.5' rx='7.5' ry='3'/%3E%3Cpath d='M4.5 5.5v13c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-13M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5.5' rx='7.5' ry='3'/%3E%3Cpath d='M4.5 5.5v13c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-13M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3'/%3E%3C/svg%3E"); }
+#syncLine:empty { display: none; }
+/* faixa de backup em uma linha: ícone | texto | botões */
+.bkpbar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 20px; border: 2px solid #F0C752; background: #FEF5D9; }
+.bkpbar.verm { border-color: #E8737A; background: #FFE9EA; }
+.bkpbar .bkico { flex: 0 0 28px; height: 28px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 18a4.5 4.5 0 0 1-.7-8.9A6 6 0 0 1 18 9a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M12 21v-8M9 15.5l3-3 3 3'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 18a4.5 4.5 0 0 1-.7-8.9A6 6 0 0 1 18 9a4 4 0 0 1 0 8h-1'/%3E%3Cpath d='M12 21v-8M9 15.5l3-3 3 3'/%3E%3C/svg%3E") center / contain no-repeat; }
+.bkpbar .bktxt { flex: 1 1 0; min-width: 0; margin: 0; font-size: 12.5px; line-height: 1.25; }
+.bkpbar .bktxt strong { display: block; font-size: 14.5px; }
+.bkpbar .actions { flex: 0 0 auto; display: flex; gap: 6px; margin: 0; }
+.bkpbar .actions .btn { flex: 0 0 auto; min-height: 40px; padding: 0 12px; font-size: 13px; white-space: nowrap; }
+@media (max-width: 395px) { .bkpbar { flex-wrap: wrap; } .bkpbar .actions { flex: 1 1 100%; } .bkpbar .actions .btn { flex: 1 1 auto; } }
+/* Hoje e amanhã */
+.hoje { background: var(--surface); border: 2px solid #E7C462; border-radius: 22px; padding: 12px 14px; }
+.hoje summary { display: flex; align-items: center; gap: 10px; list-style: none; font-size: 18px; cursor: pointer; }
+.hoje summary::-webkit-details-marker { display: none; }
+.hoje summary .hjico { flex: none; width: 30px; height: 30px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='15' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3.5 10h17'/%3E%3Cpath d='M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01' stroke-width='2.6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='15' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3.5 10h17'/%3E%3Cpath d='M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01' stroke-width='2.6'/%3E%3C/svg%3E") center / contain no-repeat; }
+.hoje summary::after { content: ""; margin-left: auto; flex: none; width: 24px; height: 24px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; transition: transform 0.15s; }
+.hoje details:not([open]) summary::after { transform: rotate(-90deg); }
+.hoje .actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 10px 0 0; }
+.hoje .actions .btn { display: flex; align-items: center; gap: 12px; justify-content: flex-start; text-align: left; min-height: 52px; padding: 8px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 2px 10px rgba(40, 40, 70, 0.12); font-weight: 800; font-size: 15px; color: var(--ink); }
+.hoje .actions .btn::before { content: ""; flex: none; width: 24px; height: 24px; background: currentColor; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+.hoje .actions .btn[data-hjlista]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6h11M9 12h11M9 18h11'/%3E%3Cpath d='M4.5 6h.01M4.5 12h.01M4.5 18h.01' stroke-width='3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6h11M9 12h11M9 18h11'/%3E%3Cpath d='M4.5 6h.01M4.5 12h.01M4.5 18h.01' stroke-width='3'/%3E%3C/svg%3E"); }
+.hoje .actions .btn[data-hjcal]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='15' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3.5 10h17M12 12.5v5M9.5 15h5'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='15' rx='3'/%3E%3Cpath d='M8 3v4M16 3v4M3.5 10h17M12 12.5v5M9.5 15h5'/%3E%3C/svg%3E"); }
+.hoje .actions .btn::after { content: ""; margin-left: auto; flex: none; width: 20px; height: 20px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat; }
+.hoje .hjinfo { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; }
+.hoje .hjinfo::before { content: ""; flex: none; width: 20px; height: 20px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v6'/%3E%3Cpath d='M12 7.6h.01' stroke-width='3'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v6'/%3E%3Cpath d='M12 7.6h.01' stroke-width='3'/%3E%3C/svg%3E") center / contain no-repeat; }
+.pnaud { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 8px 0; }
+
+/* ajustes finos v26: tudo cabe na largura, como no mockup */
+.bkpbar { gap: 8px; padding: 9px 10px; }
+.bkpbar .bkico { flex: 0 0 24px; height: 24px; }
+.bkpbar .bktxt { font-size: 12px; line-height: 1.25; }
+.bkpbar .bktxt strong { font-size: 13px; margin-bottom: 1px; }
+.bkpbar .actions { gap: 5px; }
+.bkpbar .actions .btn { min-height: 38px; padding: 0 10px; font-size: 12.5px; }
+header .bar { gap: 6px; }
+header .bar .btn { font-size: clamp(11px, 2.9vw, 13px); padding: 0 6px; gap: 5px; min-height: 50px; }
+header .bar .btn::before { width: 17px; height: 17px; }
+
+.bkpbar[hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Mandados do dia</h1>
-    <p id="summary"></p>
-    <button class="btn small" id="btnPainel" type="button">Painel do dia</button>
+    <div class="htop"><div class="htxt"><h1>Mandados do dia</h1><p id="summary"></p></div><button class="btn small" id="btnPainel" type="button">Painel do dia</button></div>
     <p class="note" id="syncLine" style="margin-top:4px"></p>
     <div class="bkpbar" id="bkpBar" hidden></div>
     <div class="salvando" id="salvandoBar" hidden></div>
@@ -3706,7 +3758,7 @@ function iaUsuarioAjuste(d) {
     if (!nivel || Date.now() < ((state.cfg && state.cfg.bkpAdiar) || 0)) { el.hidden = true; el.innerHTML = ''; if (sl) { sl.style.display = ''; } return; }
     if (sl) { sl.style.display = 'none'; }
     el.hidden = false; el.className = 'bkpbar ' + nivel;
-    el.innerHTML = '<p><strong>' + (!t ? 'Você ainda não fez backup.' : 'Faz ' + dias + ' dias sem backup.') + '</strong> ' + (nivel === 'verm' ? 'Se o iPhone apagar os dados, você perde mandados e certidões.' : 'Salve um arquivo para não perder o andamento.') + '</p><div class="actions"><button class="btn primary" data-bk="fazer" type="button">Fazer backup agora</button><button class="btn ghost" data-bk="depois" type="button">Depois</button></div>';
+    el.innerHTML = '<span class="bkico" aria-hidden="true"></span><p class="bktxt"><strong>' + (!t ? 'Você ainda não fez backup.' : 'Faz ' + dias + ' dias sem backup.') + '</strong>' + (nivel === 'verm' ? 'Se o iPhone apagar os dados, você perde mandados e certidões.' : 'Salve um arquivo para não perder o andamento.') + '</p><div class="actions"><button class="btn primary" data-bk="fazer" type="button">Fazer backup agora</button><button class="btn ghost" data-bk="depois" type="button">Depois</button></div>';
   }
   document.getElementById('bkpBar').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-bk]') : null;
@@ -3732,7 +3784,7 @@ function iaUsuarioAjuste(d) {
   function abrirPainel() {
     var d = painelDados(), pct = d.total ? Math.round(d.cert / d.total * 100) : 0;
     var sa = state.seqAtiva && state.seqAtiva.ents && Date.now() - state.seqAtiva.t0 <= 12 * 3600000 ? state.seqAtiva : null;
-    var ra = state.rotaAtiva, restRota = ra ? rotaRestantes().length : 0;
+    var ra = state.rotaAtiva, restRota = ra ? rotaRestantes().length : 0, hdP = hojeDados(), totAudP = hdP.perdidas.length + hdP.futuras;
     function card(n, rotulo, cls, aba) { return '<' + (aba ? 'button type="button" data-pt="' + aba + '"' : 'div') + ' class="pcard ' + cls + '"><strong>' + n + '</strong><span>' + rotulo + '</span></' + (aba ? 'button' : 'div') + '>'; }
     var retomar = '';
     if (sa) { retomar += '<button class="btn primary wide" type="button" data-pn="fila">Continuar a fila de mensagens</button>'; }
@@ -3742,11 +3794,15 @@ function iaUsuarioAjuste(d) {
       '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.pos, 'Cumpridos (positivas)', 'ok', 'devolver') + card(d.neg, 'Negativos', 'neg', 'devolver') + card(d.zap, 'Intimados por WhatsApp', 'zap', 'devolver') +
       card(d.aguard, 'Aguardando on-line', '', 'aguardando') + card(d.prontos, 'Prontos para certificar', '', 'enviar') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + '</div>' +
       '<p class="note"><strong>Hoje:</strong> ' + d.hoje + (d.hoje === 1 ? ' certidão' : ' certidões') + ' (' + d.hojePos + (d.hojePos === 1 ? ' positiva, ' : ' positivas, ') + d.hojeNeg + (d.hojeNeg === 1 ? ' negativa' : ' negativas') + '). Mensagens abertas hoje: ' + d.msgsHoje + '.</p>' +
+      (totAudP ? '<div class="actions pnaud"><button class="btn" type="button" data-hjlista="1">Ver todas as audiências (' + totAudP + ')</button>' + '</div>' : '') +
+      '<p class="note">Último backup em arquivo: ' + (state.ultimoBackup ? (function (dd) { return dd === 0 ? 'hoje' : 'há ' + dd + (dd === 1 ? ' dia' : ' dias'); })(Math.floor((Date.now() - state.ultimoBackup) / 86400000)) : 'ainda não há') + '.</p>' +
       (retomar ? '<p class="note" style="margin:10px 0 4px"><strong>Retomar de onde parei</strong></p><div class="actions">' + retomar + '</div>' : '<p class="note">Nada em andamento: nenhuma fila nem rota aberta.</p>') +
       '<div class="actions"><button class="btn ghost" type="button" id="pnFecha">Fechar</button></div>');
     document.getElementById('pnFecha').onclick = closeModal;
     document.getElementById('mbody').onclick = function (e) {
       var c = e.target.closest ? e.target.closest('[data-pt]') : null, n = e.target.closest ? e.target.closest('[data-pn]') : null;
+      if (e.target.closest && e.target.closest('[data-hjlista]')) { abrirListaAudiencias(); return; }
+      if (e.target.closest && e.target.closest('[data-hjcal]')) { closeModal(); baixarCalendario(); return; }
       if (c) { tab = c.getAttribute('data-pt'); closeModal(); render(); return; }
       if (n) { var a = n.getAttribute('data-pn'); closeModal(); if (a === 'fila') { retomarSequencia(); } else { mostrarRota(); } }
     };
@@ -3784,7 +3840,7 @@ function iaUsuarioAjuste(d) {
     if (!state.items.length || state.sample) { return ''; }
     if (!state.cfg.ddd && state.items.some(function (i) { return (i.telefones || []).some(function (t) { return normPhone(t).semDDD; }); })) { return 'Há telefones sem DDD. Informe o seu DDD em Meus dados para eles virarem link do WhatsApp.'; }
     var t = state.ultimoBackup, dias = t ? Math.floor((Date.now() - t) / 86400000) : null;
-    return 'Seus dados ficam guardados neste aparelho. ' + (t ? 'Último backup em arquivo: ' + (dias === 0 ? 'hoje' : 'há ' + dias + (dias === 1 ? ' dia' : ' dias')) + '.' : 'Ainda não há backup em arquivo.') + (!t || dias >= 3 ? ' Toque em “Backup em arquivo”.' : '');
+    return '';
   }
   function ehInstalado() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
   function recuperar() { return MODO_ATALHO ? escolherBackup() : restaurarDaNuvem(false); }
@@ -7436,17 +7492,17 @@ function iaUsuarioAjuste(d) {
     var el = document.getElementById('hoje');
     if (tab !== 'enviar') { el.hidden = true; return; }
     var d = hojeDados(), qtd = d.aud.length + d.urgs.length + d.perdidas.length;
-    if (!qtd && !d.futuras) { el.hidden = true; return; }
+    if (!qtd) { el.hidden = true; return; }
     function dm(x) { var p = x.data.split('-'); return p[2] + '/' + p[1] + (x.hora ? ' ' + x.hora : ''); }
     var perd = d.perdidas.map(function (x) { return '<li><strong class="urgtxt">Audiência já passou (' + esc(dm(x)) + ')</strong> · ' + esc(x.it.nome) + ' — devolva o mandado imediatamente</li>'; });
     var itens = perd.concat(d.aud.map(function (x) { return '<li><strong>' + (x.df <= 0 ? 'Hoje' : 'Amanhã') + (x.hora ? ' ' + esc(x.hora) : '') + '</strong> · audiência de ' + esc(x.it.nome) + (x.it.vara ? '<br><span class="note">' + esc(varaCurta(x.it.vara)) + '</span>' : '') + '</li>'; }))
       .concat(d.urgs.map(function (x) { return '<li><strong class="urgtxt">' + (x.tipo === 'saude' ? 'Liminar de saúde' : 'Afastamento do lar') + '</strong> · ' + esc(x.it.nome) + '</li>'; })).join('');
     var totAud = d.perdidas.length + d.futuras;
     el.hidden = false;
-    el.innerHTML = '<details class="chk" open><summary><strong>Hoje e amanhã</strong>' + (qtd ? ' (' + qtd + ')' : '') + '</summary>' + (itens ? '<ul>' + itens + '</ul>' : '<p class="note">Nada para hoje nem amanhã.</p>') +
+    el.innerHTML = '<details class="chk" open><summary><span class="hjico" aria-hidden="true"></span><strong>Hoje e amanhã</strong>' + (qtd ? ' (' + qtd + ')' : '') + '</summary>' + (itens ? '<ul>' + itens + '</ul>' : '<p class="note">Nada para hoje nem amanhã.</p>') +
       '<div class="actions">' + (totAud ? '<button class="btn small" data-hjlista="1">Ver todas as audiências (' + totAud + ')</button>' : '') +
-      (d.futuras ? '<button class="btn small" data-hjcal="1">Adicionar ' + (d.futuras === 1 ? 'a audiência' : 'as ' + d.futuras + ' audiências') + ' ao Calendário</button>' : '') + '</div>' +
-      (d.futuras ? '<p class="note">O Calendário do iPhone avisa na véspera e 1 hora antes.</p>' : '') + '</details>';
+      '</div>' +
+      '</details>';
   }
   /* Lista de todas as audiências: primeiro as que já passaram (devolver já), depois as próximas, da mais próxima para a mais distante */
   function abrirListaAudiencias() {
