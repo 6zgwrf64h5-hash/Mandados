@@ -505,6 +505,18 @@ header h1 { font-size: 26px; }
 .grp.on .grp-t .wai { width: 24px; height: 24px; }
 #btnSeq { background: #25D366; color: #04301A; box-shadow: 0 6px 16px rgba(37, 211, 102, 0.42); }
 #btnSeq .wai { filter: drop-shadow(0 0 0 transparent); }
+
+/* ===== Botão de cada número: informação pequena e "×" do que não deu certo ===== */
+.grp .phones .wn { position: relative; flex: 1 1 auto; display: flex; min-width: 0; }
+.grp .phones .wn .wa { flex: 1 1 auto; padding-right: 26px; }
+.wa .wtxt { display: flex; flex-direction: column; align-items: center; line-height: 1.1; min-width: 0; }
+.wa .wnote { font-size: 10px; font-weight: 700; opacity: 0.78; white-space: nowrap; margin-top: 1px; }
+.wx { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: rgba(4, 48, 26, 0.16); color: #04301A; font-size: 15px; line-height: 1; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.wn.fail .wa { opacity: 0.55; filter: saturate(0.55); }
+.wn.fail .wx { background: rgba(4, 48, 26, 0.3); }
+.sheet [data-mot], .sheet #nxOut { min-height: 46px; }
+
+.sheet [data-op="__voz"] { background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff; box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35); }
 </style>
 </head>
 <body>
@@ -1303,6 +1315,25 @@ function limpaEndereco(end, tels) {
   var t = String(end || '');
   (tels || []).forEach(function (x) { t = t.split(x).join(''); });
   return t.replace(/\s{2,}/g, ' ').replace(/[\s,;\-–]+$/, '').replace(/^[\s,;\-–]+/, '').trim();
+}
+/* Texto curto (1 ou 2 palavras) do que não deu certo com um número */
+function motivoCurto(m) {
+  var x = norm(m || '');
+  if (!x) { return ''; }
+  if (/inativ|inexist/.test(x)) { return 'inativo'; }
+  if (/sem whatsapp|nao possui whatsapp/.test(x)) { return 'sem WhatsApp'; }
+  if (/sem resposta|sem retorno/.test(x)) { return 'sem resposta'; }
+  if (/documento/.test(x)) { return 'sem documento'; }
+  if (/outra pessoa|nao conhece/.test(x)) { return 'outra pessoa'; }
+  return String(m).trim().split(/\s+/).slice(0, 2).join(' ').slice(0, 16);
+}
+/* O que já aconteceu com este número: quantas mensagens, quando foi a última e o que não deu certo */
+function infoNumero(it, n) {
+  var ms = (it.msgs || []).filter(function (m) { return m.kind !== 'analise' && m.tel && normPhone(m.tel).wa === n.wa; });
+  var tt = (it.tentativas || []).filter(function (x) { return !x.tel || normPhone(x.tel).wa === n.wa; });
+  var mot = tt.length ? tt[tt.length - 1].motivo : '';
+  if (!mot && (it.semZap || []).indexOf(n.wa) !== -1) { mot = 'número sem WhatsApp'; }
+  return { envios: ms.length, ultimo: ms.length ? ms[ms.length - 1].t : 0, motivo: mot, motivoCurto: motivoCurto(mot) };
 }
 function parseTelefonesTexto(text) {
   var t = String(text || '').split('\n').filter(function (l) { return !/\bFone\s*:|E-mail\s*:/i.test(l); }).join(' ').replace(/\s+/g, ' ');
@@ -3603,9 +3634,10 @@ function parteLocal(parte, fala, it, ctx) {
     if (i.status === 'pendente' && !temTelefone(i)) { flags.push(['Sem telefone no mandado: só visita no endereço', false]); }
     if (i.status === 'pendente' && et === 'eletronico') { flags.push(['Só cumprimento eletrônico (sem endereço físico)', false]); }
     else if (i.status === 'pendente' && et === 'fora') { flags.push(['Endereço fora da comarca' + (i.cidade ? ' (' + i.cidade + ')' : '') + ': cumprimento eletrônico', false]); }
+    var flagMsg = null;   /* só aparece se a mensagem não couber no botão de algum número (marcada à mão, sem número, ou números escondidos) */
     if (mr.n && i.status === 'pendente') {
       var md = new Date(mr.ultima);
-      flags.push([(mr.kind === 'link' ? 'WhatsApp aberto em ' : 'Mensagem enviada em ') + pad(md.getDate()) + '/' + pad(md.getMonth() + 1) + ' às ' + pad(md.getHours()) + ':' + pad(md.getMinutes()) + (mr.n > 1 ? ' (' + mr.n + ' vezes)' : ''), false]);
+      flagMsg = [(mr.kind === 'link' ? 'WhatsApp aberto em ' : 'Mensagem enviada em ') + pad(md.getDate()) + '/' + pad(md.getMonth() + 1) + ' às ' + pad(md.getHours()) + ':' + pad(md.getMinutes()) + (mr.n > 1 ? ' (' + mr.n + ' vezes)' : ''), false];
     }
     if (mr.repetir) { flags.push(['Passou de 24 h: repita a mensagem', true]); }
     if (i.status === 'pendente') {
@@ -3647,11 +3679,18 @@ function parteLocal(parte, fala, it, ctx) {
         if (n.intl) { note.push('exterior'); } else if (n.ddd !== '45') { note.push('DDD ' + n.ddd); }
         var link = 'https://wa.me/' + n.wa + '?text=' + encodeURIComponent(message(i.nome));
         var linkAn = 'https://wa.me/' + n.wa + '?text=' + encodeURIComponent(msgAnalise(i.nome));
-        return '<a class="wa' + (verm ? ' stopwa' : '') + '" data-tel="' + esc(n.label) + '" href="' + link + '"><span class="wlbl">WhatsApp </span>' + esc(n.label) + (note.length ? ' (' + note.join(', ') + ')' : '') + '</a>';
+        var inf = infoNumero(i, n), ud = new Date(inf.ultimo || 0);
+        var tiny = (inf.envios ? inf.envios + 'x ' + pad(ud.getDate()) + '/' + pad(ud.getMonth() + 1) + ' ' + pad(ud.getHours()) + ':' + pad(ud.getMinutes()) : '') + (inf.motivoCurto ? (inf.envios ? ' · ' : '') + inf.motivoCurto : '');
+        return '<div class="wn' + (inf.motivoCurto ? ' fail' : '') + '"><a class="wa' + (verm ? ' stopwa' : '') + '" data-tel="' + esc(n.label) + '" href="' + link + '"><span class="wlbl">WhatsApp </span><span class="wtxt"><span class="wn1">' + esc(n.label) + (note.length ? ' (' + note.join(', ') + ')' : '') + '</span>' + (tiny ? '<span class="wnote">' + esc(tiny) + '</span>' : '') + '</span></a><button class="wx" data-act="numx" data-tel="' + esc(n.label) + '" aria-label="Não deu certo neste número" title="Não deu certo neste número">×</button></div>';
       }).join('');
       if (verm) { phones = '<p class="stopnote">Se tocar no número, o mandado passa a “pode enviar”. Só mande se tiver certeza.</p>' + phones; }
       if (!phones && i.cls === 'enviar') { phones = '<span class="wa off">Sem telefone no mandado</span>'; }
       if (!state.me) { phones = '<button class="wa off" data-act="me" style="width:100%">Confirme os seus dados para liberar o WhatsApp</button>'; }
+    }
+    if (flagMsg) {
+      var numsOk = telefonesUnicos(i.telefones).filter(function (u) { return u.n.ok; }).map(function (u) { return u.n.wa; });
+      var msgSemNum = (i.msgs || []).some(function (m) { return m.kind !== 'analise' && numsOk.indexOf(normPhone(m.tel || '').wa) === -1; });
+      if (!phones || phones.indexOf('class="wn') === -1 || msgSemNum) { flags.push(flagMsg); }
     }
     var tel = '';
     if (i.cls !== 'enviar' && !verm && telefonesUnicos(i.telefones).length) {
@@ -3685,9 +3724,8 @@ function parteLocal(parte, fala, it, ctx) {
       if (phones) { onl += '<div class="phones">' + phones + '</div>'; }
       onl += onlResp;
       if (temNumero) {
-        if (i.cls === 'enviar' || temDil) { onb += (mr.n ? '<button class="btn small ghost" data-act="unsent">Desfazer envio</button>' : '') + '<button class="btn small" data-act="watry">WhatsApp não deu certo</button>'; }
+        if ((i.cls === 'enviar' || temDil) && mr.n) { onb += '<button class="btn small ghost" data-act="unsent">Desfazer envio</button>'; }
         if (fileOk(i)) { onb += '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>'; }
-        if (i.cls !== 'nao_enviar' || temDil) { onb += '<button class="btn small" data-act="certwa">Certidão do WhatsApp</button>'; }
         onb += '<button class="btn small" data-act="teldil">WhatsApp novo</button>';
       } else {
         onb += '<button class="btn small primary" data-act="teldil">Inserir WhatsApp</button>';
@@ -3696,11 +3734,7 @@ function parteLocal(parte, fala, it, ctx) {
       if (loc) {
         h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="fis" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="fis" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita">Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª tentativa</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' tentativas</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + '<button class="btn small" data-act="fisica">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint">Certidão física (print)</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
       }
-      var cb = '<button class="btn small' + (pronto(i) ? ' primary' : '') + '" data-act="cert">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button><button class="btn small" data-act="externo">Certificada em outro meio (sem PDF)</button><button class="btn small ghost" data-act="atotipo">Trocar o tipo do ato</button>';
-      cb = '<button class="btn small primary wide" data-act="certia">Certificar por voz</button>' + cb;
-      if ((ph.fis || ph.on) && partesFaltando(pn, ph).length) { cb += '<button class="btn small wide" data-act="partesjuntar">Juntar e revisar só com o que está pronto</button>'; }
-      if (ph.fis || ph.on) { cb += '<button class="btn small ghost" data-act="partesundo">Refazer as partes</button>'; }
-      h += '<div class="grp cer"><p class="grp-t">Certidão</p><div class="actions">' + cb + '</div></div>';
+      if (!((temNum && temNumero) || loc)) { h += '<div class="grp cer"><div class="actions"><button class="btn small primary wide" data-act="certmenu">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button></div></div>'; }
       var man = '';
       if (fileOk(i)) { man += '<button class="btn small" data-act="ver">Ver mandado</button>'; }
       if (i.cls === 'conferir' || i.cls === 'nao_enviar') { man += '<button class="btn small" data-act="toenv">Marcar: pode enviar</button>'; }
@@ -4164,6 +4198,8 @@ function parteLocal(parte, fala, it, ctx) {
     }
     else if (act === 'auto') { abrirAuto(it); }
     else if (act === 'atotipo') { abrirTipoAto(it); }
+    else if (act === 'certmenu') { abrirCertificar(it); }
+    else if (act === 'numx') { abrirNaoDeuCerto(it, b.getAttribute('data-tel')); }
     else if (act === 'resp') { abrirResposta(it, b.getAttribute('data-p'), b.getAttribute('data-t')); }
     else if (act === 'viewcert') { viewCert(it); }
     else if (act === 'ver') { viewMandado(it); }
@@ -6449,6 +6485,57 @@ function parteLocal(parte, fala, it, ctx) {
     save(); render();
     toast('Voltou para a lista de pendentes, na aba Mandados.');
   }
+  /* Tudo o que antes ficava no bloco "Certidão" do cartão agora fica dentro da janela de Negativo/Positivo */
+  function certExtrasHtml(it) {
+    var pn = partesNec(it), ph = it.partes || {}, h = '<p class="note" style="margin:14px 0 4px">Outras formas de certificar</p><div class="actions" style="display:grid;grid-template-columns:1fr 1fr">';
+    h += '<button class="btn primary" style="grid-column:1/-1" data-op="__voz">Certificar por voz</button>';
+    h += '<button class="btn' + (pronto(it) ? ' primary' : '') + '" data-op="__cert">' + (pronto(it) ? 'Certificar (pronto)' : 'Certificar') + '</button><button class="btn" data-op="__externo">Certificada em outro meio (sem PDF)</button>';
+    if ((ph.fis || ph.on) && partesFaltando(pn, ph).length) { h += '<button class="btn" style="grid-column:1/-1" data-op="__juntar">Juntar e revisar só com o que está pronto</button>'; }
+    if (ph.fis || ph.on) { h += '<button class="btn ghost" style="grid-column:1/-1" data-op="__desfazer">Refazer as partes</button>'; }
+    h += '</div><p class="note" style="margin:14px 0 4px">Tipo do ato: <strong>' + esc(it.tipo || '(sem tipo)') + '</strong></p><div class="actions"><button class="btn small ghost" data-op="__tipo">Trocar o tipo do ato</button></div>';
+    return h;
+  }
+  function extraOp(it, v) {
+    if (v === '__voz') { openVoz(it); }
+    else if (v === '__cert') { openCert(it); }
+    else if (v === '__externo') { abrirExterno(it); }
+    else if (v === '__juntar') { abrirFinal(it); }
+    else if (v === '__desfazer') { it.partes = null; save(); render(); closeModal(); toast('As partes foram desfeitas.'); }
+    else if (v === '__tipo') { abrirTipoAto(it, function () { abrirCertificar(it); }); }
+    else { return false; }
+    return true;
+  }
+  function abrirCertificar(it) {
+    openModal('Certificar', '<p><strong>' + esc(it.nome) + '</strong></p>' + certExtrasHtml(it) + '<div class="actions"><button class="btn ghost" data-op="__x">Cancelar</button></div>');
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-op]') : null;
+      if (!b) { return; }
+      var v = b.getAttribute('data-op');
+      if (v === '__x') { closeModal(); return; }
+      extraOp(it, v);
+    };
+  }
+  /* "×" no botão de um número: o que não deu certo com ele (entra na certidão, como "WhatsApp não deu certo") */
+  var MOTIVOS_NUM = ['sem resposta', 'número sem WhatsApp', 'telefone inativo', 'não apresentou documento', 'número de outra pessoa, que não conhece o(a) destinatário(a)'];
+  function abrirNaoDeuCerto(it, tel) {
+    var jaTem = (it.tentativas || []).some(function (x) { return x.tel && normPhone(x.tel).wa === normPhone(tel).wa; });
+    openModal('Não deu certo',
+      '<p><strong>' + esc(it.nome) + '</strong> · ' + esc(tel) + '</p><p class="note">Toque no que aconteceu com este número. Entra na certidão. Para mandar a mensagem, toque no número.</p>' +
+      '<div class="actions" style="display:grid;grid-template-columns:1fr">' + MOTIVOS_NUM.map(function (m, k) { return '<button class="btn" data-mot="' + k + '">' + esc(m) + '</button>'; }).join('') +
+      '<input type="text" id="nxOut" placeholder="Outro: escreva em poucas palavras" autocomplete="off"><button class="btn" data-mot="outro">Registrar o outro</button>' +
+      (jaTem ? '<button class="btn ghost" data-mot="limpar">Tirar a marcação deste número</button>' : '') + '<button class="btn ghost" data-mot="nao">Cancelar</button></div>');
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-mot]') : null;
+      if (!b) { return; }
+      var v = b.getAttribute('data-mot'), w = normPhone(tel).wa, m = '';
+      if (v === 'nao') { closeModal(); return; }
+      if (v === 'limpar') { it.tentativas = (it.tentativas || []).filter(function (x) { return !(x.tel && normPhone(x.tel).wa === w); }); it.semZap = (it.semZap || []).filter(function (x) { return x !== w; }); save(); closeModal(); render(); toast('Marcação tirada.'); return; }
+      if (v === 'outro') { m = String(document.getElementById('nxOut').value || '').trim(); if (!m) { toast('Escreva o que aconteceu'); return; } }
+      else { m = MOTIVOS_NUM[+v]; }
+      it.tentativas = (it.tentativas || []).concat([{ t: Date.now(), motivo: m, tel: tel }]);
+      save(); closeModal(); render(); toast('Registrado para ' + tel + '. Entra na certidão.');
+    };
+  }
   /* Negativo / Positivo (WhatsApp ou presencial): abre a lista de certidões daquele tipo */
   function opcoesResposta(parte, tipo) {
     var pos = parte === 'on' ? 'pos' : 'pospres', base = parte === 'on' ? OPC_ONLINE : OPC_FISICA;
@@ -6460,12 +6547,14 @@ function parteLocal(parte, fala, it, ctx) {
     var l = opcoesResposta(parte, tipo);
     openModal((parte === 'on' ? 'WhatsApp' : 'Presencial') + ': ' + (tipo === 'pos' ? 'positivo' : 'negativo'),
       '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha a certidão:</p><div class="actions" style="display:grid;grid-template-columns:1fr">' +
-      l.map(function (o) { return '<button class="btn ' + (tipo === 'pos' ? 'okb' : 'negb') + '" data-op="' + esc(o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '<button class="btn ghost" data-op="__x">Cancelar</button></div>');
+      l.map(function (o) { return '<button class="btn ' + (tipo === 'pos' ? 'okb' : 'negb') + '" data-op="' + esc(o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>' + certExtrasHtml(it) + '<div class="actions"><button class="btn ghost" data-op="__x">Cancelar</button></div>');
     document.getElementById('mbody').onclick = function (e) {
       var b = e.target.closest ? e.target.closest('[data-op]') : null;
       if (!b) { return; }
       var v = b.getAttribute('data-op');
       if (v === '__x') { closeModal(); return; }
+      if (v === '__tipo') { abrirTipoAto(it, function () { abrirResposta(it, parte, tipo); }); return; }
+      if (extraOp(it, v)) { return; }
       abrirParte(it, parte, v);
     };
   }
@@ -6479,7 +6568,7 @@ function parteLocal(parte, fala, it, ctx) {
   }
   /* Trocar o tipo do ato: quando a leitura errar, o oficial escolhe e a certidão e o auto seguem a escolha */
   var TIPOS_ATO = [['Citação e Intimação', 'Citar/intimar (comum)'], ['Citação', 'Citar'], ['Intimação', 'Intimar'], ['Penhora', 'Penhorar'], ['Remoção', 'Remover'], ['Avaliação', 'Avaliar'], ['Penhora e Avaliação', 'Penhorar e avaliar'], ['Remoção e Avaliação', 'Remover e avaliar'], ['Penhora, Remoção e Avaliação', 'Penhorar, remover e avaliar']];
-  function abrirTipoAto(it) {
+  function abrirTipoAto(it, volta) {
     openModal('Tipo do ato',
       '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Agora: <strong>' + esc(it.tipo || '(sem tipo)') + '</strong>. Escolha o que o mandado manda fazer. Para <strong>penhora, remoção ou avaliação</strong> como objeto principal, a certidão sai “deixei de penhorar/remover o bem indicado” e o auto vem junto. Se for citar/intimar e só depois penhorar, deixe como citação/intimação.</p>' +
       '<div class="actions" style="display:grid;grid-template-columns:1fr">' + TIPOS_ATO.map(function (t, k) { return '<button class="btn" data-ato="' + k + '">' + esc(t[1]) + '</button>'; }).join('') + (it.tipoOrig ? '<button class="btn ghost" data-ato="orig">Voltar ao original: ' + esc(it.tipoOrig) + '</button>' : '') + '<button class="btn ghost" data-ato="nao">Cancelar</button></div>');
@@ -6490,7 +6579,8 @@ function parteLocal(parte, fala, it, ctx) {
       if (v === 'nao') { closeModal(); return; }
       if (v === 'orig') { it.tipo = it.tipoOrig; delete it.tipoOrig; }
       else { if (it.tipoOrig == null) { it.tipoOrig = it.tipo || ''; } it.tipo = TIPOS_ATO[+v][0]; }
-      save(); closeModal(); render();
+      save(); render();
+      if (volta) { volta(); } else { closeModal(); }
       toast('Tipo do ato: ' + (it.tipo || '(original)') + '.');
     };
   }
