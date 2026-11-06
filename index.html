@@ -411,6 +411,100 @@ input[type="text"], input[type="date"], input[type="time"], textarea, select.sel
 .toast { border-radius: 18px; }
 .rota-banner, .hoje { border-radius: 20px; box-shadow: var(--sombra); }
 .seg .btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+/* ===== Compacto: menos altura por cartão, números primeiro, texto legível ao sol ===== */
+.wrap { padding-top: 12px; }
+header { padding: 16px 16px 14px; border-radius: 0 0 24px 24px; }
+header h1 { font-size: 26px; }
+.tabs { margin: 12px 0 8px; }
+.card { padding: 10px 10px 10px; margin: 0 0 10px; gap: 2px 8px; grid-template-columns: 28px 1fr; border-radius: 18px; border-left-width: 7px; }
+.card h3 { font-size: 17px; line-height: 1.2; margin: 0; }
+.card .trata { font-size: 14.5px; margin: 1px 0 0; line-height: 1.25; }
+.card .meta { font-size: 13px; margin: 1px 0 0; }
+.card .addr { font-size: 15.5px; margin: 3px 0 0; line-height: 1.25; }
+.card .custas { margin: 4px 0 0; font-size: 13px; gap: 6px; }
+.card .custas input { width: 88px; min-height: 32px; padding: 2px 8px; font-size: 14px; border-radius: 10px; }
+.card .flags { gap: 4px; margin: 5px 0 0; }
+.card .flag { font-size: 12px; padding: 2px 8px; border: 0; line-height: 1.25; }
+.grp { padding: 7px 8px 6px; margin: 7px 0 0; border-radius: 14px; }
+.grp-t { font-size: 11.5px; margin: 0 0 5px; gap: 6px; }
+.grp-t::before { width: 18px; height: 18px; border-radius: 6px; background-size: 11px; }
+.resp { gap: 8px; margin: 5px 0 0; }
+.rbtn { min-height: 44px; font-size: 16px; border-radius: 14px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16); }
+.phones { flex-direction: row; flex-wrap: wrap; gap: 6px; margin: 0; }
+/* botão de envio: verde do WhatsApp com texto escuro (contraste ~8:1 ao sol); “Documentos em análise” só com contorno */
+.wa, a.seqgo[data-sqgo] { color: #04301A; text-shadow: none; }
+.wa.off, .wa.stopwa { color: #fff; }
+.wa.ghost { background: var(--surface); color: #0B6B3A; border: 2px solid #25D366; box-shadow: none; }
+.phones .wa { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; min-height: 44px; padding: 6px 10px; font-size: 15px; border-radius: 14px; }
+.phones .wa.ghost { flex: 1 1 100%; min-height: 36px; font-size: 13.5px; }
+.wa:not(.ghost):not(.off):not(.stopwa)::before { content: ""; width: 17px; height: 17px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .6l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.8 2.1 1.2 1 2.2 1.4 2.5 1.5.3.1.5.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.8-.1 1.4z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .6l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.8 2.1 1.2 1 2.2 1.4 2.5 1.5.3.1.5.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.8-.1 1.4z'/%3E%3C/svg%3E") center / contain no-repeat; flex: none; }
+.wlbl { display: none; }
+.grp .actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+.card .grp .actions .btn.small { flex: 1 1 auto; min-height: 38px; padding: 5px 10px; font-size: 14px; border-radius: 12px; }
+.card .grp .actions .btn.wide { flex: 1 1 100%; }
+.card .grp .actions .btn.iconbtn { flex: 0 0 auto; }
+.card .btn[data-act="visita"] { min-height: 42px; }
+.card .btn[data-act="unsent"] { font-size: 14px; min-width: 0; padding: 5px 10px; flex: 0 0 auto; }
+.card .btn[data-act="unsent"]::before { width: 16px; height: 16px; margin-right: 6px; }
+.card .btn[data-act="fisica"], .card .btn[data-act="fisicaprint"] { font-size: 0; min-width: 52px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; }
+.card .btn[data-act="fisica"]::before, .card .btn[data-act="fisicaprint"]::before { content: ""; width: 22px; height: 22px; background: currentColor; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+.card .btn[data-act="fisica"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 3 7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3zm3 5.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 3 7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3zm3 5.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z'/%3E%3C/svg%3E"); }
+.card .btn[data-act="fisicaprint"]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3.5 4.5a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6zM5 18h14l-4.5-6-3.2 4.2-2.3-2.9z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm3.5 4.5a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6zM5 18h14l-4.5-6-3.2 4.2-2.3-2.9z'/%3E%3C/svg%3E"); }
+.dock { padding: 8px 12px; }
+.dock.vazio { display: none; }
+
+/* ===== Compacto, parte 2: botões pequenos dois por linha, ícones, avisos menores ===== */
+.card .grp .actions .btn.small { flex: 1 1 calc(50% - 6px); min-width: 0; min-height: 36px; white-space: normal; line-height: 1.15; justify-content: center; }
+.card .grp .actions .btn.wide { flex: 1 1 100%; }
+.card .grp .actions .btn.iconbtn, .card .grp .actions .btn[data-act="fisica"], .card .grp .actions .btn[data-act="fisicaprint"], .card .grp .actions .btn[data-act="del"], .card .grp .actions .btn[data-act="ver"], .card .grp .actions .btn[data-act="viewcert"] { flex: 0 0 auto; font-size: 0; min-width: 52px; min-height: 40px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; }
+.card .grp .actions .btn[data-act="unsent"] { flex: 1 1 calc(50% - 6px); font-size: 14px; }
+.phones .wa.ghost { white-space: normal; text-align: center; flex: 1 1 100%; }
+.card .flag { font-size: 11.5px; padding: 1px 7px; }
+.card .flags { gap: 3px; margin: 4px 0 0; }
+.card .custas input { width: 104px; }
+.grp.man { background: none; padding: 0; margin-top: 4px; }
+.grp.man .grp-t { display: none; }
+.grp.man .actions { justify-content: flex-end; margin: 0; }
+
+/* ===== Compacto, parte 3: dois números cabem na mesma linha, avisos sem borda ===== */
+.phones .wa { font-size: 14px; padding: 6px 6px; gap: 5px; }
+.wa:not(.ghost):not(.off):not(.stopwa)::before { width: 15px; height: 15px; }
+.phones .wa.ghost { white-space: nowrap; font-size: 12.5px; min-height: 32px; padding: 4px 8px; }
+.card .flag, .card.enviar .flag, .card.conferir .flag, .card.nao_enviar .flag, .card.semcel .flag, .card.positiva .flag, .card.negativa .flag, .card .flag.okf { border-width: 0; }
+.card .flag.stop, .card.nao_enviar .flag.stop, .card.enviar .flag.stop { border: 1px solid var(--neg); }
+.card .grp .actions .btn.small { font-size: 13.5px; padding: 4px 8px; }
+
+/* ===== Compacto, parte 4: ícones só-ícone de volta, números sem estourar a caixa ===== */
+.phones .wa { font-size: 13.5px; padding: 6px 4px; gap: 4px; }
+.phones .wa.ghost { font-size: 12px; padding: 4px 6px; }
+.card .grp .actions .btn.small[data-act="fisica"], .card .grp .actions .btn.small[data-act="fisicaprint"], .card .grp .actions .btn.small[data-act="del"], .card .grp .actions .btn.small[data-act="ver"], .card .grp .actions .btn.small[data-act="viewcert"] { font-size: 0; flex: 0 0 auto; min-width: 52px; padding: 0 12px; }
+.card .grp .actions .btn.small[data-act="externo"], .card .grp .actions .btn.small[data-act="atotipo"], .card .grp .actions .btn.small[data-act="partesundo"], .card .grp .actions .btn.small[data-act="partesjuntar"] { font-size: 12.5px; }
+
+/* ===== Compacto, parte 5: os números ficam numa linha flexível (a regra antiga os punha numa grade) ===== */
+.grp .phones { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; margin: 0; }
+.grp .phones .wa { flex: 1 1 auto; min-width: 0; min-height: 42px; font-size: 13.5px; padding: 6px 4px; }
+.grp .phones .wa.ghost { flex: 1 1 100%; min-height: 32px; font-size: 12.5px; padding: 4px 6px; }
+.grp .phones .wa.off, .grp .phones .wa.wide { flex: 1 1 100%; }
+
+/* ===== Compacto, parte 6: tentativa + foto + print na mesma linha; avisos extras recolhidos ===== */
+.card .grp .actions .btn[data-act="visita"] { flex: 1 1 0; min-width: 0; }
+.maisflags { margin: 2px 0 0; grid-column: 1 / -1; }
+.maisflags summary { cursor: pointer; font-size: 12px; font-weight: 800; color: var(--accent); padding: 2px 0; list-style: none; }
+.maisflags summary::-webkit-details-marker { display: none; }
+.maisflags[open] summary { margin-bottom: 3px; }
+
+/* ===== Compacto, parte 7: aviso positivo legível (verde escuro sobre verde claro) ===== */
+.card .flag.okf, .card.enviar .flag.okf, .card.conferir .flag.okf, .card.semcel .flag.okf, .card.nao_enviar .flag.okf { background: #D3F3E1; color: #0B5C33; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card .flag.okf { background: #1B4D39; color: #C4F5DB; } }
+:root[data-theme="dark"] .card .flag.okf { background: #1B4D39; color: #C4F5DB; }
+
+/* ===== Ícone do WhatsApp no lugar da palavra ===== */
+.wai { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.25em; border-radius: 26%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%2325D366'/%3E%3Cpath d='M12 4.2a7.8 7.8 0 0 0-6.7 11.8L4.3 19.7l3.8-1A7.8 7.8 0 1 0 12 4.2z' fill='none' stroke='white' stroke-width='1.7' stroke-linejoin='round'/%3E%3Cpath fill='white' d='M9.2 8.6c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.3-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.4 3.9 3.3 1.9.7 2.3.6 2.7.5.4 0 1.3-.5 1.5-1 .2-.5.2-1 .1-1-.1-.1-.2-.1-.5-.3l-1.4-.7c-.2-.1-.4-.1-.5.1l-.6.8c-.1.2-.3.2-.5.1-.3-.1-1.1-.4-2-1.2-.7-.7-1.2-1.4-1.3-1.7-.1-.2 0-.4.1-.5l.4-.4c.1-.1.2-.3.2-.4.1-.2 0-.3 0-.5z'/%3E%3C/svg%3E") center / contain no-repeat; flex: none; }
+.grp.on .grp-t::before { display: none; }
+.grp.on .grp-t .wai { width: 24px; height: 24px; }
+#btnSeq { background: #25D366; color: #04301A; box-shadow: 0 6px 16px rgba(37, 211, 102, 0.42); }
+#btnSeq .wai { filter: drop-shadow(0 0 0 transparent); }
 </style>
 </head>
 <body>
@@ -481,8 +575,8 @@ input[type="text"], input[type="date"], input[type="time"], textarea, select.sel
       <button class="btn small" id="btnAll">Selecionar todos</button>
       <button class="btn small ghost" id="btnNone">Limpar seleção</button>
       <button class="btn small primary" id="btnRoute">Gerar rota</button>
-      <button class="btn small primary" id="btnSeq"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .6l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.8 2.1 1.2 1 2.2 1.4 2.5 1.5.3.1.5.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.8-.1 1.4z"/></svg> Citações/intimações em sequência</button>
-      <button class="btn small" id="btnSeq2"><svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 1.9c.1.2.1.4 0 .6l-.4.6-.3.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.8 2.1 1.2 1 2.2 1.4 2.5 1.5.3.1.5.1.6-.1l.8-1c.2-.3.4-.2.6-.1l1.8.9c.3.1.5.2.5.3.1.2.1.8-.1 1.4z"/></svg> 2ª mensagem em sequência</button>
+      <button class="btn small primary" id="btnSeq"><span class="wai" aria-hidden="true"></span> Citações/intimações em sequência</button>
+      <button class="btn small" id="btnSeq2"><span class="wai" aria-hidden="true"></span> 2ª mensagem em sequência</button>
       <button class="btn small ghost" id="btnDelAll">Excluir tudo</button>
     </div>
   </div>
@@ -3462,6 +3556,7 @@ function parteLocal(parte, fala, it, ctx) {
       ? n + (n === 1 ? ' selecionado' : ' selecionados')
       : (ce ? 'Nenhum marcado: as ações valem para todas' : 'Nenhum selecionado');
     document.getElementById('dock').hidden = tab === 'arquivos';
+    var dk = document.getElementById('dock'); if (dk.classList) { dk.classList.toggle('vazio', !ce && !n); }
     document.getElementById('btnRoute').hidden = ce;
     document.getElementById('btnPrint').hidden = ce;
     document.getElementById('btnZip').hidden = !ce;
@@ -3552,9 +3647,8 @@ function parteLocal(parte, fala, it, ctx) {
         if (n.intl) { note.push('exterior'); } else if (n.ddd !== '45') { note.push('DDD ' + n.ddd); }
         var link = 'https://wa.me/' + n.wa + '?text=' + encodeURIComponent(message(i.nome));
         var linkAn = 'https://wa.me/' + n.wa + '?text=' + encodeURIComponent(msgAnalise(i.nome));
-        return '<a class="wa' + (verm ? ' stopwa' : '') + '" data-tel="' + esc(n.label) + '" href="' + link + '">WhatsApp ' + esc(n.label) + (note.length ? ' (' + note.join(', ') + ')' : '') + '</a>' +
-          (nTel > 1 || verm ? '' : '<a class="wa ghost" data-tel="' + esc(n.label) + '" data-an="1" href="' + linkAn + '">Documentos em análise</a>');
-      }).join('') + (nTel > 1 && !verm ? '<button class="wa ghost wide" data-act="analise">Documentos em análise (escolher o número)</button>' : '');
+        return '<a class="wa' + (verm ? ' stopwa' : '') + '" data-tel="' + esc(n.label) + '" href="' + link + '"><span class="wlbl">WhatsApp </span>' + esc(n.label) + (note.length ? ' (' + note.join(', ') + ')' : '') + '</a>';
+      }).join('');
       if (verm) { phones = '<p class="stopnote">Se tocar no número, o mandado passa a “pode enviar”. Só mande se tiver certeza.</p>' + phones; }
       if (!phones && i.cls === 'enviar') { phones = '<span class="wa off">Sem telefone no mandado</span>'; }
       if (!state.me) { phones = '<button class="wa off" data-act="me" style="width:100%">Confirme os seus dados para liberar o WhatsApp</button>'; }
@@ -3575,13 +3669,21 @@ function parteLocal(parte, fala, it, ctx) {
     if (i.aviso && i.aviso.length > 70) { h += '<details class="orient"><summary>Orientações do mandado</summary><p>' + esc(i.aviso) + '</p></details>'; }
     h += '<p class="addr">' + esc(i.endereco) + (i.bairro ? ', ' + esc(i.bairro) : '') + '</p>' + tel;
     if (i.status === 'pendente') { h += '<label class="custas">Custas (R$) <input type="text" inputmode="decimal" data-custas="1" value="' + esc(custasCard(i)) + '" placeholder="sem custas" aria-label="Custas em reais" autocomplete="off"></label>'; }
-    if (flags.length) { h += '<div class="flags">' + flags.map(function (f) { var cls = 'flag' + (f[1] === 'ok' ? ' okf' : (f[1] ? ' stop' : '')); return f[2] === 'aud' ? '<button class="' + cls + ' flagbtn" data-act="audinfo" aria-label="De onde veio a data da audiência">' + esc(f[0]) + ' ⓘ</button>' : '<span class="' + cls + '">' + esc(f[0]) + '</span>'; }).join('') + '</div>'; }
+    if (flags.length) {
+      /* avisos urgentes, de alerta e positivos sempre à vista; dos avisos neutros ficam 2 e o resto vai para “+N avisos” */
+      var fh = function (f) { var cls = 'flag' + (f[1] === 'ok' ? ' okf' : (f[1] ? ' stop' : '')); return f[2] === 'aud' ? '<button class="' + cls + ' flagbtn" data-act="audinfo" aria-label="De onde veio a data da audiência">' + esc(f[0]) + ' ⓘ</button>' : '<span class="' + cls + '">' + esc(f[0]) + '</span>'; };
+      var fv = [], fx = [], nneu = 0;
+      flags.forEach(function (f) { if (f[1] || f[2] || nneu < 2) { fv.push(f); if (!f[1] && !f[2]) { nneu++; } } else { fx.push(f); } });
+      h += '<div class="flags">' + fv.map(fh).join('') + '</div>';
+      if (fx.length) { h += '<details class="maisflags"><summary>+' + fx.length + (fx.length === 1 ? ' aviso' : ' avisos') + '</summary><div class="flags">' + fx.map(fh).join('') + '</div></details>'; }
+    }
     h += telCandHtml(i);
     if (i.status === 'pendente') {
       var temNum = onlinePossivel(i), loc = etipo(i) === 'local', onl = '', onb = '';
       var temNumero = telefonesUnicos(i.telefones).some(function (u) { return u.n.ok; }) || !!temDil;
-      if (temNum && temNumero) { onl += '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="on" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="on" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('on') + '</div>'; }
+      var onlResp = ''; if (temNum && temNumero) { onlResp = '<div class="resp"><button class="rbtn neg" data-act="resp" data-p="on" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><button class="rbtn pos" data-act="resp" data-p="on" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button></div><div class="selhid">' + selParte('on') + '</div>'; }
       if (phones) { onl += '<div class="phones">' + phones + '</div>'; }
+      onl += onlResp;
       if (temNumero) {
         if (i.cls === 'enviar' || temDil) { onb += (mr.n ? '<button class="btn small ghost" data-act="unsent">Desfazer envio</button>' : '') + '<button class="btn small" data-act="watry">WhatsApp não deu certo</button>'; }
         if (fileOk(i)) { onb += '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>'; }
@@ -4288,6 +4390,39 @@ function parteLocal(parte, fala, it, ctx) {
     seqMostra();
     toast('Continuando a fila de onde parou.');
   }
+  /* A palavra “WhatsApp” nunca aparece escrita na tela: vira o ícone. Fica de fora só o que é texto de certidão ou campo (textarea, pre, input, lista). */
+  (function () {
+    if (typeof MutationObserver === 'undefined' || !document.createTreeWalker) { return; }
+    var RE = /whats\s?app/gi, PULA = /^(?:TEXTAREA|PRE|INPUT|SELECT|OPTION|SCRIPT|STYLE|CODE)$/;
+    function pula(n) { for (var e = n.parentNode; e && e.nodeType === 1; e = e.parentNode) { if (PULA.test(e.tagName) || (e.classList && e.classList.contains('wai'))) { return true; } } return false; }
+    function iconizar(raiz) {
+      if (!raiz) { return; }
+      var nos = [];
+      if (raiz.nodeType === 3) { nos.push(raiz); }
+      else if (raiz.nodeType === 1) {
+        var w = document.createTreeWalker(raiz, 4, null), n;
+        while ((n = w.nextNode())) { nos.push(n); }
+      }
+      nos.forEach(function (n) {
+        if (!n.parentNode || !/whats\s?app/i.test(n.nodeValue) || pula(n)) { return; }
+        var partes = n.nodeValue.split(RE), frag = document.createDocumentFragment();
+        partes.forEach(function (t, k) {
+          if (k > 0) { var ic = document.createElement('span'); ic.className = 'wai'; ic.setAttribute('role', 'img'); ic.setAttribute('aria-label', 'WhatsApp'); frag.appendChild(ic); }
+          if (t) { frag.appendChild(document.createTextNode(t)); }
+        });
+        n.parentNode.replaceChild(frag, n);
+      });
+    }
+    var obs = new MutationObserver(function (muts) {
+      var alvos = [];
+      muts.forEach(function (m) { if (m.type === 'characterData') { alvos.push(m.target); } else { for (var k = 0; k < m.addedNodes.length; k++) { alvos.push(m.addedNodes[k]); } } });
+      obs.disconnect();
+      try { alvos.forEach(iconizar); } catch (e) {}
+      obs.takeRecords(); obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    });
+    try { iconizar(document.body); } catch (e) {}
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+  })();
   document.getElementById('btnSeq').onclick = function () { abrirSequencia(''); };
   document.getElementById('btnSeq2').onclick = function () { abrirSequencia('segunda'); };
   function registrarEnvio(it, tel, kind) {
@@ -6827,6 +6962,7 @@ function parteLocal(parte, fala, it, ctx) {
       if (corr) { save(); render(); toast(corr + (corr === 1 ? ' mandado estava vermelho por engano e ficou verde' : ' mandados estavam vermelhos por engano e ficaram verdes') + ' (medida protetiva sem afastamento do lar, ou citação com penhora depois). Confira.'); }
       await verificarArquivos(false);
       retomarSequencia();
+
     } catch (e) { buscandoNuvem = false; try { render(); } catch (e2) {} }
   })();
 })();
