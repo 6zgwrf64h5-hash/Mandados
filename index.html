@@ -702,6 +702,17 @@ header .bkpbar .btn.ghost { background: transparent !important; border: 2px soli
 .card .grp .phones .wn .wa { padding: 5px 27px 5px 6px; gap: 4px; }
 .card .grp .phones .wn .wa:not(.ghost):not(.off):not(.stopwa)::before { width: 15px; height: 15px; }
 .card .grp .phones .wn .wa .wn1 { font-size: 13.5px; letter-spacing: -0.4px; }
+
+/* ===== v25: cartões bem separados (opção A): cartão branco, painéis rebaixados, mais espaço ===== */
+.card { margin-bottom: 20px; }
+@media (prefers-color-scheme: light) {
+:root:not([data-theme="dark"]) .card.enviar, :root:not([data-theme="dark"]) .card.nao_enviar, :root:not([data-theme="dark"]) .card.conferir, :root:not([data-theme="dark"]) .card.semcel { background: #fff; border: 1px solid #C9D0E4; box-shadow: 0 8px 22px rgba(30, 40, 90, 0.18); }
+  :root:not([data-theme="dark"]) .card .grp { background: #F3F5FB; border: 1px solid #E1E6F3; box-shadow: none; }
+  :root:not([data-theme="dark"]) body { background: linear-gradient(180deg, #D3DDFA 0, #E2E6F2 340px) no-repeat, #E2E6F2; }
+}
+:root[data-theme="light"] .card.enviar, :root[data-theme="light"] .card.nao_enviar, :root[data-theme="light"] .card.conferir, :root[data-theme="light"] .card.semcel { background: #fff; border: 1px solid #C9D0E4; box-shadow: 0 8px 22px rgba(30, 40, 90, 0.18); }
+:root[data-theme="light"] .card .grp { background: #F3F5FB; border: 1px solid #E1E6F3; box-shadow: none; }
+:root[data-theme="light"] body { background: linear-gradient(180deg, #D3DDFA 0, #E2E6F2 340px) no-repeat, #E2E6F2; }
 </style>
 </head>
 <body>
