@@ -767,10 +767,45 @@ header .bar .btn { font-size: clamp(11px, 2.9vw, 13px); padding: 0 6px; gap: 5px
 header .bar .btn::before { width: 17px; height: 17px; }
 
 .bkpbar[hidden] { display: none !important; }
+
+/* ===== v28: enumeração dos cartões e painel com períodos ===== */
+.card h3 .cnum { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; margin-right: 8px; border-radius: 13px; background: #E3E9FB; color: #27408B; font-size: 13px; font-weight: 800; vertical-align: 1px; letter-spacing: 0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card h3 .cnum { background: #2B3A66; color: #CFE0FF; } }
+:root[data-theme="dark"] .card h3 .cnum { background: #2B3A66; color: #CFE0FF; }
+.pper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 0 8px; }
+.pper .btn[aria-pressed="true"] { background: #2563EB; color: #fff; border-color: #2563EB; }
+.pcard small { font-size: 14px; font-weight: 700; opacity: 0.75; margin-left: 2px; }
+.pbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--line); margin: 6px 0 4px; }
+.pbar .pb-p { background: #16A34A; } .pbar .pb-n { background: #DB0904; }
+.pleg .pk { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin: 0 4px 0 8px; background: #94A3B8; vertical-align: -1px; }
+.pleg .pk:first-child { margin-left: 0; } .pleg .pk.ok { background: #16A34A; } .pleg .pk.neg { background: #DB0904; }
+
+/* ===== v28: modo cumprimento (um cartão por tela) ===== */
+.cumprbar { position: fixed; top: 0; left: 0; right: 0; z-index: 40; background: linear-gradient(180deg, #14275E, #1B3A8A); color: #fff; padding: 10px 14px 8px; padding-top: max(10px, env(safe-area-inset-top)); border-radius: 0 0 18px 18px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28); }
+.cumprbar[hidden] { display: none !important; }
+.cumprbar .cb-row { display: flex; align-items: center; gap: 10px; }
+.cumprbar .cb-cont { font-size: 28px; line-height: 1; letter-spacing: 0.5px; }
+.cumprbar .cb-falta { font-size: 14px; opacity: 0.9; }
+.cumprbar .cb-gap { flex: 1; }
+.cumprbar .btn { min-height: 38px; padding: 0 14px; background: #fff; color: #0E1840; }
+.cumprbar .btn.ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.7); }
+.cumprbar .seqbar { margin: 8px 0 4px; background: rgba(255, 255, 255, 0.28); }
+.cumprbar .seqbar > div { background: #fff; }
+.cumprbar .cb-dica { margin: 4px 0 0; font-size: 12px; opacity: 0.85; color: #fff; }
+body.cumpr .wrap > *:not(#list):not(#cumprBar) { display: none !important; }
+body.cumpr #list { padding-top: calc(112px + env(safe-area-inset-top)); }
+body.cumpr .cside .pick { display: none; }
+.cumprwrap { touch-action: pan-y; will-change: transform; }
+.cumprwrap .card { margin-bottom: 12px; }
+.cumprfim { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 28px 20px; text-align: center; box-shadow: 0 8px 22px rgba(30, 40, 90, 0.16); }
+.cumprfim h2 { margin: 0 0 8px; }
+
+body.cumpr #dock { display: none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="cumprbar" id="cumprBar" hidden></div>
   <header>
     <div class="htop"><div class="htxt"><h1>Mandados do dia</h1><p id="summary"></p></div><button class="btn small" id="btnPainel" type="button">Painel do dia</button></div>
     <p class="note" id="syncLine" style="margin-top:4px"></p>
@@ -3260,7 +3295,7 @@ function iaUsuarioAjuste(d) {
     if (aprCache.chave !== ch) { aprCache = { chave: ch, val: aprenderRotas(sn) }; }
     return aprCache.val;
   }
-  var posRota = {}, ordemVisivel = [];
+  var posRota = {}, ordemVisivel = [], cardN = 0;
   function ordemRota(list) {
     definirAprendizado(state.cfg.aprender === false ? null : aprendido());
     definirDicas({ bairros: state.cfg.bairroPts, ceps: state.cfg.cepPts, cepBairro: state.cfg.cepBairro });
@@ -3767,10 +3802,50 @@ function iaUsuarioAjuste(d) {
     state.cfg.bkpAdiar = Date.now() + (this.className.indexOf('verm') > -1 ? 6 : 24) * 3600000; save(); renderBackupBanner();
   });
   /* 2) Painel do dia */
+
+  /* Estatística: guarda só contagens por dia dos mandados que saem da lista (para o painel de 30 dias/mês continuar certo) */
+  function arquivarEstat(lista) {
+    if (state.sample) { return; }
+    var h = state.hist = state.hist || {};
+    function dia(k) { return (h[k] = h[k] || {}); }
+    (lista || []).forEach(function (i) {
+      var r = dia(dayKey(i.added || Date.now())); r.r = (r.r || 0) + 1;
+      (i.msgs || []).forEach(function (m) { if (m.kind !== 'analise') { var e = dia(dayKey(m.t)); e.m = (e.m || 0) + 1; } });
+      if ((i.status === 'certidao' || i.status === 'devolvido') && i.certidao) {
+        var c = dia(i.certidao.data || dayKey(i.added || Date.now())), tp = i.certidao.tipo;
+        if (tp === 'positiva') { c.p = (c.p || 0) + 1; if (i.certidao.canal === 'wa' || (i.partes && i.partes.on && i.partes.on.tipo === 'positiva')) { c.z = (c.z || 0) + 1; } }
+        else if (tp === 'negativa') { c.n = (c.n || 0) + 1; } else { c.o = (c.o || 0) + 1; }
+      }
+    });
+  }
+  function estatPeriodo(de, ate) {
+    var t = { p: 0, n: 0, o: 0, z: 0, r: 0, m: 0 };
+    function soma(e) { for (var k in t) { t[k] += e[k] || 0; } }
+    Object.keys(state.hist || {}).forEach(function (d) { if (d >= de && d <= ate) { soma(state.hist[d]); } });
+    state.items.forEach(function (i) {
+      var d0 = dayKey(i.added || 0); if (d0 >= de && d0 <= ate) { t.r++; }
+      (i.msgs || []).forEach(function (m) { if (m.kind !== 'analise') { var dm = dayKey(m.t); if (dm >= de && dm <= ate) { t.m++; } } });
+      if ((i.status === 'certidao' || i.status === 'devolvido') && i.certidao) {
+        var dc = i.certidao.data || d0, tp = i.certidao.tipo;
+        if (dc >= de && dc <= ate) {
+          if (tp === 'positiva') { t.p++; if (i.certidao.canal === 'wa' || (i.partes && i.partes.on && i.partes.on.tipo === 'positiva')) { t.z++; } }
+          else if (tp === 'negativa') { t.n++; } else { t.o++; }
+        }
+      }
+    });
+    return t;
+  }
+  function limitesPeriodo(per) {
+    var hoje = new Date(), fim = dayKey(hoje.getTime()), ini;
+    if (per === 'mes') { ini = hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-01'; }
+    else if (per === '30') { ini = dayKey(hoje.getTime() - 29 * 86400000); }
+    else { ini = fim; }
+    return { de: ini, ate: fim };
+  }
   function painelDados() {
-    var hk = dayKey(Date.now()), it = state.items;
+    var hk = dayKey(Date.now()), it = state.items.filter(function (i) { return i.status !== 'excluido'; });
     var pend = it.filter(function (i) { return i.status === 'pendente'; });
-    var cert = it.filter(function (i) { return i.status === 'certidao' && i.certidao; });
+    var cert = it.filter(function (i) { return (i.status === 'certidao' || i.status === 'devolvido') && i.certidao; });
     var pos = cert.filter(function (i) { return i.certidao.tipo === 'positiva'; }), neg = cert.filter(function (i) { return i.certidao.tipo === 'negativa'; });
     var zap = pos.filter(function (i) { return i.certidao.canal === 'wa' || (i.partes && i.partes.on && i.partes.on.tipo === 'positiva'); });
     var hoje = cert.filter(function (i) { return i.certidao.data === hk; }), msgsHoje = 0;
@@ -3782,27 +3857,34 @@ function iaUsuarioAjuste(d) {
       perdidas: al.perdidas.length, msgsHoje: msgsHoje };
   }
   function abrirPainel() {
-    var d = painelDados(), pct = d.total ? Math.round(d.cert / d.total * 100) : 0;
+    var per = (state.cfg && state.cfg.painelPer) || 'hoje', lim = limitesPeriodo(per), E = estatPeriodo(lim.de, lim.ate), d = painelDados();
+    var tot = E.p + E.n + E.o, pp = tot ? Math.round(E.p / tot * 100) : 0, pn = tot ? Math.round(E.n / tot * 100) : 0;
+    var rot = { hoje: 'Hoje', mes: 'Este mês', '30': 'Últimos 30 dias' }[per] || 'Hoje';
+    var pct = d.total ? Math.round(d.cert / d.total * 100) : 0;
     var sa = state.seqAtiva && state.seqAtiva.ents && Date.now() - state.seqAtiva.t0 <= 12 * 3600000 ? state.seqAtiva : null;
     var ra = state.rotaAtiva, restRota = ra ? rotaRestantes().length : 0, hdP = hojeDados(), totAudP = hdP.perdidas.length + hdP.futuras;
     function card(n, rotulo, cls, aba) { return '<' + (aba ? 'button type="button" data-pt="' + aba + '"' : 'div') + ' class="pcard ' + cls + '"><strong>' + n + '</strong><span>' + rotulo + '</span></' + (aba ? 'button' : 'div') + '>'; }
+    function seg(v, t) { return '<button type="button" class="btn small" data-pp="' + v + '" aria-pressed="' + (per === v) + '">' + t + '</button>'; }
     var retomar = '';
     if (sa) { retomar += '<button class="btn primary wide" type="button" data-pn="fila">Continuar a fila de mensagens</button>'; }
     if (ra && restRota) { retomar += '<button class="btn primary wide" type="button" data-pn="rota">Continuar a rota (parada ' + (ra.ids.length - restRota + 1) + ' de ' + ra.ids.length + ')</button>'; }
     openModal('Painel do dia',
-      '<div class="seqbar"><div style="width:' + pct + '%"></div></div><p class="note">' + d.cert + ' de ' + d.total + (d.total === 1 ? ' mandado' : ' mandados') + ' com certidão (' + pct + '%).</p>' +
-      '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.pos, 'Cumpridos (positivas)', 'ok', 'devolver') + card(d.neg, 'Negativos', 'neg', 'devolver') + card(d.zap, 'Intimados por WhatsApp', 'zap', 'devolver') +
-      card(d.aguard, 'Aguardando on-line', '', 'aguardando') + card(d.prontos, 'Prontos para certificar', '', 'enviar') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + '</div>' +
-      '<p class="note"><strong>Hoje:</strong> ' + d.hoje + (d.hoje === 1 ? ' certidão' : ' certidões') + ' (' + d.hojePos + (d.hojePos === 1 ? ' positiva, ' : ' positivas, ') + d.hojeNeg + (d.hojeNeg === 1 ? ' negativa' : ' negativas') + '). Mensagens abertas hoje: ' + d.msgsHoje + '.</p>' +
-      (totAudP ? '<div class="actions pnaud"><button class="btn" type="button" data-hjlista="1">Ver todas as audiências (' + totAudP + ')</button>' + '</div>' : '') +
+      '<div class="seg pper">' + seg('hoje', 'Hoje') + seg('mes', 'Este mês') + seg('30', '30 dias') + '</div>' +
+      '<p class="note">' + rot + ': ' + (per === 'hoje' ? 'só hoje' : 'de ' + lim.de.split('-').reverse().slice(0, 2).join('/') + ' até hoje') + '.</p>' +
+      '<div class="pgrid">' + card(tot, 'Certidões feitas', '', '') + card(E.z, 'Intimados por WhatsApp', 'zap', '') + card(E.p + ' <small>' + pp + '%</small>', 'Positivas (cumpridos)', 'ok', '') + card(E.n + ' <small>' + pn + '%</small>', 'Negativas', 'neg', '') + card(E.r, 'Mandados recebidos', '', '') + card(E.m, 'Mensagens abertas', '', '') + '</div>' +
+      (tot ? '<div class="pbar" role="img" aria-label="Positivas ' + pp + '%, negativas ' + pn + '%"><div class="pb-p" style="width:' + (E.p / tot * 100) + '%"></div><div class="pb-n" style="width:' + (E.n / tot * 100) + '%"></div></div><p class="note pleg"><span class="pk ok"></span>Positivas ' + E.p + ' <span class="pk neg"></span>Negativas ' + E.n + (E.o ? ' <span class="pk"></span>Outro meio ' + E.o : '') + '</p>' : '<p class="note">Nenhuma certidão neste período.</p>') +
+      '<p class="note" style="margin:12px 0 4px"><strong>Agora</strong> · ' + d.cert + ' de ' + d.total + (d.total === 1 ? ' mandado' : ' mandados') + ' com certidão (' + pct + '%)</p><div class="seqbar"><div style="width:' + pct + '%"></div></div>' +
+      '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.aguard, 'Aguardando on-line', '', 'aguardando') + card(d.prontos, 'Prontos para certificar', '', 'enviar') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + card(d.pos + d.neg, 'Certidões na lista', '', 'devolver') + '</div>' +
+      (totAudP ? '<div class="actions pnaud"><button class="btn" type="button" data-hjlista="1">Ver todas as audiências (' + totAudP + ')</button></div>' : '') +
       '<p class="note">Último backup em arquivo: ' + (state.ultimoBackup ? (function (dd) { return dd === 0 ? 'hoje' : 'há ' + dd + (dd === 1 ? ' dia' : ' dias'); })(Math.floor((Date.now() - state.ultimoBackup) / 86400000)) : 'ainda não há') + '.</p>' +
       (retomar ? '<p class="note" style="margin:10px 0 4px"><strong>Retomar de onde parei</strong></p><div class="actions">' + retomar + '</div>' : '<p class="note">Nada em andamento: nenhuma fila nem rota aberta.</p>') +
       '<div class="actions"><button class="btn ghost" type="button" id="pnFecha">Fechar</button></div>');
     document.getElementById('pnFecha').onclick = closeModal;
     document.getElementById('mbody').onclick = function (e) {
+      var pb = e.target.closest ? e.target.closest('[data-pp]') : null;
+      if (pb) { state.cfg.painelPer = pb.getAttribute('data-pp'); save(); abrirPainel(); return; }
       var c = e.target.closest ? e.target.closest('[data-pt]') : null, n = e.target.closest ? e.target.closest('[data-pn]') : null;
       if (e.target.closest && e.target.closest('[data-hjlista]')) { abrirListaAudiencias(); return; }
-      if (e.target.closest && e.target.closest('[data-hjcal]')) { closeModal(); baixarCalendario(); return; }
       if (c) { tab = c.getAttribute('data-pt'); closeModal(); render(); return; }
       if (n) { var a = n.getAttribute('data-pn'); closeModal(); if (a === 'fila') { retomarSequencia(); } else { mostrarRota(); } }
     };
@@ -4041,6 +4123,7 @@ function iaUsuarioAjuste(d) {
         if (rg(a) === 0) { return (etipo(a) !== 'local' ? 0 : 1) - (etipo(b) !== 'local' ? 0 : 1); }
         return rg(a) === 3 ? rk(a.cls) - rk(b.cls) : 0;
       });
+      cardN = 0;
       ordemVisivel = list.filter(function (i) { return !(agrupaRem && fechadas[remKey[i.id]]); }).map(function (i) { return i.id; });
       if (!list.length && q) {
         html = '<p class="empty">Nenhum nome encontrado para “' + esc(q) + '”.</p>';
@@ -4061,7 +4144,7 @@ function iaUsuarioAjuste(d) {
           var g = list.filter(function (i) { return cat(i) === c; });
           if (!g.length) { return; }
           html += '<div class="dayrow"><h2 class="day">' + esc(nomes[c]) + ' (' + g.length + ')</h2></div>';
-          g.forEach(function (i) { html += card(i); });
+          g.forEach(function (i) { html += card(i, ++cardN); });
         });
         list = [];
       }
@@ -4089,11 +4172,13 @@ function iaUsuarioAjuste(d) {
           }
           if (fechadas[rk]) { return; }
         }
-        html += card(i);
+        html += card(i, ++cardN);
       });
     }
     if (tab === 'devolver' && list.length) { html = resumoMensal() + html; }
+    if (cumprAtivo()) { html = cumprHtml(); }
     document.getElementById('list').innerHTML = html;
+    cumprBarra();
     ajustarNumeros();
 
     var ce = tab === 'devolver';
@@ -4128,7 +4213,7 @@ function iaUsuarioAjuste(d) {
     }).join('');
   }
 
-  function card(i) {
+  function card(i, num) {
     var flags = [];
     if (i.cls === 'nao_enviar') { flags.push(['Não enviar: ' + (i.motivo || 'regra do cartório'), true]); }
     if (i.cls === 'conferir') { flags.push(['Conferir: ' + (i.motivo || 'não deu para classificar'), false]); }
@@ -4137,7 +4222,7 @@ function iaUsuarioAjuste(d) {
     if (i.voltouLista && i.status === 'pendente') { flags.push(['Voltou das certidões: mandado não certificado', false]); }
     if (i.agenda && i.status === 'pendente') { flags.push(['Agenda: ' + i.agenda.nome, 'ok']); }
     if (i.jaIntimado && i.status === 'pendente') { var jd = new Date(i.jaIntimado.quando || 0); flags.push(['Já intimado por WhatsApp em ' + pad(jd.getDate()) + '/' + pad(jd.getMonth() + 1) + '/' + jd.getFullYear() + ' (proc. ' + i.jaIntimado.proc + ', ' + i.jaIntimado.tel + '). Confirme que é a mesma pessoa.', false]); }
-    if (posRota[i.id] && i.status === 'pendente') { flags.push(['Rota ' + posRota[i.id], 'ok']); }
+    if (posRota[i.id] && i.status === 'pendente' && posRota[i.id] !== num) { flags.push(['Rota ' + posRota[i.id], 'ok']); }
     var ad = audDe(i), af = ad ? audFlag(ad.data.split('-').reverse().join('/'), new Date()) : '';
     if (ad && i.status === 'pendente') { var hAud = horasAteAudiencia(ad, Date.now()); if (hAud !== null && hAud < -2) { af = 'Audiência já passou: devolva o mandado imediatamente'; } }
     if (af && !(i.status === 'pendente' && urg(i).some(function (u) { return u.tipo === 'audiencia'; }))) { flags.push([af + ' (' + ad.data.split('-').reverse().join('/') + (ad.hora ? ' ' + ad.hora : '') + ')', true, 'aud']); }
@@ -4211,7 +4296,7 @@ function iaUsuarioAjuste(d) {
     var h = '<article class="card ' + (i.certidao ? i.certidao.tipo : grupoDe(i)) + '" data-id="' + i.id + '">';
     var pickHtml = (i.status === 'pendente' || i.status === 'certidao') ? '<label class="pick"><input type="checkbox" data-act="pick" aria-label="Selecionar ' + esc(i.nome) + '"' + (sel[i.id] ? ' checked' : '') + '></label>' : '';
     h += '<span></span>';
-    h += '<div><div class="chead"><div class="cmain"><h3>' + esc(i.nome) + '</h3>';
+    h += '<div><div class="chead"><div class="cmain"><h3>' + (num ? '<span class="cnum" aria-label="Posição ' + num + '">' + num + '</span>' : '') + esc(i.nome) + '</h3>';
     var rsm = resumoAto(i), vcu = varaCurta(i.vara);
     if (rsm) { h += '<p class="trata">' + esc(rsm) + '</p>'; }
     h += '<p class="meta proc">Proc. ' + esc(i.processo) + (vcu ? ' · ' + esc(vcu) : '') + '</p>';
@@ -4601,7 +4686,7 @@ function iaUsuarioAjuste(d) {
     copyText(t).then(function (ok) { toast(ok ? 'Lista copiada. Guarde em um lugar seguro.' : 'Não foi possível copiar'); });
   };
   document.getElementById('btnClear').onclick = function () {
-    state.items = []; state.sample = false; sel = {}; save(); render();
+    arquivarEstat(state.items); state.items = []; state.sample = false; sel = {}; save(); render();
   };
 
   /* Abas, busca e seleção */
@@ -5008,7 +5093,7 @@ function iaUsuarioAjuste(d) {
     if (comMandados) {
       var fora = state.items.filter(function (i) { return i.fileId === id && i.status === 'pendente'; });
       fora.forEach(function (i) { state.apagados.push(i.id); delete sel[i.id]; });
-      state.items = state.items.filter(function (i) { return fora.indexOf(i) === -1; });
+      arquivarEstat(fora); state.items = state.items.filter(function (i) { return fora.indexOf(i) === -1; });
       n = fora.length;
     }
     state.files = state.files.filter(function (f) { return f.id !== id; });
@@ -6680,7 +6765,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('pgYes').onclick = function () {
       ((it.certidao && it.certidao.prints) || []).forEach(function (pid) { idbDel(pid).catch(function () {}); });
       state.apagados.push(it.id);
-      state.items = state.items.filter(function (x) { return x.id !== it.id; });
+      arquivarEstat([it]); state.items = state.items.filter(function (x) { return x.id !== it.id; });
       delete sel[it.id]; save(); closeModal(); render(); toast('Excluído definitivamente');
     };
   }
@@ -7555,6 +7640,89 @@ function iaUsuarioAjuste(d) {
     if (!ra) { return []; }
     return ra.ids.filter(function (id) { var i = byId(id); return i && i.status === 'pendente' && !ra.pul[id] && !rotaAtendida(i, ra); });
   }
+  /* ===== Modo cumprimento: um cartão inteiro por tela, na ordem da rota montada ===== */
+  var cumprUltimo = '';
+  function cumprAtivo() { return !!(state.rotaAtiva && state.rotaAtiva.cumpr); }
+  function iniciarCumprimento() {
+    var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
+    if (!lista.length) { toast('Não há paradas na rota.'); return; }
+    var sig = {}, ord = {};
+    lista.forEach(function (i, k) { sig[i.id] = sigRota(i); ord[i.id] = k + 1; });
+    state.rotaAtiva = { ids: lista.map(function (i) { return i.id; }), pul: {}, sig: sig, ord: ord, cumpr: true, t0: Date.now() };
+    tab = 'enviar'; save(); closeModal(); render();
+  }
+  function cumprHtml() {
+    var ra = state.rotaAtiva, rest = rotaRestantes(), n = ra.ids.length;
+    if (!rest.length) {
+      return '<div class="cumprwrap" id="cumprWrap"><section class="cumprfim"><h2>Cumprimento concluído</h2><p>' + n + ' de ' + n + (n === 1 ? ' mandado atendido.' : ' mandados atendidos.') + '</p><button class="btn primary" type="button" data-cb="sair">Sair do modo cumprimento</button></section></div>';
+    }
+    var it = byId(rest[0]);
+    if (cumprUltimo !== it.id) { cumprUltimo = it.id; window.scrollTo(0, 0); }
+    if (!ra.ord) { ra.ord = {}; ra.ids.forEach(function (id, k) { ra.ord[id] = k + 1; }); }
+    return '<div class="cumprwrap" id="cumprWrap">' + card(it, ra.ord[it.id]) + '</div>';
+  }
+  function cumprBarra() {
+    var el = document.getElementById('cumprBar'), on = cumprAtivo();
+    document.body.classList.toggle('cumpr', on);
+    if (!on) { el.hidden = true; el.innerHTML = ''; return; }
+    var ra = state.rotaAtiva, rest = rotaRestantes(), n = ra.ids.length, feitas = n - rest.length, pct = Math.round(feitas / n * 100);
+    el.hidden = false;
+    el.innerHTML = '<div class="cb-row"><strong class="cb-cont">' + (rest.length ? feitas + 1 : n) + '/' + n + '</strong><span class="cb-falta">' + (rest.length ? 'faltam ' + rest.length : 'tudo atendido') + '</span><span class="cb-gap"></span>' + (ra.antes ? '<button type="button" class="btn small" data-cb="voltar">↩ Voltar</button>' : '') + '<button type="button" class="btn small ghost" data-cb="sair">Sair</button></div><div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (rest.length > 1 ? '<p class="cb-dica">Deslize o cartão para o lado para deixar este para depois.</p>' : '');
+  }
+  /* deslizar de lado só muda a ordem: o cartão vai para o fim da fila */
+  function cumprPular() {
+    var ra = state.rotaAtiva; if (!ra || !ra.cumpr) { return; }
+    var rest = rotaRestantes();
+    if (rest.length < 2) { render(); return; }
+    var id = rest[0]; ra.antes = ra.ids.slice();
+    ra.ids = ra.ids.filter(function (x) { return x !== id; }).concat([id]);
+    save(); render();
+  }
+  (function () {
+    var lista = document.getElementById('list'), g = null, ignora = 0;
+    lista.addEventListener('pointerdown', function (e) {
+      if (!cumprAtivo()) { return; }
+      var w = e.target.closest ? e.target.closest('#cumprWrap') : null;
+      if (!w || (e.target.closest && e.target.closest('input,select,textarea'))) { return; }
+      g = { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now(), dx: 0, mov: false, w: w };
+    });
+    lista.addEventListener('pointermove', function (e) {
+      if (!g || e.pointerId !== g.id) { return; }
+      var dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.mov) {
+        if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) { g.mov = true; try { g.w.setPointerCapture(e.pointerId); } catch (x) {} g.w.style.transition = 'none'; }
+        else if (Math.abs(dy) > 12) { g = null; return; }
+      }
+      if (g && g.mov) { g.dx = dx; g.w.style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 28) + 'deg)'; g.w.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 420)); }
+    });
+    function fim(e) {
+      if (!g || e.pointerId !== g.id) { return; }
+      var G = g; g = null;
+      if (!G.mov) { return; }
+      ignora = Date.now() + 350;
+      var veloc = Math.abs(G.dx) / Math.max(1, Date.now() - G.t), ok = e.type !== 'pointercancel' && (Math.abs(G.dx) > 90 || (Math.abs(G.dx) > 40 && veloc > 0.5));
+      G.w.style.transition = 'transform .18s ease-out, opacity .18s';
+      if (ok && rotaRestantes().length > 1) {
+        G.w.style.transform = 'translateX(' + (G.dx > 0 ? 700 : -700) + 'px) rotate(' + (G.dx > 0 ? 22 : -22) + 'deg)'; G.w.style.opacity = '0';
+        setTimeout(cumprPular, 170);
+      } else {
+        if (ok) { toast('Este é o último cartão da fila.'); }
+        G.w.style.transform = ''; G.w.style.opacity = '';
+      }
+    }
+    lista.addEventListener('pointerup', fim); lista.addEventListener('pointercancel', fim);
+    lista.addEventListener('click', function (e) { if (Date.now() < ignora) { e.stopPropagation(); e.preventDefault(); } }, true);
+  })();
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-cb]') : null;
+    if (!b || !state.rotaAtiva) { return; }
+    var a = b.getAttribute('data-cb'), ra = state.rotaAtiva;
+    if (a === 'voltar' && ra.antes) { ra.ids = ra.antes; ra.antes = null; save(); render(); }
+    else if (a === 'sair') {
+      if (!rotaRestantes().length) { state.rotaAtiva = null; toast('Cumprimento concluído.'); } else { ra.cumpr = false; }
+      save(); render();
+    }
+  });
   function iniciarRota() {
     var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
     if (!lista.length) { toast('Não há paradas na rota.'); return; }
@@ -7612,16 +7780,18 @@ function iaUsuarioAjuste(d) {
     if (!ra) { el.hidden = true; return; }
     var rest = rotaRestantes(), n = ra.ids.length;
     el.hidden = false;
-    el.innerHTML = '<p><strong>Rota em andamento</strong>: ' + (rest.length ? 'parada ' + (n - rest.length + 1) + ' de ' + n + '.' : 'todas as paradas atendidas.') + '</p><div class="actions"><button class="btn primary" data-rb="cont">' + (rest.length ? 'Continuar rota' : 'Ver o resumo') + '</button><button class="btn small ghost" data-rb="stop">Encerrar</button></div>';
+    el.innerHTML = '<p><strong>Rota em andamento</strong>: ' + (rest.length ? 'parada ' + (n - rest.length + 1) + ' de ' + n + '.' : 'todas as paradas atendidas.') + '</p><div class="actions"><button class="btn primary" data-rb="cont">' + (rest.length ? 'Continuar rota' : 'Ver o resumo') + '</button><button class="btn small" data-rb="cumpr">Modo cumprimento</button><button class="btn small ghost" data-rb="stop">Encerrar</button></div>';
   }
   document.getElementById('rotaBanner').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-rb]') : null;
     if (!b) { return; }
-    if (b.getAttribute('data-rb') === 'stop') { state.rotaAtiva = null; save(); render(); toast('Rota encerrada.'); } else { mostrarRota(); }
+    if (b.getAttribute('data-rb') === 'stop') { state.rotaAtiva = null; save(); render(); toast('Rota encerrada.'); }
+    else if (b.getAttribute('data-rb') === 'cumpr') { state.rotaAtiva.cumpr = true; tab = 'enviar'; save(); render(); }
+    else { mostrarRota(); }
   });
   function iniciarBox() {
     var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
-    return lista.length ? '<div class="actions"><button class="btn primary wide" data-rinicia="1">Iniciar rota (' + lista.length + (lista.length === 1 ? ' parada' : ' paradas') + ')</button></div>' : '';
+    return lista.length ? '<div class="actions"><button class="btn primary wide" data-rinicia="1">Iniciar rota (' + lista.length + (lista.length === 1 ? ' parada' : ' paradas') + ')</button><button class="btn wide" data-rcumpr="1">Modo cumprimento: um cartão por vez</button></div>' : '';
   }
   function rotaCorpo() { return saidaBox() + iniciarBox() + reordBox() + comoRotaHtml() + manualNota() + foraDaRota() + '<div id="rOut">' + routeHtml() + '</div>' + listasBox() + mapaBox() + zapBox() + '<div id="rSelBox">' + selRotaHtml() + '</div>'; }
   function zapBox() {
@@ -7729,6 +7899,7 @@ function iaUsuarioAjuste(d) {
       var rpt = e.target.closest('[data-rprint]'), mv = e.target.closest('[data-up],[data-down]'), rsv = e.target.closest('[data-rsalva]');
       var rini = e.target.closest('[data-rinicia]');
       if (rini) { iniciarRota(); return; }
+      if (e.target.closest('[data-rcumpr]')) { iniciarCumprimento(); return; }
       var sm1 = e.target.closest('[data-smsrota]'), smA = e.target.closest('[data-smsall]'), smS = e.target.closest('[data-smssel]'), rsAll = e.target.closest('[data-rselall]');
       if (sm1) { var jr = +sm1.getAttribute('data-smsrota') - 1; enviarSms('Rota ' + (jr + 1) + ': ' + (rotaLinks[jr] || '')); return; }
       if (smA) { enviarSms(rotaLinks.map(function (u, k) { return 'Rota ' + (k + 1) + ': ' + u; }).join('\n')); return; }
