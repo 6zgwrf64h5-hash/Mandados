@@ -32,6 +32,11 @@ RAIO_CEP_MAX_KM = 0.6   # CEP só entra se os endereços dele forem juntos (sen�
 MIN_ENDERECOS_CEP = 3
 
 
+UF_SIGLAS = {'11': 'RO', '12': 'AC', '13': 'AM', '14': 'RR', '15': 'PA', '16': 'AP', '17': 'TO', '21': 'MA', '22': 'PI',
+             '23': 'CE', '24': 'RN', '25': 'PB', '26': 'PE', '27': 'AL', '28': 'SE', '29': 'BA', '31': 'MG', '32': 'ES',
+             '33': 'RJ', '35': 'SP', '41': 'PR', '42': 'SC', '43': 'RS', '50': 'MS', '51': 'MT', '52': 'GO', '53': 'DF'}
+
+
 def sem_acento(t):
     return ''.join(c for c in unicodedata.normalize('NFD', str(t or '')) if unicodedata.category(c) != 'Mn')
 
@@ -40,12 +45,12 @@ def norm(t):
     return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9]+', ' ', sem_acento(t).lower())).strip()
 
 
-def abrir_url(url, tentativas=4, binario=False):
+def abrir_url(url, tentativas=2, binario=False, espera=25):
     ult = None
     for k in range(tentativas):
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'mandados-do-dia-gerador/1.0'})
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=espera) as r:
                 return r.read() if binario else r.read().decode('utf-8', 'replace')
         except Exception as e:  # noqa
             ult = e
@@ -54,9 +59,16 @@ def abrir_url(url, tentativas=4, binario=False):
 
 
 # ---------------------------------------------------------------- municípios (código IBGE)
-def carregar_municipios(arquivo=None):
-    texto = open(arquivo, encoding='utf-8').read() if arquivo else abrir_url(API_MUNICIPIOS)
-    dados = json.loads(texto)
+def carregar_municipios(arquivo=None, tolerante=True, log=print):
+    """Lista de municípios (IBGE). Se o site do IBGE não responder, devolve [] (o programa segue pelos arquivos locais)."""
+    try:
+        texto = open(arquivo, encoding='utf-8').read() if arquivo else abrir_url(API_MUNICIPIOS)
+        dados = json.loads(texto)
+    except Exception as e:  # noqa
+        if not tolerante:
+            raise
+        log('(aviso) Não consegui a lista de municípios do IBGE: %s' % e)
+        return []
     out = []
     for m in dados:
         try:
@@ -68,6 +80,33 @@ def carregar_municipios(arquivo=None):
                 uf = m.get('uf') or m.get('u') or ''
         out.append({'c': str(m['id']), 'n': m['nome'], 'u': uf})
     return out
+
+
+def cidade_com_codigo(texto):
+    """'4108304=Foz do Iguaçu/PR' -> município sem precisar de internet."""
+    m = re.match(r'^\s*(\d{7})\s*=\s*(.+?)\s*(?:[/\-]\s*([A-Za-z]{2}))?\s*$', texto)
+    if not m:
+        return None
+    cod, nome, uf = m.group(1), m.group(2).strip(), (m.group(3) or '').upper()
+    return {'c': cod, 'n': nome, 'u': uf or UF_SIGLAS.get(cod[:2], '')}
+
+
+def cidade_pelo_arquivo(texto, pasta):
+    """Sem lista do IBGE: acha o arquivo cujo nome tem o código e o nome da cidade (ex.: 4108304_FOZ_DO_IGUACU.zip)."""
+    if not pasta or not os.path.isdir(pasta):
+        return None
+    nome, uf = texto.strip(), ''
+    m = re.match(r'^(.*?)\s*[/\-]\s*([A-Za-z]{2})\s*$', nome)
+    if m:
+        nome, uf = m.group(1), m.group(2).upper()
+    alvo = norm(nome)
+    for raiz, _, arqs in os.walk(pasta):
+        for a in sorted(arqs):
+            mm = re.match(r'^(\d{7})[_\-\s]*(.*?)\.(zip|csv)$', a, re.I)
+            if mm and mm.group(2) and norm(mm.group(2).replace('_', ' ')) == alvo:
+                cod = mm.group(1)
+                return {'c': cod, 'n': nome.strip(), 'u': uf or UF_SIGLAS.get(cod[:2], '')}
+    return None
 
 
 def achar_cidade(texto, municipios):
@@ -322,17 +361,32 @@ def main(argv=None):
     pedidas = [x.strip() for x in re.split(r'[;\n]', a.cidades) if x.strip()]
     if not pedidas:
         print('Nenhuma cidade informada.'); return 2
+    pasta = a.pasta_zips or ('cnefe' if os.path.isdir('cnefe') else None)
     municipios = carregar_municipios(a.municipios)
     erros = []
     for texto in pedidas:
         print('== %s' % texto)
         try:
-            cid = achar_cidade(texto, municipios)
+            cid = cidade_com_codigo(texto)
+            if not cid and municipios:
+                try:
+                    cid = achar_cidade(texto, municipios)
+                except ValueError:
+                    cid = cidade_pelo_arquivo(texto, pasta)
+                    if not cid:
+                        raise
+            if not cid:
+                cid = cidade_pelo_arquivo(texto, pasta)
+            if not cid:
+                raise ValueError('Não consegui identificar a cidade "%s" sem a lista do IBGE. Escreva com o código do IBGE, por exemplo: 4108304=Foz do Iguaçu/PR (o código são os 7 números no começo do nome do arquivo baixado).' % texto.strip())
             print('  município: %s/%s (código %s)' % (cid['n'], cid['u'], cid['c']))
-            caminho = achar_local(a.pasta_zips, cid['c']) if a.pasta_zips else None
+            caminho = achar_local(pasta, cid['c']) if pasta else None
             tmp = None
             if not caminho:
-                url = achar_arquivo(cid['c'], a.base_url)
+                try:
+                    url = achar_arquivo(cid['c'], a.base_url)
+                except Exception as e:  # noqa
+                    raise RuntimeError('Não achei o arquivo do CNEFE de %s na pasta "cnefe" do repositório e o site do IBGE não responde a partir do GitHub (%s). Baixe o arquivo da cidade pelo celular e suba na pasta "cnefe" (veja o LEIA-ME-RUAS).' % (cid['n'], e))
                 tmp = tempfile.mkdtemp()
                 caminho = os.path.join(tmp, os.path.basename(urllib.request.unquote(url)) or (cid['c'] + '.zip'))
                 baixar(url, caminho)
