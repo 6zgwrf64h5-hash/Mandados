@@ -819,6 +819,52 @@ body.cumpr #dock { display: none !important; }
 #imgView .iv-bt .btn.ghost[data-iv="del"] { color: #FFB4B4; border-color: #FF8A8A; }
 
 #imgView { background: rgb(6, 9, 24); }
+
+/* carrossel: o cartão novo entra pelo lado oposto ao do gesto */
+@keyframes cumprEntraD { from { transform: translateX(110%); opacity: 0.2; } to { transform: none; opacity: 1; } }
+@keyframes cumprEntraE { from { transform: translateX(-110%); opacity: 0.2; } to { transform: none; opacity: 1; } }
+.cumprwrap.in-esq { animation: cumprEntraD 0.22s ease-out; }
+.cumprwrap.in-dir { animation: cumprEntraE 0.22s ease-out; }
+
+/* o cartão que entra/sai pelo lado não pode alargar a página (a barra de cima sairia da tela) */
+html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
+
+/* ===== v32: linha do dia (Selecionar dia + Gerar rota), legenda clicável, custas ===== */
+.dayrow2 { display: flex; gap: 8px; align-items: center; margin: 4px 0 10px; }
+.dayrow2 .btn { min-height: 38px; }
+.btn.sdia { font-size: 13px; padding: 0 12px; min-height: 38px; }
+.rotabtn { font-size: 13px; padding: 0 16px; }
+.rotabtn[disabled] { background: #C8CDD9; color: #7A8196; box-shadow: none; cursor: not-allowed; opacity: 1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rotabtn[disabled] { background: #343C52; color: #8D95AA; } }
+:root[data-theme="dark"] .rotabtn[disabled] { background: #343C52; color: #8D95AA; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.lgi { background: none; border: 0; padding: 6px 2px; font: inherit; font-weight: 700; cursor: pointer; }
+.lgi b { font-weight: 800; }
+.lgi.g { color: #0B7A32; } .lgi.y { color: #A86A00; } .lgi.r { color: #C4161C; } .lgi.k { color: #111; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lgi.g { color: #5FE08A; } :root:not([data-theme="light"]) .lgi.y { color: #FFC857; } :root:not([data-theme="light"]) .lgi.r { color: #FF8A8A; } :root:not([data-theme="light"]) .lgi.k { color: #F1F3FA; } }
+:root[data-theme="dark"] .lgi.g { color: #5FE08A; } :root[data-theme="dark"] .lgi.y { color: #FFC857; } :root[data-theme="dark"] .lgi.r { color: #FF8A8A; } :root[data-theme="dark"] .lgi.k { color: #F1F3FA; }
+.card { scroll-margin-top: 14px; }
+.custasbox { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0; }
+#cusView { position: fixed; inset: 0; z-index: 310; background: rgba(8, 12, 30, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
+#cusView[hidden] { display: none !important; }
+#cusView .cv-box { width: 100%; max-width: 420px; background: var(--surface); color: var(--ink); border-radius: 22px; padding: 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }
+#cusView .cv-box h3 { margin: 0 0 6px; }
+
+/* um botão com o atributo hidden nunca aparece, mesmo que a classe dele defina display */
+.btn[hidden], button[hidden] { display: none !important; }
+
+/* ===== v33: "Por onde começar": lista rolável e enxuta das ruas do dia ===== */
+.inilista { max-height: 196px; overflow-y: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.inirow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 4px 10px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; font: inherit; font-size: 14px; cursor: pointer; }
+.inirow:last-child { border-bottom: 0; }
+.inirow.on { background: #E3ECFF; font-weight: 800; }
+.inin { flex: none; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px; background: #E3E9FB; color: #27408B; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.inirow.on .inin { background: #2563EB; color: #fff; }
+.inirua { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inibai { flex: none; max-width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted); }
+.inick { flex: none; color: #2563EB; font-weight: 800; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .inirow.on { background: #1E3566; } :root:not([data-theme="light"]) .inin { background: #2B3A66; color: #CFE0FF; } :root:not([data-theme="light"]) .inick { color: #8DB4FF; } }
+:root[data-theme="dark"] .inirow.on { background: #1E3566; } :root[data-theme="dark"] .inin { background: #2B3A66; color: #CFE0FF; } :root[data-theme="dark"] .inick { color: #8DB4FF; }
 </style>
 </head>
 <body>
@@ -885,11 +931,9 @@ body.cumpr #dock { display: none !important; }
     <select id="dateSel" aria-label="Filtrar por data"></select>
     <select id="ordSel" aria-label="Ordem da lista"><option value="cor">Ordem: por telefone e cor</option><option value="rota">Ordem: por rota</option></select>
     <select id="clsSel" aria-label="Mostrar"><option value="">Mostrar todos</option><option value="enviar">Só com telefone e posso enviar (verde)</option><option value="conferir">Só com telefone e em dúvida (amarelo)</option><option value="nao_enviar">Só com telefone e não envio (vermelho)</option><option value="semcel">Só sem telefone</option></select>
-    <button class="btn small" id="btnRep" hidden aria-pressed="false">Repetir mensagem (0)</button>
     <div class="actions" id="selTools">
       <button class="btn small" id="btnAll">Selecionar todos</button>
-      <button class="btn small ghost" id="btnNone">Limpar seleção</button>
-      <button class="btn small primary" id="btnRoute">Gerar rota</button>
+      <button class="btn small primary" id="btnRoute" hidden>Gerar rota</button>
       <button class="btn small primary" id="btnSeq"><span class="wai" aria-hidden="true"></span> Citações/intimações em sequência</button>
       <button class="btn small" id="btnSeq2"><span class="wai" aria-hidden="true"></span> 2ª mensagem em sequência</button>
       <button class="btn small ghost" id="btnDelAll">Excluir tudo</button>
@@ -3319,7 +3363,14 @@ function iaUsuarioAjuste(d) {
     definirDicas({ bairros: state.cfg.bairroPts, ceps: state.cfg.cepPts, cepBairro: state.cfg.cepBairro });
     aprenderBairros(state.items);
     var o = state.origin ? pontosRua(state.origin, ['F', 'S']) : null;
-    var auto = ordenarPrioridade(list, prioIt, (saidaGpsOn() && gpsFresco()) || (o ? o[0] : pontoIni()), fimEf(), zonasAtivas(), zonasAtivas() ? raioCasa() : 0, modoRota(), primeiros());
+    var iniId = state.cfg.inicioId, iniIt = null;
+    if (iniId) { list.forEach(function (i) { if (i.id === iniId) { iniIt = i; } }); }
+    var pIni = iniIt ? pontoDe(iniIt) : null;
+    var auto = ordenarPrioridade(list, prioIt, pIni || ((saidaGpsOn() && gpsFresco()) || (o ? o[0] : pontoIni())), fimEf(), zonasAtivas(), zonasAtivas() ? raioCasa() : 0, modoRota(), primeiros());
+    if (iniIt) {
+      var kIni = -1; auto.forEach(function (i, n) { if (i.id === iniId) { kIni = n; } });
+      if (kIni > 0) { auto = auto.slice(); auto.unshift(auto.splice(kIni, 1)[0]); }
+    }
     return aplicarManual(auto, state.cfg.rotaManual);
   }
   function nomeDoBairro(k) {
@@ -3918,13 +3969,29 @@ function iaUsuarioAjuste(d) {
       function (er) { toast(er && er.code === 1 ? 'Localização negada. No iPhone: Ajustes > Privacidade > Serviços de Localização.' : 'Não consegui a sua posição agora.'); cb(null); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
+  /* "Por onde começar": uma linha por rua do dia, na ordem atual da rota; tocar refaz a rota a partir dela */
+  function iniLista() {
+    var arr = rotaSel(), gr = [], idx = {};
+    arr.forEach(function (i, n) {
+      var k = textoParada(i);
+      if (idx[k] == null) { idx[k] = gr.length; gr.push({ ids: [i.id], it: i, pos: n + 1, n: 1 }); } else { gr[idx[k]].ids.push(i.id); gr[idx[k]].n++; }
+    });
+    if (!gr.length) { return ''; }
+    var ini = state.cfg.inicioId;
+    return '<p class="grp-t" style="margin-top:12px">Por onde começar (ruas do dia)</p>' +
+      '<div class="inilista" id="rsIni" role="listbox" aria-label="Ruas do dia">' + gr.map(function (g) {
+        var on = g.ids.indexOf(ini) !== -1;
+        return '<button type="button" class="inirow' + (on ? ' on' : '') + '" role="option" aria-selected="' + on + '" data-sd="ini" data-id="' + esc(g.ids[0]) + '"><span class="inin">' + g.pos + '</span><span class="inirua">' + esc(g.it.endereco) + (g.n > 1 ? ' (' + g.n + ')' : '') + '</span><span class="inibai">' + esc(g.it.bairro || '') + '</span>' + (on ? '<span class="inick" aria-hidden="true">✓</span>' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<p class="note" style="margin:6px 0 0">' + (ini ? 'A rota foi refeita a partir da rua marcada. Toque nela de novo para voltar ao automático. ' : 'Toque numa rua: a rota é refeita a partir dela. ') + 'Depois você ainda pode reorganizar com o dedo.</p>';
+  }
   function saidaBox() {
     var g = saidaGpsOn(), f = g && gpsPos ? new Date(gpsPos.t) : null;
     return '<div class="grp saidabox"><p class="grp-t">Saindo de</p>' +
       '<div class="seg"><button class="btn" type="button" data-sd="gps" aria-pressed="' + g + '">Onde estou agora</button><button class="btn" type="button" data-sd="end" aria-pressed="' + !g + '">Endereço de saída</button></div>' +
       (g ? '<p class="note">' + (f ? 'Posição lida às ' + pad(f.getHours()) + ':' + pad(f.getMinutes()) + '. A rota começa pela parada mais perto de você; o Google Maps sai de onde você estiver ao navegar. A posição fica só neste aparelho.' : 'Lendo a sua posição…') + '</p><div class="actions"><button class="btn small" type="button" data-sd="atualizar">Atualizar minha posição</button></div>'
         : '<input type="text" id="rsOrigin" placeholder="Rua e número de saída (vazio: onde você estiver ao navegar)" value="' + esc(state.origin || '') + '" autocomplete="off"><div class="actions"><button class="btn small" type="button" data-sd="salvarend">Usar este endereço</button></div>') +
-      '</div>';
+      iniLista() + '</div>';
   }
   /* O número do WhatsApp sempre aparece inteiro: se não couber no botão, a letra diminui só o necessário */
   function ajustarNumeros() {
@@ -4074,10 +4141,8 @@ function iaUsuarioAjuste(d) {
     var nRep = state.items.filter(precisaRepetir).length;
     if (!nRep) { repOnly = false; }
     if (nRep) { document.getElementById('summary').textContent += ', ' + nRep + ' para repetir a mensagem'; }
-    document.getElementById('btnRep').hidden = !nRep || (tab !== 'enviar' && tab !== 'aguardando');
-    document.getElementById('btnRep').textContent = 'Repetir mensagem (' + nRep + ')';
     renderBackupBanner();
-    document.getElementById('btnRep').setAttribute('aria-pressed', repOnly);
+    var vvA = visiveis(); document.getElementById('btnAll').textContent = vvA.length && vvA.every(function (i) { return sel[i.id]; }) ? 'Limpar todos' : 'Selecionar todos';
     var lg = document.getElementById('legend');
     lg.hidden = tab !== 'enviar';
     document.getElementById('clsSel').hidden = tab !== 'enviar';
@@ -4085,7 +4150,9 @@ function iaUsuarioAjuste(d) {
     document.getElementById('ordSel').value = state.cfg.ordemLista === 'rota' ? 'rota' : 'cor';
     if (tab === 'enviar') {
       var pc = function (c) { return state.items.filter(function (i) { return inTab(i, 'enviar') && grupoDe(i) === c; }).length; };
-      lg.innerHTML = '<span><span class="dot g"></span>Pode enviar (com telefone): ' + pc('enviar') + '</span><span><span class="dot y"></span>Em dúvida (com telefone): ' + pc('conferir') + '</span><span><span class="dot r"></span>Não enviar (com telefone): ' + pc('nao_enviar') + '</span><span><span class="dot p"></span>Sem telefone: ' + pc('semcel') + '</span>';
+      lg.innerHTML = [['enviar', 'g', 'WhatsApp ✅'], ['conferir', 'y', 'WhatsApp ❓'], ['nao_enviar', 'r', 'WhatsApp ❌'], ['semcel', 'k', 'sem WhatsApp']].map(function (x) {
+        return '<button type="button" class="lgi ' + x[1] + '" data-lg="' + x[0] + '">' + x[2] + ': <b>' + pc(x[0]) + '</b></button>';
+      }).join('');
     }
     var flt = arquivosFaltando();
     var errIds = Object.keys(errArq), barraTxt = '', barraErro = false;
@@ -4181,10 +4248,8 @@ function iaUsuarioAjuste(d) {
         if (dk !== lastDay) {
           lastDay = dk; lastRem = null;
           var cnt = list.filter(function (x) { return itemDay(x) === dk; }).length;
-          var botoes = '<button class="btn small" data-act="selday" data-day="' + esc(dk) + '">Selecionar o dia</button>' +
-            (tab === 'devolver'
-              ? '<button class="btn small" data-act="zipday" data-day="' + esc(dk) + '">Baixar o dia</button>'
-              : '<button class="btn small" data-act="printday" data-day="' + esc(dk) + '">Imprimir o dia</button>');
+          var botoes = (tab === 'devolver' ? btnSelDia(dk) + '<button class="btn small" data-act="zipday" data-day="' + esc(dk) + '">Baixar o dia</button>'
+            : '<button class="btn small" data-act="printday" data-day="' + esc(dk) + '">Imprimir o dia</button>');
           html += '<div class="dayrow"><h2 class="day">' + esc(dayLabel(dk, new Date())) + ' (' + cnt + ')</h2><div class="dayact">' + botoes + '</div></div>' + valoresDia(dk, list);
         }
         if (agrupaRem) {
@@ -4216,7 +4281,7 @@ function iaUsuarioAjuste(d) {
       : (ce ? 'Nenhum marcado: as ações valem para todas' : 'Nenhum selecionado');
     document.getElementById('dock').hidden = tab === 'arquivos';
     var dk = document.getElementById('dock'); if (dk.classList) { dk.classList.toggle('vazio', !ce && !n); }
-    document.getElementById('btnRoute').hidden = ce;
+    document.getElementById('btnRoute').hidden = true; /* o botão de verdade fica na linha de cada dia; este só guarda a ação */
     document.getElementById('btnPrint').hidden = ce;
     document.getElementById('btnZip').hidden = !ce;
     document.getElementById('btnShareAll').hidden = !ce;
@@ -4400,7 +4465,7 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="meMat">Matrícula</label><input type="text" id="meMat" value="' + esc(me.mat) + '" autocomplete="off">' +
       '<label class="f" for="meDDD">DDD da sua região (completa os telefones que vêm sem DDD)</label><input type="text" id="meDDD" inputmode="numeric" maxlength="2" placeholder="Ex.: 45" value="' + esc(state.cfg.ddd || '') + '" autocomplete="off">' +
       '<label class="f" for="meNav">Aplicativo de navegação (ao tocar no endereço do cartão)</label><select id="meNav" class="sel"><option value="google"' + (navApp() === 'google' ? ' selected' : '') + '>Google Maps</option><option value="waze"' + (navApp() === 'waze' ? ' selected' : '') + '>Waze</option><option value="apple"' + (navApp() === 'apple' ? ' selected' : '') + '>Apple Maps</option></select><p class="note">Google Maps e Waze começam a navegação direto. O Apple Maps abre a rota pronta e pode pedir um toque em “Iniciar”. Vale um destino por vez; com o CarPlay, a rota aparece na tela do carro.</p>' +
-      '<label class="f" for="meDil">Diligência a receber, em R$ (vai nas certidões negativas)</label><input type="text" id="meDil" value="' + esc(me.diligencia || '108,63') + '" inputmode="decimal" autocomplete="off">' +
+      '<label class="f" for="meDil">Custas (valor padrão), em R$: vai nas certidões</label><input type="text" id="meDil" value="' + esc(me.diligencia || '108,63') + '" inputmode="decimal" autocomplete="off">' +
       '<label class="f" for="meSms">Celular que recebe a rota por SMS (quando você toca em “Enviar por SMS”)</label><input type="text" id="meSms" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuSmsTxt()) + '" autocomplete="off"><p class="note" id="meSmsNota"></p>' +
       '<label class="f" for="meZap">WhatsApp que recebe a rota (abre a conversa com o link já pronto)</label><input type="text" id="meZap" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuZapTxt()) + '" autocomplete="off"><p class="note" id="meZapNota"></p>' +
       '<label class="f" for="meMsg">Mensagem padrão do WhatsApp (pode editar)</label>' +
@@ -4409,7 +4474,7 @@ function iaUsuarioAjuste(d) {
       '<div class="actions"><button class="btn small" id="meMsgVer">Ver como fica</button><button class="btn small ghost" id="meMsgPad">Voltar ao texto padrão</button></div>' +
       '<pre id="meMsgPrev" class="note" style="white-space:pre-wrap" hidden></pre>' +
       '<label class="f" for="meAn">Texto do botão “Documentos em análise”</label><input type="text" id="meAn" value="' + esc(state.cfg.msgAnalise || 'Documentos em análise.') + '" autocomplete="off">' +
-      '<div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="mePrio">Prioridades da rota</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
+      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="mePrio">Prioridades da rota</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
       '<p class="note">Toque em Salvar antes de abrir essas telas.</p>' +
       '<div class="actions"><button class="btn primary" id="meSave">Salvar</button></div>' +
       painelAtalho() + painelBackup());
@@ -4452,6 +4517,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('meValores').onclick = function () { abrirValores(); };
     document.getElementById('meModelos').onclick = function () { abrirModelos(); };
     document.getElementById('meIAbtn').onclick = function () { abrirIA(); };
+    document.getElementById('meCusBtn').onclick = function () { abrirValores(); };
     document.getElementById('mePrio').onclick = function () { abrirPrio(); };
     document.getElementById('meRota').onclick = function () { abrirMinhaRota(); };
     document.getElementById('meMsgVer').onclick = function () {
@@ -4634,6 +4700,41 @@ function iaUsuarioAjuste(d) {
       save(); render(); closeModal(); toast('Prioridades salvas.');
     };
   }
+  /* Custas na certidão: o valor fica no fim da tela, num quadro com "Editar custas"; a janela mostra o valor padrão, editável */
+  function trocarDil(texto, valor) {
+    var sep = separarDil(texto), v = String(valor || '').replace(/[^\d.,]/g, '').trim();
+    if (!v) { return sep.corpo; }
+    var rot = /^(Dilig[eê]ncias? a receber:)/i.exec(sep.dil);
+    return sep.corpo + '\n\n' + (rot ? rot[1] : 'Diligência a receber:') + ' R$ ' + v;
+  }
+  function htmlCustasPainel(pref) {
+    return '<div class="grp custasbox"><div><strong>Custas</strong> <span id="' + pref + 'CusTxt"></span></div><button class="btn small" type="button" id="' + pref + 'CusBtn">Editar custas</button></div>';
+  }
+  function abrirJanelaCustas(atual, aoUsar) {
+    var ov = document.getElementById('cusView');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'cusView'; document.body.appendChild(ov); }
+    var padrao = String((state.me && state.me.diligencia) || '108,63');
+    ov.hidden = false;
+    ov.innerHTML = '<div class="cv-box" role="dialog" aria-label="Custas"><h3>Custas</h3><p class="note">Valor padrão: R$ ' + esc(padrao) + ' (muda também em Meus dados). Em branco: a certidão sai sem a linha de custas.</p>' +
+      '<label class="f" for="cvVal">Custas a receber, em R$</label><input type="text" id="cvVal" inputmode="decimal" value="' + esc(atual) + '" autocomplete="off">' +
+      '<div class="actions"><button class="btn primary" type="button" data-cv="usar">Usar nesta certidão</button><button class="btn" type="button" data-cv="padrao">Salvar como padrão</button><button class="btn ghost" type="button" data-cv="voltar">Cancelar</button></div></div>';
+    try { document.getElementById('cvVal').focus(); } catch (x) {}
+    ov.onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-cv]') : null;
+      if (!b) { return; }
+      var a = b.getAttribute('data-cv'), v = String(document.getElementById('cvVal').value || '').replace(/[^\d.,]/g, '').trim();
+      ov.hidden = true; ov.innerHTML = '';
+      if (a === 'voltar') { return; }
+      if (a === 'padrao') { state.me = state.me || {}; state.me.diligencia = v || '108,63'; save(); toast('Custas padrão salvas: R$ ' + state.me.diligencia); }
+      aoUsar(v);
+    };
+  }
+  function ligarCustas(pref, aposMudar) {
+    var campo = document.getElementById(pref + 'Custas'), txt = document.getElementById(pref + 'CusTxt'), btn = document.getElementById(pref + 'CusBtn');
+    function pinta() { var v = String(campo.value || '').trim(); txt.textContent = v ? 'R$ ' + v : 'sem custas nesta certidão'; }
+    pinta();
+    btn.onclick = function () { abrirJanelaCustas(campo.value, function (v) { campo.value = v; pinta(); if (aposMudar) { aposMudar(v); } }); };
+  }
   function abrirValores() {
     function $(id) { return document.getElementById(id); }
     openModal('Transporte e custas',
@@ -4728,11 +4829,18 @@ function iaUsuarioAjuste(d) {
   document.getElementById('dateSel').addEventListener('change', function () { dsel = this.value; render(); });
   document.getElementById('clsSel').addEventListener('change', function () { clsF = this.value; render(); });
   document.getElementById('ordSel').addEventListener('change', function () { state.cfg.ordemLista = this.value === 'rota' ? 'rota' : 'cor'; save(); render(); });
-  document.getElementById('btnRep').onclick = function () { repOnly = !repOnly; render(); };
   document.getElementById('btnFisica').onclick = function () { openFisica(null); };
+  document.getElementById('legend').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-lg]') : null;
+    if (!b) { return; }
+    var c = b.getAttribute('data-lg'), el = document.querySelector('#list article.card.' + c);
+    if (!el) { toast(clsF && clsF !== c ? 'Esse grupo não está na tela: em “Mostrar”, escolha “Mostrar todos”.' : 'Nenhum cartão desse grupo aparece agora (veja se a remessa está recolhida).'); return; }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   function visiveis() { return state.items.filter(function (i) { return inTab(i, tab); }).filter(matches).filter(function (i) { return !dsel || itemDay(i) === dsel; }); }
   document.getElementById('btnAll').onclick = function () {
-    visiveis().forEach(function (i) { sel[i.id] = true; });
+    var vv = visiveis(), todos = vv.length > 0 && vv.every(function (i) { return sel[i.id]; });
+    vv.forEach(function (i) { if (todos) { delete sel[i.id]; } else { sel[i.id] = true; } });
     render();
   };
   /* Excluir tudo: os marcados ou todos da lista, com confirmação e "desfazer" */
@@ -4755,7 +4863,6 @@ function iaUsuarioAjuste(d) {
     document.getElementById('dxTudo').onclick = function () { apagar(vis); };
     if (document.getElementById('dxMarc')) { document.getElementById('dxMarc').onclick = function () { apagar(marc); }; }
   };
-  document.getElementById('btnNone').onclick = function () { sel = {}; render(); };
 
   /* Ações nos cartões */
   document.getElementById('list').addEventListener('click', function (e) {
@@ -4777,6 +4884,7 @@ function iaUsuarioAjuste(d) {
     if (act === 'delfile' && fc) { delFile(fc.getAttribute('data-fid')); return; }
     if (act === 'me') { openMe(); return; }
     if (act === 'selday' || act === 'printday' || act === 'zipday') { dayAction(act, b.getAttribute('data-day') || ''); return; }
+    if (act === 'gerarrota') { document.getElementById('btnRoute').onclick(); return; }
     if (act === 'vlabrir') { abrirValores(); return; }
     if (act === 'remtoggle') { var rkt = b.getAttribute('data-rem'), ff = state.cfg.remFechadas = state.cfg.remFechadas || {}; if (ff[rkt]) { delete ff[rkt]; } else { ff[rkt] = true; } save(); render(); return; }
     var c = e.target.closest('.card');
@@ -5986,12 +6094,13 @@ function iaUsuarioAjuste(d) {
       '<div class="actions"><button class="btn small ' + (iaAtiva() ? 'ia' : 'primary') + '" id="vzAjusta">' + (iaAtiva() ? '<span class="iabot"></span> ' : '') + 'Ajustar o texto</button><button class="btn small ghost" id="vzDesfaz" hidden>Voltar à versão anterior</button></div></div>' +
       '<label class="f" for="vzPrint">Prints ou fotos (opcional): comprovante do WhatsApp, foto da diligência… pode acrescentar mais de um</label><input type="file" id="vzPrint" accept="image/*" multiple>' +
       '<div class="thumbs" id="vzThumbs"></div>' +
-      '<label class="f" for="vzCustas">Custas a receber, em R$ (em branco: não escreve na certidão)</label><input type="text" id="vzCustas" inputmode="decimal" value="' + esc(dilIni) + '" autocomplete="off">' +
+      '<input type="hidden" id="vzCustas" value="' + esc(dilIni) + '">' +
       '<label class="f" id="vzFisBox" style="display:flex;gap:10px;align-items:center" hidden><input type="checkbox" id="vzFis" style="width:26px;height:26px" checked> <span>Houve diligência presencial no endereço (desmarque se não foi lá: a parte física some do texto)</span></label>' +
-      '<label class="f" for="vzOut">Texto da certidão (pode editar)</label><textarea id="vzOut" style="min-height:300px"></textarea>' + htmlSalvarModelo('vz') +
+      '<label class="f" for="vzOut">Texto da certidão (pode editar)</label><textarea id="vzOut" style="min-height:300px"></textarea>' + htmlSalvarModelo('vz') + htmlCustasPainel('vz') +
       '<div class="actions"><button class="btn" id="vzCopy">Copiar texto</button><button class="btn" id="vzPdf">Baixar PDF</button><button class="btn primary" id="vzSave">Salvar e baixar PDF</button><button class="btn" id="vzSaveOnly">Só salvar</button></div>');
     function $(id) { return document.getElementById(id); }
     $('vzBack').onclick = function () { openCert(it); };
+    ligarCustas('vz', function (v) { if ($('vzOut').value.trim()) { $('vzOut').value = trocarDil($('vzOut').value, v); } });
     if (!(opt && opt.final)) { try { $('vzFala').focus(); } catch (e) {} }
     ligarSalvarModelo(it, 'vz', function () { return { onde: 'inteira', tipo: tipoCert, texto: separarDil($('vzOut').value).corpo }; });
     function ctxVoz() {
@@ -6475,11 +6584,11 @@ function iaUsuarioAjuste(d) {
         '<div id="mdJBox"><label class="f" for="mdJus">Por que o WhatsApp não resolveu</label><select id="mdJus" class="sel"><option value="documento">Não apresentou documento</option><option value="inativo">Telefone inativo</option><option value="semretorno">Sem retorno</option></select></div>' : '') +
       '<label class="f" for="mdPrint">' + (zapKind ? 'Print da conversa (o texto diz que está em anexo)' : 'Print do contato (opcional)') + '</label><input type="file" id="mdPrint" accept="image/*" multiple>' +
       '<div class="thumbs" id="mdThumbs"></div>' +
-      '<label class="f" for="mdCustas">Custas a receber, em R$ (em branco: não escreve na certidão)</label><input type="text" id="mdCustas" inputmode="decimal" value="' + esc(dilIni) + '" autocomplete="off">' +
-      (isentoIt(it) ? '<p class="note">Este mandado não tem custas (juizado, ou escrito “gratuito”), por isso o campo vem em branco. O transporte continua valendo.</p>' : '') +
+      '<input type="hidden" id="mdCustas" value="' + esc(dilIni) + '">' +
+      (isentoIt(it) ? '<p class="note">Este mandado não tem custas (juizado, ou escrito “gratuito”), por isso as custas vêm em branco. O transporte continua valendo.</p>' : '') +
       (temFis ? '<div style="border:2px solid var(--accent);border-radius:12px;padding:6px 12px;margin:12px 0">' + chk('mdFis', '<span><strong>Teve diligência presencial</strong> (fui ao endereço e não encontrei)</span>', !!(it.fisica && it.fisica.feita)) + '<p class="note" style="margin:2px 0 4px">Marcado: o relato da visita entra no começo da certidão. Se você não foi ao endereço, desmarque e esse trecho some.</p></div>' : '') +
       '<label class="f" for="mdOutTxt">Texto da certidão (pode editar)</label><textarea id="mdOutTxt" style="min-height:300px"></textarea>' +
-      '<div class="actions"><button class="btn small ghost" id="mdRefaz">Refazer o texto com as opções</button></div>' + htmlEditarIA('md') + htmlSalvarModelo('md') +
+      '<div class="actions"><button class="btn small ghost" id="mdRefaz">Refazer o texto com as opções</button></div>' + htmlEditarIA('md') + htmlSalvarModelo('md') + htmlCustasPainel('md') +
       '<div class="actions"><button class="btn" id="mdCopy">Copiar texto</button><button class="btn" id="mdPdf">Baixar PDF</button><button class="btn primary" id="mdSave">Salvar e baixar PDF</button><button class="btn" id="mdSaveOnly">Só salvar</button></div>');
     function $(id) { return document.getElementById(id); }
     if (neg) { $('mdJus').value = justIni || justDaTentativa(it.tentativas); }
@@ -6505,6 +6614,7 @@ function iaUsuarioAjuste(d) {
       if (e) { e.addEventListener('input', function () { vis(); upd(); }); e.addEventListener('change', function () { vis(); upd(); }); }
     });
     $('mdOutTxt').addEventListener('input', function () { dirty = true; });
+    ligarCustas('md', function (v) { vis(); upd(); if (dirty) { $('mdOutTxt').value = trocarDil($('mdOutTxt').value, v); } });
     $('mdRefaz').onclick = function () { dirty = false; upd(); toast('Texto refeito'); };
     $('mdPj').addEventListener('change', function () { it.pj = this.checked; save(); upd(); });
     ligarEditarIA(it, 'md', function () { return $('mdOutTxt').value; }, function (v) { $('mdOutTxt').value = v; dirty = true; }, false);
@@ -6948,7 +7058,9 @@ function iaUsuarioAjuste(d) {
     var fis = doDia.filter(function (x) { return etipo(x) === 'local'; }).length;
     var txt = 'Indenização de transporte: <strong>' + fmtReais(fis * transporte()) + '</strong> (' + fis + (fis === 1 ? ' mandado' : ' mandados') + ' com endereço físico)';
     if (tab === 'devolver') { txt += ' · Custas: <strong>' + fmtReais(somar(doDia, custasDe)) + '</strong>'; }
-    return '<p class="note dayval">' + txt + ' <button class="btn small ghost" data-act="vlabrir">Editar custas e transporte</button></p>';
+    var nSelP = pendAll().filter(function (i) { return sel[i.id]; }).length;
+    var linha = tab === 'enviar' || tab === 'aguardando' ? '<div class="dayrow2">' + btnSelDia(dk) + '<button class="btn small primary rotabtn" data-act="gerarrota"' + (nSelP ? '' : ' disabled') + '>Gerar rota</button></div>' : '';
+    return '<p class="note dayval">' + txt + '</p>' + linha;
   }
   function resumoMensal() {
     var por = {};
@@ -6966,9 +7078,18 @@ function iaUsuarioAjuste(d) {
   }
 
   /* Ações por dia */
-  function dayAction(act, dk) {
+  function listaDoDia(dk) {
     var rkm = tab === 'enviar' && state.cfg.ordemLista !== 'rota' ? remessaChaves(state.items) : null, fch = state.cfg.remFechadas || {};
-    var lista = state.items.filter(function (i) { return inTab(i, tab); }).filter(matches).filter(function (i) { return itemDay(i) === dk; }).filter(function (i) { return !(rkm && fch[rkm[i.id]]); });
+    return state.items.filter(function (i) { return inTab(i, tab); }).filter(matches).filter(function (i) { return itemDay(i) === dk; }).filter(function (i) { return !(rkm && fch[rkm[i.id]]); });
+  }
+  /* o nome do botão mostra o que o próximo toque vai fazer: selecionar, completar ou limpar o dia */
+  function btnSelDia(dk) {
+    var l = listaDoDia(dk), n = l.filter(function (i) { return sel[i.id]; }).length;
+    var t = !l.length || !n ? 'Selecionar dia' : (n === l.length ? 'Limpar dia' : 'Selecionar todos do dia');
+    return '<button class="btn small sdia" data-act="selday" data-day="' + esc(dk) + '">' + t + '</button>';
+  }
+  function dayAction(act, dk) {
+    var lista = listaDoDia(dk);
     if (act === 'selday') {
       var todos = lista.length > 0 && lista.every(function (i) { return sel[i.id]; });
       lista.forEach(function (i) { if (todos) { delete sel[i.id]; } else { sel[i.id] = true; } });
@@ -7720,43 +7841,66 @@ function iaUsuarioAjuste(d) {
     if (!ra) { return []; }
     return ra.ids.filter(function (id) { var i = byId(id); return i && i.status === 'pendente' && !ra.pul[id] && !rotaAtendida(i, ra); });
   }
-  /* ===== Modo cumprimento: um cartão inteiro por tela, na ordem da rota montada ===== */
-  var cumprUltimo = '';
+  /* ===== Modo cumprimento: um cartão inteiro por tela, na ordem da rota (carrossel: esquerda = próximo, direita = anterior) ===== */
+  var cumprUltimo = '', cumprAnim = '';
   function cumprAtivo() { return !!(state.rotaAtiva && state.rotaAtiva.cumpr); }
+  /* só entra na fila o que precisa de ação agora: o mandado só eletrônico cuja 1ª mensagem está dentro do prazo fica de fora */
+  function cumprElegivel(i) {
+    if (!i || i.status !== 'pendente') { return false; }
+    if (etipo(i) === 'local') { return true; }
+    var oi = onlineInfo(i, Date.now());
+    return oi.n === 0 || oi.repetir || oi.pronto;
+  }
+  /* fila de navegação, na ordem da rota; o cartão que está na tela não some na hora, mesmo que a mensagem já tenha sido mandada */
+  function cumprLista() {
+    var ra = state.rotaAtiva;
+    return rotaRestantes().filter(function (id) { return id === ra.cur || cumprElegivel(byId(id)); });
+  }
+  function cumprPos(lista) {
+    var ra = state.rotaAtiva, k = lista.indexOf(ra.cur);
+    if (k < 0) { k = Math.min(Math.max(ra.idx || 0, 0), lista.length - 1); }
+    return k;
+  }
   function iniciarCumprimento() {
-    var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
-    if (!lista.length) { toast('Não há paradas na rota.'); return; }
+    var m = marcadasRota(), rota = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
+    var extras = sortedSel().filter(function (i) { return etipo(i) !== 'local' && i.status === 'pendente'; });
+    var todas = rota.concat(extras);
+    if (!todas.length) { toast('Não há paradas na rota.'); return; }
+    var lista = todas.filter(cumprElegivel);
+    if (!lista.length) { toast('Todos os mandados já têm mensagem enviada e estão dentro do prazo.'); return; }
     var sig = {}, ord = {};
     lista.forEach(function (i, k) { sig[i.id] = sigRota(i); ord[i.id] = k + 1; });
-    state.rotaAtiva = { ids: lista.map(function (i) { return i.id; }), pul: {}, sig: sig, ord: ord, cumpr: true, t0: Date.now() };
+    state.rotaAtiva = { ids: lista.map(function (i) { return i.id; }), pul: {}, sig: sig, ord: ord, cumpr: true, t0: Date.now(), cur: lista[0].id, idx: 0 };
     tab = 'enviar'; save(); closeModal(); render();
   }
   function cumprHtml() {
-    var ra = state.rotaAtiva, rest = rotaRestantes(), n = ra.ids.length;
-    if (!rest.length) {
+    var ra = state.rotaAtiva, lista = cumprLista(), n = ra.ids.length;
+    if (!lista.length) {
       return '<div class="cumprwrap" id="cumprWrap"><section class="cumprfim"><h2>Cumprimento concluído</h2><p>' + n + ' de ' + n + (n === 1 ? ' mandado atendido.' : ' mandados atendidos.') + '</p><button class="btn primary" type="button" data-cb="sair">Sair do modo cumprimento</button></section></div>';
     }
-    var it = byId(rest[0]);
-    if (cumprUltimo !== it.id) { cumprUltimo = it.id; window.scrollTo(0, 0); }
-    if (!ra.ord) { ra.ord = {}; ra.ids.forEach(function (id, k) { ra.ord[id] = k + 1; }); }
-    return '<div class="cumprwrap" id="cumprWrap">' + card(it, ra.ord[it.id]) + '</div>';
+    var k = cumprPos(lista), id = lista[k], it = byId(id);
+    if (ra.cur !== id || ra.idx !== k) { ra.cur = id; ra.idx = k; save(); }
+    if (!ra.ord) { ra.ord = {}; ra.ids.forEach(function (x, j) { ra.ord[x] = j + 1; }); }
+    if (cumprUltimo !== id) { cumprUltimo = id; window.scrollTo(0, 0); }
+    var an = cumprAnim; cumprAnim = '';
+    return '<div class="cumprwrap' + (an ? ' in-' + an : '') + '" id="cumprWrap">' + card(it, ra.ord[id]) + '</div>';
   }
   function cumprBarra() {
     var el = document.getElementById('cumprBar'), on = cumprAtivo();
-    document.body.classList.toggle('cumpr', on);
+    document.body.classList.toggle('cumpr', on); document.documentElement.classList.toggle('cumpr', on);
     if (!on) { el.hidden = true; el.innerHTML = ''; return; }
-    var ra = state.rotaAtiva, rest = rotaRestantes(), n = ra.ids.length, feitas = n - rest.length, pct = Math.round(feitas / n * 100);
+    var ra = state.rotaAtiva, lista = cumprLista(), n = ra.ids.length, feitas = n - lista.length, pct = Math.round(feitas / n * 100);
+    var id = lista.length ? lista[cumprPos(lista)] : '', num = lista.length ? ((ra.ord && ra.ord[id]) || cumprPos(lista) + 1) : n;
     el.hidden = false;
-    el.innerHTML = '<div class="cb-row"><strong class="cb-cont">' + (rest.length ? feitas + 1 : n) + '/' + n + '</strong><span class="cb-falta">' + (rest.length ? 'faltam ' + rest.length : 'tudo atendido') + '</span><span class="cb-gap"></span>' + (ra.antes ? '<button type="button" class="btn small" data-cb="voltar">↩ Voltar</button>' : '') + '<button type="button" class="btn small ghost" data-cb="sair">Sair</button></div><div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (rest.length > 1 ? '<p class="cb-dica">Deslize o cartão para o lado para deixar este para depois.</p>' : '');
+    el.innerHTML = '<div class="cb-row"><strong class="cb-cont">' + num + '/' + n + '</strong><span class="cb-falta">' + (lista.length ? 'faltam ' + lista.length : 'tudo atendido') + '</span><span class="cb-gap"></span><button type="button" class="btn small ghost" data-cb="sair">Sair</button></div><div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (lista.length > 1 ? '<p class="cb-dica">Deslize: esquerda = próximo, direita = anterior.</p>' : '');
   }
-  /* deslizar de lado só muda a ordem: o cartão vai para o fim da fila */
-  function cumprPular() {
-    var ra = state.rotaAtiva; if (!ra || !ra.cumpr) { return; }
-    var rest = rotaRestantes();
-    if (rest.length < 2) { render(); return; }
-    var id = rest[0]; ra.antes = ra.ids.slice();
-    ra.ids = ra.ids.filter(function (x) { return x !== id; }).concat([id]);
-    save(); render();
+  /* d = +1 próximo, -1 anterior; a ordem nunca muda, só o cartão que aparece */
+  function cumprIr(d) {
+    var ra = state.rotaAtiva; if (!ra || !ra.cumpr) { return false; }
+    var lista = cumprLista(), k = cumprPos(lista), j = k + d;
+    if (j < 0) { toast('Este é o primeiro cartão.'); return false; }
+    if (j >= lista.length) { toast('Este é o último cartão.'); return false; }
+    ra.cur = lista[j]; ra.idx = j; cumprAnim = d > 0 ? 'esq' : 'dir'; save(); render(); return true;
   }
   (function () {
     var lista = document.getElementById('list'), g = null, ignora = 0;
@@ -7781,12 +7925,13 @@ function iaUsuarioAjuste(d) {
       if (!G.mov) { return; }
       ignora = Date.now() + 350;
       var veloc = Math.abs(G.dx) / Math.max(1, Date.now() - G.t), ok = e.type !== 'pointercancel' && (Math.abs(G.dx) > 90 || (Math.abs(G.dx) > 40 && veloc > 0.5));
+      var lst = cumprLista(), k = cumprPos(lst), d = G.dx < 0 ? 1 : -1, pode = lst.length > 0 && k + d >= 0 && k + d < lst.length;
       G.w.style.transition = 'transform .18s ease-out, opacity .18s';
-      if (ok && rotaRestantes().length > 1) {
-        G.w.style.transform = 'translateX(' + (G.dx > 0 ? 700 : -700) + 'px) rotate(' + (G.dx > 0 ? 22 : -22) + 'deg)'; G.w.style.opacity = '0';
-        setTimeout(cumprPular, 170);
+      if (ok && pode) {
+        G.w.style.transform = 'translateX(' + (d > 0 ? -700 : 700) + 'px) rotate(' + (d > 0 ? -22 : 22) + 'deg)'; G.w.style.opacity = '0';
+        setTimeout(function () { cumprIr(d); }, 170);
       } else {
-        if (ok) { toast('Este é o último cartão da fila.'); }
+        if (ok && !pode) { toast(d > 0 ? 'Este é o último cartão.' : 'Este é o primeiro cartão.'); }
         G.w.style.transform = ''; G.w.style.opacity = '';
       }
     }
@@ -7796,10 +7941,9 @@ function iaUsuarioAjuste(d) {
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-cb]') : null;
     if (!b || !state.rotaAtiva) { return; }
-    var a = b.getAttribute('data-cb'), ra = state.rotaAtiva;
-    if (a === 'voltar' && ra.antes) { ra.ids = ra.antes; ra.antes = null; save(); render(); }
-    else if (a === 'sair') {
-      if (!rotaRestantes().length) { state.rotaAtiva = null; toast('Cumprimento concluído.'); } else { ra.cumpr = false; }
+    var ra = state.rotaAtiva;
+    if (b.getAttribute('data-cb') === 'sair') {
+      if (!cumprLista().length) { state.rotaAtiva = null; toast('Cumprimento concluído.'); } else { ra.cumpr = false; }
       save(); render();
     }
   });
@@ -7881,14 +8025,7 @@ function iaUsuarioAjuste(d) {
       (meuSmsTxt() ? '' : '<p class="note">Sem número, o SMS abre sem destinatário e você escolhe para quem mandar. Para fixar o número, escreva em Meus dados.</p>');
   }
     document.getElementById('btnRoute').onclick = function () {
-    if (!sortedSel().length) {
-      var vis = visiveis();
-      if (!vis.length) { toast('Não há mandados nesta lista'); return; }
-      vis.forEach(function (i) { sel[i.id] = true; });
-      render();
-      if (!sortedSel().length) { return; }
-      toast('Nenhum marcado: usei todos os ' + vis.length + ' da lista.');
-    }
+    if (!sortedSel().length) { toast('Marque os cartões que vão na rota.'); return; }
     modoReord = false;
     if (!rotaSel().length) { openModal('Rota de hoje', '<p>Nenhum dos mandados marcados tem endereço físico em ' + cidadesTxt() + ', então não há rota para montar.</p>' + foraDaRota()); return; }
     openModal('Rota de hoje',
@@ -7903,10 +8040,17 @@ function iaUsuarioAjuste(d) {
       var b = e.target.closest ? e.target.closest('[data-sd]') : null;
       if (!b) { return; }
       var a = b.getAttribute('data-sd');
-      if (a === 'gps') { state.cfg.saidaGps = true; save(); refaz(); pegarGps(function () { refaz(); render(); }); }
+      if (a === 'gps') { state.cfg.saidaGps = true; state.cfg.inicioId = null; save(); refaz(); pegarGps(function () { refaz(); render(); }); }
       else if (a === 'atualizar') { pegarGps(function () { refaz(); render(); }); }
       else if (a === 'end') { state.cfg.saidaGps = false; save(); refaz(); render(); }
-      else if (a === 'salvarend') { var v = ($('rsOrigin').value || '').trim(); state.origin = v; state.cfg.saidaGps = false; save(); refaz(); render(); toast(v ? 'Saída: ' + v : 'Saída: onde você estiver ao navegar.'); }
+      else if (a === 'salvarend') { var v = ($('rsOrigin').value || '').trim(); state.origin = v; state.cfg.saidaGps = false; state.cfg.inicioId = null; save(); refaz(); render(); toast(v ? 'Saída: ' + v : 'Saída: onde você estiver ao navegar.'); }
+      else if (a === 'ini') {
+        var idI = b.getAttribute('data-id'), itI = byId(idI);
+        if (!itI) { return; }
+        var antes = { ini: state.cfg.inicioId || null, man: state.cfg.rotaManual || null }, volta = state.cfg.inicioId === idI;
+        state.cfg.inicioId = volta ? null : idI; state.cfg.rotaManual = null; save(); refaz(); render();
+        toast(volta ? 'Rota de volta ao automático.' : 'Rota refeita a partir de: ' + itI.endereco, function () { state.cfg.inicioId = antes.ini; state.cfg.rotaManual = antes.man; save(); refaz(); render(); });
+      }
     });
     if (saidaGpsOn() && !gpsFresco()) { pegarGps(function () { refaz(); render(); }); }
     $('rPrint').onclick = function () { imprimir(rotaSel()); };
