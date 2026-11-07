@@ -1886,36 +1886,75 @@ function chaveRua(s) {
   return t.map(function (w) { return ABREV_RUA[w] || w; }).filter(function (w) { return STOP_RUA.indexOf(w) === -1; }).join(' ');
 }
 var _ruasIdx = null;
-function ruasIdx() {
-  if (_ruasIdx) { return _ruasIdx; }
-  _ruasIdx = {};
-  var src = typeof RUAS_OSM !== 'undefined' ? RUAS_OSM : null;
-  if (!src) { return _ruasIdx; }
-  Object.keys(src).forEach(function (c) {
-    var m = {};
-    src[c].split('|').forEach(function (rec) {
-      var p = rec.indexOf('=');
-      if (p < 1) { return; }
-      m[rec.slice(0, p)] = rec.slice(p + 1).split(';').map(function (xy) {
-        var v = xy.split(' ');
-        return [-25 - (+v[0]) / 1e4, -54 - (+v[1]) / 1e4];
-      });
+  var _ruasPacotes = {};
+  /* Pacote de ruas de um município (gerado no GitHub a partir do CNEFE/IBGE): r = "NOME=dx dy;dx dy|...", p = "CEP=dx dy|..." (deslocamentos de 1e-5 grau a partir de b) */
+  function adicionarPacoteRuas(cod, pac) {
+    var base = pac.b || [0, 0], m = {}, cep = {};
+    String(pac.r || '').split('|').forEach(function (rec) {
+      var q = rec.indexOf('=');
+      if (q < 1) { return; }
+      var k = chaveRua(rec.slice(0, q));
+      if (!k) { return; }
+      var pts = rec.slice(q + 1).split(';').map(function (xy) { var v = xy.split(' '); return [base[0] + (+v[0]) / 1e5, base[1] + (+v[1]) / 1e5]; });
+      m[k] = m[k] ? m[k].concat(pts) : pts;
     });
-    _ruasIdx[c] = { m: m, k: Object.keys(m).map(function (k) { return { k: k, t: k.split(' ') }; }) };
-  });
-  return _ruasIdx;
-}
-function cidadesDoItem(i) {
-  var c = norm(i.cidade || '');
-  if (!c) { return ['F', 'S']; }
-  if (/terezinha|teresinha/.test(c)) { return ['S']; }
-  if (/foz/.test(c)) { return ['F']; }
-  return [];
-}
+    String(pac.p || '').split('|').forEach(function (rec) {
+      var q = rec.indexOf('=');
+      if (q < 1) { return; }
+      var v = rec.slice(q + 1).split(' ');
+      cep[rec.slice(0, q)] = [base[0] + (+v[0]) / 1e5, base[1] + (+v[1]) / 1e5];
+    });
+    _ruasPacotes[cod] = { n: pac.n || '', u: pac.u || '', m: m, cep: cep };
+    _ruasIdx = null;
+  }
+  function removerPacoteRuas(cod) { delete _ruasPacotes[cod]; _ruasIdx = null; }
+  function codigosRuas() { return Object.keys(_ruasPacotes).concat(['F', 'S']); }
+  function ruasIdx() {
+    if (_ruasIdx) { return _ruasIdx; }
+    _ruasIdx = {};
+    var src = typeof RUAS_OSM !== 'undefined' ? RUAS_OSM : null;
+    if (src) {
+      Object.keys(src).forEach(function (c) {
+        var m = {};
+        src[c].split('|').forEach(function (rec) {
+          var p = rec.indexOf('=');
+          if (p < 1) { return; }
+          m[rec.slice(0, p)] = rec.slice(p + 1).split(';').map(function (xy) {
+            var v = xy.split(' ');
+            return [-25 - (+v[0]) / 1e4, -54 - (+v[1]) / 1e4];
+          });
+        });
+        _ruasIdx[c] = { m: m, k: Object.keys(m).map(function (k) { return { k: k, t: k.split(' ') }; }) };
+      });
+    }
+    Object.keys(_ruasPacotes).forEach(function (c) {
+      var m = _ruasPacotes[c].m;
+      _ruasIdx[c] = { m: m, k: Object.keys(m).map(function (k) { return { k: k, t: k.split(' ') }; }) };
+    });
+    return _ruasIdx;
+  }
+  /* Quais listas de ruas olhar para este mandado: o pacote da cidade (se baixado) e depois a lista básica embutida */
+  function cidadesDoItem(i) {
+    var bruto = String(i.cidade || ''), c = norm(bruto), pk = Object.keys(_ruasPacotes), r = [];
+    if (!c) { return pk.concat(['F', 'S']); }
+    var mu = /[\/\-]\s*([A-Za-z]{2})\s*$/.exec(bruto), uf = mu ? mu[1].toLowerCase() : '';
+    var nome = norm(bruto.split('/')[0].replace(/\s+-\s*[A-Za-z]{2}\s*$/, ''));
+    pk.forEach(function (cod) { var q = _ruasPacotes[cod]; if (norm(q.n) === nome && (!uf || String(q.u).toLowerCase() === uf)) { r.push(cod); } });
+    if (/terezinha|teresinha/.test(c)) { r.push('S'); } else if (/foz/.test(c)) { r.push('F'); }
+    return r;
+  }
+  function pontoCep(x) {
+    var d = String(x.cep || '').replace(/\D/g, '');
+    if (d.length !== 8) { return null; }
+    var cs = cidadesDoItem(x);
+    for (var a = 0; a < cs.length; a++) { var q = _ruasPacotes[cs[a]]; if (q && q.cep[d]) { return q.cep[d]; } }
+    return null;
+  }
 /* Devolve os pontos possíveis da rua (um por trecho com o mesmo nome) ou null */
 function pontosRua(endereco, cids) {
   var k = chaveRua(String(endereco || '').replace(/\s*[,\-–]\s*(n[º°o.]?\s*)?\d.*$/i, '').replace(/\s+(n[º°o.]?\s*)?\d+\s*$/i, '').replace(/,?\s*s\s*\/\s*n.*$/i, ''));
   if (!k) { return null; }
+  if (_ruasUsuario[k]) { return _ruasUsuario[k]; }
   var idx = ruasIdx();
   for (var a = 0; a < cids.length; a++) { var C = idx[cids[a]]; if (C && C.m[k]) { return C.m[k]; } }
   var qt = k.split(' ');
@@ -1982,7 +2021,8 @@ function localizarRuas(list) {
   var bruto = falta ? localizarBruto(list) : null;
   return list.map(function (x, n) { var c = _posCache[x.id]; return c && c.e === chaveItem(x) ? c.p : bruto[n]; });
 }
-function pontoDe(x) { var c = _posCache[x.id]; if (c && c.e === chaveItem(x)) { return c.p || null; } var p = localizarBruto([x])[0]; return p || null; }
+function coordManual(x) { if (x && x.endRota && ehCoord(x.endRota)) { var q = String(x.endRota).split(','); return [parseFloat(q[0]), parseFloat(q[1])]; } return null; }
+  function pontoDe(x) { var c = _posCache[x.id]; if (c && c.e === chaveItem(x)) { return c.p || coordManual(x) || pontoCep(x) || null; } var p = localizarBruto([x])[0]; return p || coordManual(x) || pontoCep(x) || null; }
 function cepsUnicos(list) {
   var por = {}, out = {};
   list.forEach(function (i) { var p = pontosRua(i.endereco, cidadesDoItem(i)), c = String(i.cep || '').slice(0, 5); if (p && p.length === 1 && c.length === 5) { (por[c] = por[c] || []).push(p[0]); } });
@@ -2328,6 +2368,13 @@ function ordenarPrioridade(list, prio, inicio, fimPt, zonas, raioKm, modo, prime
   var ra = ordenarRota(a, inicio), pt = ra.length ? (ponto(ra[ra.length - 1]) || inicio) : inicio;
   var rm = modo === 'bairro' ? ordenarPorBairro(m, pt, primeiros) : ((zonas && zonas.length) ? ordenarPorZonas(m, zonas, pt, fimPt || null, raioKm) : ((primeiros && primeiros.length) ? ordenarComecando(m, primeiros, pt, fimPt || null) : agruparPorRua(ordenarRota(m, pt, fimPt || null)))), pt2 = rm.length ? (ponto(rm[rm.length - 1]) || pt) : pt;
   return ordenarPorCep(perd).concat(ra, rm, ordenarRota(z, pt2)).map(function (x) { return porId[x.id] || x; });
+}
+
+/* Ruas que o usuário ensinou (colando o ponto do Google Maps): valem para os próximos mandados da mesma rua */
+var _ruasUsuario = {};
+function definirRuasUsuario(o) { _ruasUsuario = o || {}; }
+function chaveDoEndereco(endereco) {
+  return chaveRua(String(endereco || '').replace(/\s*[,\-–]\s*(n[º°o.]?\s*)?\d.*$/i, '').replace(/\s+(n[º°o.]?\s*)?\d+\s*$/i, '').replace(/,?\s*s\s*\/\s*n.*$/i, ''));
 }
 
 /* Rota pelo vizinho mais próximo: a 1ª é a escolhida (ou a mais perto de "inicio"), a 2ª é a mais perto da 1ª,
@@ -3449,10 +3496,11 @@ function iaUsuarioAjuste(d) {
   }
   var posRota = {}, ordemVisivel = [], cardN = 0;
   function ordemRota(list) {
+    definirRuasUsuario(state.cfg.ruasAprendidas);
     definirAprendizado(state.cfg.aprender === false ? null : aprendido());
     definirDicas({ bairros: state.cfg.bairroPts, ceps: state.cfg.cepPts, cepBairro: state.cfg.cepBairro });
     aprenderBairros(state.items);
-    var o = state.origin ? pontosRua(state.origin, ['F', 'S']) : null;
+    var o = state.origin ? pontosRua(state.origin, codigosRuas()) : null;
     var iniId = state.cfg.inicioId, iniIt = null, auto;
     if (iniId) { list.forEach(function (i) { if (i.id === iniId) { iniIt = i; } }); }
     var pIni = iniIt ? pontoEfetivo(iniIt) : null, gpsPt = !iniIt && saidaGpsOn() ? gpsFresco() : null;
@@ -4228,6 +4276,7 @@ function iaUsuarioAjuste(d) {
 
   /* Tela */
   function render() {
+    definirRuasUsuario(state.cfg.ruasAprendidas);
     var tabs = ['enviar', 'aguardando', 'devolver'];
     tabs.forEach(function (t) {
       var n = state.items.filter(function (i) { return inTab(i, t); }).length;
@@ -4867,27 +4916,105 @@ function iaUsuarioAjuste(d) {
       save(); render(); closeModal(); toast('Valores salvos. Os totais já usam isso.');
     };
   }
+  /* ===== Ruas das cidades da comarca: pacotes por município, baixados do próprio site e guardados no aparelho ===== */
+  function ruasDb() {
+    return new Promise(function (res, rej) {
+      if (typeof indexedDB === 'undefined') { rej(new Error('sem indexedDB')); return; }
+      var r = indexedDB.open('mandados-ruas', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('pacotes'); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+  }
+  function ruasDbPut(k, v) {
+    return ruasDb().then(function (db) { return new Promise(function (res, rej) { var t = db.transaction('pacotes', 'readwrite'); t.objectStore('pacotes').put(v, k); t.oncomplete = function () { res(); }; t.onerror = function () { rej(t.error); }; }); });
+  }
+  function ruasDbTodos() {
+    return ruasDb().then(function (db) { return new Promise(function (res, rej) { var out = {}, c = db.transaction('pacotes', 'readonly').objectStore('pacotes').openCursor(); c.onsuccess = function () { var x = c.result; if (x) { out[x.key] = x.value; x.continue(); } else { res(out); } }; c.onerror = function () { rej(c.error); }; }); });
+  }
+  function carregarRuasSalvas() {
+    ruasDbTodos().then(function (todos) {
+      var n = 0;
+      Object.keys(todos).forEach(function (cod) { try { adicionarPacoteRuas(cod, JSON.parse(todos[cod])); n++; } catch (e) {} });
+      if (n) { render(); }
+    }).catch(function () {});
+  }
+  function nomeCidadeSemUf(t) { return String(t || '').split('/')[0].replace(/\s+-\s*[A-Za-z]{2}\s*$/, '').trim(); }
+  function ruasUrl(arq) { return new URL('ruas/' + arq, location.href).href; }
+  async function buscarJson(url) {
+    var r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) { throw new Error('http ' + r.status); }
+    return r.json();
+  }
+  async function baixarRuasCidades() {
+    var r = { ok: [], semPacote: [], erro: '' }, indice;
+    try { indice = await buscarJson(ruasUrl('indice.json')); } catch (e) { r.erro = 'indice'; return r; }
+    var lista = (indice && indice.cidades) || [], uf = ufCfg().toUpperCase(), nomes = cidades();
+    state.cfg.ruasPacotes = state.cfg.ruasPacotes || {};
+    for (var k = 0; k < nomes.length; k++) {
+      var texto = nomes[k], nn = norm(nomeCidadeSemUf(texto)), mu = /[\/\-]\s*([A-Za-z]{2})\s*$/.exec(texto), ufc = (mu ? mu[1] : uf).toUpperCase();
+      var ach = lista.filter(function (c) { return norm(c.n) === nn && String(c.u).toUpperCase() === ufc; })[0];
+      if (!ach) { r.semPacote.push(nomeCidadeSemUf(texto)); continue; }
+      try {
+        var pac = await buscarJson(ruasUrl(ach.c + '.json'));
+        await ruasDbPut(ach.c, JSON.stringify(pac));
+        adicionarPacoteRuas(ach.c, pac);
+        state.cfg.ruasPacotes[ach.c] = { n: ach.n, u: ach.u, t: Date.now(), r: ach.r || 0 };
+        r.ok.push(ach.n + ' (' + (ach.r || 0) + ' ruas)');
+      } catch (e) { r.semPacote.push(nomeCidadeSemUf(texto)); }
+    }
+    save(); render();
+    return r;
+  }
+  function resumoRuas(r) {
+    if (r.erro === 'indice') { return 'Não achei os pacotes de ruas neste site (ou você está sem internet). Gere no GitHub e tente de novo.'; }
+    var t = r.ok.length ? 'Ruas baixadas: ' + r.ok.join(', ') + '.' : '';
+    if (r.semPacote.length) { t += (t ? ' ' : '') + 'Ainda sem pacote: ' + r.semPacote.join(', ') + '.'; }
+    return t || 'Nada para baixar.';
+  }
+  function ruasStatusHtml() {
+    var reg = state.cfg.ruasPacotes || {};
+    return cidades().map(function (t) {
+      var nn = norm(nomeCidadeSemUf(t)), cod = Object.keys(reg).filter(function (c) { return norm(reg[c].n) === nn; })[0];
+      if (cod) { var d = new Date(reg[cod].t); return '<li>✅ ' + esc(reg[cod].n) + ': ' + reg[cod].r + ' ruas (baixado em ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ')</li>'; }
+      return '<li>' + esc(nomeCidadeSemUf(t)) + ': ' + (/foz/.test(nn) || /terezinha|teresinha/.test(nn) ? 'a lista básica já vem no app' : 'ainda sem ruas baixadas') + '</li>';
+    }).join('');
+  }
   function abrirComarca() {
     function $(id) { return document.getElementById(id); }
     openModal('Comarca e cidades',
       '<p class="note">As cidades da lista são as que contam como <strong>endereço físico da sua comarca</strong>: entram na rota e recebem a certidão de diligência no endereço. Endereço de qualquer outra cidade é tratado como outra comarca, só cumprimento eletrônico.</p>' +
       '<label class="f" for="cdCid">Cidades (uma por linha)</label><textarea id="cdCid" style="min-height:120px">' + esc(cidades().join('\n')) + '</textarea>' +
       '<label class="f" for="cdUf">Sigla do estado das cidades (para o mapa)</label><input type="text" id="cdUf" value="' + esc(ufCfg()) + '" autocomplete="off">' +
+      '<div class="grp"><p class="grp-t">Ruas das cidades</p><ul class="note" id="cdRuasLista" style="margin:6px 0;padding-left:18px">' + ruasStatusHtml() + '</ul><div class="actions"><button class="btn" id="cdRuasBaixar" type="button">Baixar as ruas das cidades</button></div><p class="note">Baixa do seu site as ruas de cada cidade da lista e guarda neste aparelho; depois funciona sem internet. Também baixa sozinho quando você salva.</p></div>' +
       '<label class="f" for="cdCom">Comarca (no auto de busca e apreensão)</label><input type="text" id="cdCom" value="' + esc(optAuto().comarca) + '" autocomplete="off">' +
       '<label class="f" for="cdEst">Estado por extenso (no auto)</label><input type="text" id="cdEst" value="' + esc(optAuto().estado) + '" autocomplete="off">' +
       '<label class="f" for="cdForo">Endereço do fórum (no auto)</label><input type="text" id="cdForo" value="' + esc(optAuto().foro) + '" autocomplete="off">' +
       '<div class="actions"><button class="btn primary" id="cdSave">Salvar</button><button class="btn ghost" id="cdPad">Voltar ao padrão (Foz do Iguaçu)</button></div>' +
       '<p class="note">A mensagem do WhatsApp e as certidões têm texto próprio: o da mensagem você edita em Meus dados.</p>');
     $('cdPad').onclick = function () { state.cfg.cidades = null; state.cfg.uf = null; state.cfg.comarca = null; state.cfg.estado = null; state.cfg.foro = null; save(); render(); closeModal(); toast('Voltou ao padrão de Foz do Iguaçu.'); };
-    $('cdSave').onclick = function () {
+    function cdAplicar() {
       var ls = $('cdCid').value.split('\n').map(function (x) { return x.trim(); }).filter(function (x) { return x; });
-      if (!ls.length) { toast('Escreva pelo menos uma cidade.'); return; }
+      if (!ls.length) { toast('Escreva pelo menos uma cidade.'); return false; }
       state.cfg.cidades = ls;
       state.cfg.uf = ($('cdUf').value.trim() || 'PR').toUpperCase();
       state.cfg.comarca = $('cdCom').value.trim() || null;
       state.cfg.estado = $('cdEst').value.trim() || null;
       state.cfg.foro = $('cdForo').value.trim() || null;
-      save(); render(); closeModal(); toast('Cidades salvas. A rota e as certidões já usam a nova lista.');
+      save(); return true;
+    }
+    $('cdRuasBaixar').onclick = async function () {
+      if (!cdAplicar()) { return; }
+      var b = this; b.disabled = true; b.textContent = 'Baixando…';
+      var r = await baixarRuasCidades();
+      b.disabled = false; b.textContent = 'Baixar as ruas das cidades';
+      if ($('cdRuasLista')) { $('cdRuasLista').innerHTML = ruasStatusHtml(); }
+      toast(resumoRuas(r));
+    };
+    $('cdSave').onclick = function () {
+      if (!cdAplicar()) { return; }
+      render(); closeModal(); toast('Cidades salvas. Buscando as ruas delas…');
+      baixarRuasCidades().then(function (r) { toast(r.erro === 'indice' ? 'Cidades salvas. As ruas ainda não puderam ser baixadas (sem internet ou pacotes não gerados).' : resumoRuas(r)); });
     };
   }
   document.getElementById('btnMe').onclick = openMe;
@@ -7519,10 +7646,10 @@ function iaUsuarioAjuste(d) {
   function sortedSel() {
     return ordemRota(pendAll().filter(function (i) { return sel[i.id]; }));
   }
-  function ruaNoMapa(i) { return typeof RUAS_OSM === 'undefined' || (i.endRota && ehCoord(i.endRota)) ? true : !!pontosRua(i.endRota || i.endereco, ['F', 'S']); }
+  function ruaNoMapa(i) { if (typeof RUAS_OSM === 'undefined' || (i.endRota && ehCoord(i.endRota))) { return true; } var cs = cidadesDoItem(i); return !!pontosRua(i.endRota || i.endereco, cs.length ? cs : codigosRuas()); }
   var RE_COORD = /^\s*-?\d{1,3}\.\d+\s*,\s*-?\d{1,3}\.\d+\s*$/;
   function pontoTexto(i, txt) {
-    var p = pontosRua(txt || i.endRota || i.endereco, ['F', 'S']);
+    var cs = cidadesDoItem(i), p = pontosRua(txt || i.endRota || i.endereco, cs.length ? cs : codigosRuas());
     return p ? (p[0][0].toFixed(5) + ',' + p[0][1].toFixed(5)) : null;
   }
   function cidadeNome(i) {
@@ -8361,27 +8488,58 @@ function iaUsuarioAjuste(d) {
       await savePdf('enderecos-da-rota.csv', bytes);
     };
   };
+  /* Lê o ponto do Google Maps: coordenadas soltas ou link completo (@lat,lng, !3d..!4d.., ?q=lat,lng) */
+  function lerPontoMaps(t) {
+    t = String(t || '');
+    try { t = decodeURIComponent(t); } catch (e) {}
+    var m = /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(t) || /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/.exec(t) || /[?&](?:q|query|ll|destination|daddr)=(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/i.exec(t) || /^\s*(-?\d{1,3}\.\d+)\s*[,;\s]\s*(-?\d{1,3}\.\d+)\s*$/.exec(t);
+    if (!m) { return null; }
+    var la = parseFloat(m[1]), lo = parseFloat(m[2]);
+    return la >= -34 && la <= 6 && lo >= -74 && lo <= -34 ? [la, lo] : null;
+  }
   function abrirCorrigirEnd(it) {
     var se = enderecoSimples(it.endereco);
     openModal('Corrigir o endereço da rota',
       '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">No mandado: ' + esc(it.endereco) + (it.bairro ? ', ' + esc(it.bairro) : '') + '</p>' +
-      '<label class="f" for="ceTxt">Endereço que vai para o Maps (rua e número)</label><input type="text" id="ceTxt" value="' + esc(it.endRota || se.texto) + '" autocomplete="off">' +
+      '<label class="f" for="ceMaps">Ponto do Google Maps (cole as coordenadas ou o link)</label><input type="text" id="ceMaps" placeholder="-25.5486, -54.5580  ou o link do Google Maps" autocomplete="off">' +
+      '<div class="actions"><button class="btn primary" id="ceMapsOk">Usar este ponto</button></div>' +
+      '<p class="note">No Google Maps, segure o dedo sobre o lugar e toque nos números que aparecem no alto (latitude e longitude); depois cole aqui. O app guarda o ponto, usa na ordem da rota e <strong>passa a achar essa rua</strong> nos próximos mandados.</p>' +
+      '<details class="chk"><summary><strong>Outras formas de corrigir</strong></summary>' +
+      '<label class="f" for="ceTxt">Endereço que vai para o Maps (rua e número)</label><input type="text" id="ceTxt" value="' + esc(it.endRota && !ehCoord(it.endRota) ? it.endRota : se.texto) + '" autocomplete="off">' +
       '<div class="actions"><button class="btn primary" id="ceSave">Salvar</button><button class="btn" id="ceRua">Usar só a rua (sem número)</button></div>' +
-      '<div class="actions"><button class="btn" id="ceCoord">Usar o ponto da rua no mapa (coordenadas)</button><button class="btn ghost" id="ceOrig">Voltar ao original</button></div>' +
-      '<p class="note">Se o Maps “não encontra esse lugar”, use o <strong>ponto da rua</strong>: ele sempre abre, mas leva ao meio da rua, não ao número. Número aproximado: se o número do mandado não existe, use só a rua.</p>');
+      '<div class="actions"><button class="btn" id="ceCoord">Usar o ponto da rua no mapa (coordenadas)</button></div>' +
+      '<p class="note">Se o Maps “não encontra esse lugar”, use o <strong>ponto da rua</strong>: ele sempre abre, mas leva ao meio da rua, não ao número. Número aproximado: se o número do mandado não existe, use só a rua.</p></details>' +
+      '<div class="actions"><button class="btn ghost" id="ceOrig">Voltar ao original</button></div>');
     function $(id) { return document.getElementById(id); }
     function volta() { save(); closeModal(); document.getElementById('btnRoute').onclick(); }
+    $('ceMapsOk').onclick = function () {
+      var v = $('ceMaps').value;
+      if (/maps\.app\.goo\.gl|goo\.gl\/maps/i.test(v)) { toast('Esse link curto não traz as coordenadas. Segure o dedo no ponto e copie os números.'); return; }
+      var pt = lerPontoMaps(v);
+      if (!pt) { toast('Não achei coordenadas aí. Cole algo como -25.5486, -54.5580 ou o link completo do Google Maps.'); return; }
+      it.endRota = pt[0].toFixed(6) + ',' + pt[1].toFixed(6); it.ruaRef = it.ruaRef || it.endereco;
+      var k = chaveDoEndereco(it.endereco);
+      if (k) { (state.cfg.ruasAprendidas = state.cfg.ruasAprendidas || {})[k] = [pt]; }
+      definirRuasUsuario(state.cfg.ruasAprendidas);
+      volta(); toast('Ponto guardado: o app lembra dessa rua.');
+    };
     $('ceSave').onclick = function () { var v = $('ceTxt').value.trim(); it.endRota = v || null; if (!v) { delete it.endRota; } volta(); };
     $('ceRua').onclick = function () { it.endRota = enderecoSimples($('ceTxt').value).rua || se.rua; volta(); };
-    $('ceOrig').onclick = function () { delete it.endRota; volta(); };
+    $('ceOrig').onclick = function () {
+      delete it.endRota;
+      var k = chaveDoEndereco(it.endereco);
+      if (k && state.cfg.ruasAprendidas) { delete state.cfg.ruasAprendidas[k]; definirRuasUsuario(state.cfg.ruasAprendidas); }
+      volta();
+    };
     $('ceCoord').onclick = function () {
       var c = pontoTexto(it, $('ceTxt').value.trim() || it.endereco);
-      if (!c) { toast('Não achei essa rua no mapa daqui. Escreva outra rua.'); return; }
+      if (!c) { toast('Não achei essa rua no mapa daqui. Cole o ponto do Google Maps acima.'); return; }
       it.endRota = c; it.ruaRef = $('ceTxt').value.trim() || it.endereco; volta();
     };
   }
 
   render();
+  carregarRuasSalvas();
 
   /* Botão × do lado direito dos campos de texto: apaga o que foi digitado.
      Fica de fora das caixas grandes (texto da certidão), para um toque sem querer não apagar tudo. */
