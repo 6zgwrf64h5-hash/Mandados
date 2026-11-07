@@ -1,0 +1,40 @@
+name: Gerar pacotes de ruas
+
+on:
+  workflow_dispatch:
+    inputs:
+      cidades:
+        description: 'Cidades da comarca, separadas por ponto e virgula. Ex.: Foz do Iguacu/PR; Santa Terezinha de Itaipu/PR'
+        required: true
+        default: 'Foz do Iguaçu/PR; Santa Terezinha de Itaipu/PR'
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+      - name: Preparar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Gerar os pacotes de ruas (dados do IBGE)
+        env:
+          CIDADES: ${{ github.event.inputs.cidades }}
+        run: python gerar_ruas.py --cidades "$CIDADES" --saida ruas
+      - name: Guardar os pacotes no repositório
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add ruas
+          git commit -m "Pacotes de ruas atualizados" || echo "Nada novo para guardar"
+          git push
+      - name: Pedir ao GitHub Pages para publicar de novo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "/repos/${{ github.repository }}/pages/builds" || echo "Se demorar, reenvie o sw.js"
