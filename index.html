@@ -801,6 +801,24 @@ body.cumpr .cside .pick { display: none; }
 .cumprfim h2 { margin: 0 0 8px; }
 
 body.cumpr #dock { display: none !important; }
+
+/* ===== v29: visualizador de imagem (girar / remover) ===== */
+#imgView { position: fixed; inset: 0; z-index: 300; background: rgba(8, 12, 30, 0.9); display: flex; align-items: center; justify-content: center; padding: 16px; }
+#imgView[hidden] { display: none !important; }
+#imgView .iv-box { width: 100%; max-width: 520px; text-align: center; }
+#imgView .iv-box img { max-width: 100%; max-height: 58vh; border-radius: 12px; background: #fff; object-fit: contain; }
+#imgView .iv-cnt { color: #fff; margin: 8px 0; font-size: 14px; }
+#imgView .iv-bt { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 6px 0; }
+#imgView .iv-bt .btn { min-height: 46px; flex: 1 1 auto; }
+.thumbs img { cursor: pointer; }
+
+/* visualizador: letras claras sobre o fundo escuro, imagem ocupando a tela */
+#imgView { background: rgba(6, 9, 24, 0.97); }
+#imgView .iv-box img { width: 100%; height: 56vh; object-fit: contain; background: #0B1020; }
+#imgView .iv-bt .btn.ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.7); box-shadow: none; }
+#imgView .iv-bt .btn.ghost[data-iv="del"] { color: #FFB4B4; border-color: #FF8A8A; }
+
+#imgView { background: rgb(6, 9, 24); }
 </style>
 </head>
 <body>
@@ -3918,6 +3936,15 @@ function iaUsuarioAjuste(d) {
     }
   }
   window.addEventListener('resize', function () { ajustarNumeros(); });
+  /* ===== Navegação: o endereço do cartão inicia a rota direto, no aplicativo escolhido em Meus dados ===== */
+  function navApp() { var v = state.cfg && state.cfg.navApp; return v === 'waze' || v === 'apple' ? v : 'google'; }
+  function navUrlTexto(dest) {
+    var d = encodeURIComponent(dest), app = navApp();
+    if (app === 'waze') { return 'https://waze.com/ul?q=' + d + '&navigate=yes'; }
+    if (app === 'apple') { return 'https://maps.apple.com/?daddr=' + d + '&dirflg=d'; }
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + d + '&travelmode=driving&dir_action=navigate';
+  }
+  function navUrl(it) { return navUrlTexto(textoParada(it)); }
   function linhaAtalho() {
     if (!state.items.length || state.sample) { return ''; }
     if (!state.cfg.ddd && state.items.some(function (i) { return (i.telefones || []).some(function (t) { return normPhone(t).semDDD; }); })) { return 'Há telefones sem DDD. Informe o seu DDD em Meus dados para eles virarem link do WhatsApp.'; }
@@ -4303,11 +4330,11 @@ function iaUsuarioAjuste(d) {
     if (i.aviso && i.aviso.length > 70) { h += '<details class="orient"><summary>Orientações do mandado</summary><p>' + esc(i.aviso) + '</p></details>'; }
     var endTxt = esc(i.endereco) + (i.bairro ? ', ' + esc(i.bairro) : '');
     if (etipo(i) !== 'eletronico' && /\S/.test(i.endereco || '')) {
-      h += '<a class="addr maplink" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(textoParada(i)) + '" target="_blank" rel="noopener" aria-label="Abrir no Google Maps: ' + endTxt + '"><span class="pin" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26"><path fill="#16A34A" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.8" fill="#fff"/></svg></span><span class="at">' + endTxt + '</span></a>' + tel;
+      h += '<a class="addr maplink" href="' + navUrl(i) + '" target="_blank" rel="noopener" aria-label="Navegar até: ' + endTxt + '"><span class="pin" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26"><path fill="#16A34A" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.8" fill="#fff"/></svg></span><span class="at">' + endTxt + '</span></a>' + tel;
     } else { h += '<p class="addr">' + endTxt + '</p>' + tel; }
     var topIc = '';
     if (i.status === 'pendente') {
-      topIc = (fileOk(i) ? '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>' : '') + (etipo(i) === 'local' ? '<button class="btn small" data-act="fisica" aria-label="Certidão física (foto)" title="Certidão física (foto)">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint" aria-label="Certidão física (print ou galeria)" title="Certidão física (print ou galeria)">Certidão física (print)</button>' : '');
+      topIc = (fileOk(i) ? '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>' : '') + (etipo(i) === 'local' ? '<button class="btn small" data-act="fisica" aria-label="Certidão física (foto)" title="Certidão física (foto)">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint" aria-label="Certidão física (print ou galeria)" title="Certidão física (print ou galeria)">Certidão física (print)</button>' : (onlinePossivel(i) ? '<button class="btn small" data-act="fisicaprint" aria-label="Print do WhatsApp (galeria)" title="Print do WhatsApp (galeria)">Print do WhatsApp</button>' : ''));
     }
     h += '</div><div class="cside">' + pickHtml + (topIc ? '<div class="topico">' + topIc + '</div>' : '') + '</div></div>';
     if (flags.length) {
@@ -4372,6 +4399,7 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="meNome">Nome completo</label><input type="text" id="meNome" value="' + esc(me.nome) + '" autocomplete="off">' +
       '<label class="f" for="meMat">Matrícula</label><input type="text" id="meMat" value="' + esc(me.mat) + '" autocomplete="off">' +
       '<label class="f" for="meDDD">DDD da sua região (completa os telefones que vêm sem DDD)</label><input type="text" id="meDDD" inputmode="numeric" maxlength="2" placeholder="Ex.: 45" value="' + esc(state.cfg.ddd || '') + '" autocomplete="off">' +
+      '<label class="f" for="meNav">Aplicativo de navegação (ao tocar no endereço do cartão)</label><select id="meNav" class="sel"><option value="google"' + (navApp() === 'google' ? ' selected' : '') + '>Google Maps</option><option value="waze"' + (navApp() === 'waze' ? ' selected' : '') + '>Waze</option><option value="apple"' + (navApp() === 'apple' ? ' selected' : '') + '>Apple Maps</option></select><p class="note">Google Maps e Waze começam a navegação direto. O Apple Maps abre a rota pronta e pode pedir um toque em “Iniciar”. Vale um destino por vez; com o CarPlay, a rota aparece na tela do carro.</p>' +
       '<label class="f" for="meDil">Diligência a receber, em R$ (vai nas certidões negativas)</label><input type="text" id="meDil" value="' + esc(me.diligencia || '108,63') + '" inputmode="decimal" autocomplete="off">' +
       '<label class="f" for="meSms">Celular que recebe a rota por SMS (quando você toca em “Enviar por SMS”)</label><input type="text" id="meSms" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuSmsTxt()) + '" autocomplete="off"><p class="note" id="meSmsNota"></p>' +
       '<label class="f" for="meZap">WhatsApp que recebe a rota (abre a conversa com o link já pronto)</label><input type="text" id="meZap" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuZapTxt()) + '" autocomplete="off"><p class="note" id="meZapNota"></p>' +
@@ -4445,6 +4473,7 @@ function iaUsuarioAjuste(d) {
         state.cfg.iaModelo = String(document.getElementById('meModelo').value || '').trim() || null;
       }
       state.cfg.meuZap = String(document.getElementById('meZap').value || '').trim();
+      state.cfg.navApp = document.getElementById('meNav').value === 'waze' ? 'waze' : (document.getElementById('meNav').value === 'apple' ? 'apple' : 'google');
       state.cfg.ddd = String(document.getElementById('meDDD').value || '').replace(/\D/g, '').slice(0, 2); setDDD(state.cfg.ddd);
       state.me = { nome: n, mat: m, diligencia: document.getElementById('meDil').value.trim() || '108,63', msg: custom }; save(); closeModal(); render();
       toast(custom && tx.indexOf('{NOME}') === -1 ? 'Dados salvos. Atenção: a mensagem não tem {NOME}.' : 'Dados salvos');
@@ -5840,13 +5869,13 @@ function iaUsuarioAjuste(d) {
     document.getElementById('sigClear').onclick = function () { pad1.clear(); };
     function drawThumbs() {
       document.getElementById('cThumbs').innerHTML = prints.map(function (p, i) {
-        return '<img data-i="' + i + '" alt="Print ' + (i + 1) + ' (toque para remover)" src="' + p.url + '">';
-      }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para remover.</p>' : '');
+        return '<img data-i="' + i + '" alt="Print ' + (i + 1) + ' (toque para girar ou remover)" src="' + p.url + '">';
+      }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para girar ou remover. Para acrescentar mais, use o botão acima de novo.</p>' : '');
     }
     document.getElementById('cThumbs').addEventListener('click', function (e) {
       var im = e.target.closest('img');
       if (!im) { return; }
-      prints.splice(+im.getAttribute('data-i'), 1); drawThumbs();
+      abrirImagem(prints, +im.getAttribute('data-i'), drawThumbs);
     });
     document.getElementById('cPrint').addEventListener('change', async function () {
       var files = Array.prototype.slice.call(this.files || []);
@@ -5955,7 +5984,7 @@ function iaUsuarioAjuste(d) {
       '<div id="vzMudBox" hidden><label class="f" for="vzMud">Pedir uma troca (ditado ou texto)</label>' +
       '<textarea id="vzMud" style="min-height:80px" placeholder="Ex.: troque “morador” por “vizinho”; acrescente que o imóvel é bem de família; deixe mais curto"></textarea>' +
       '<div class="actions"><button class="btn small ' + (iaAtiva() ? 'ia' : 'primary') + '" id="vzAjusta">' + (iaAtiva() ? '<span class="iabot"></span> ' : '') + 'Ajustar o texto</button><button class="btn small ghost" id="vzDesfaz" hidden>Voltar à versão anterior</button></div></div>' +
-      '<label class="f" for="vzPrint">Print ou foto (opcional)</label><input type="file" id="vzPrint" accept="image/*" multiple>' +
+      '<label class="f" for="vzPrint">Prints ou fotos (opcional): comprovante do WhatsApp, foto da diligência… pode acrescentar mais de um</label><input type="file" id="vzPrint" accept="image/*" multiple>' +
       '<div class="thumbs" id="vzThumbs"></div>' +
       '<label class="f" for="vzCustas">Custas a receber, em R$ (em branco: não escreve na certidão)</label><input type="text" id="vzCustas" inputmode="decimal" value="' + esc(dilIni) + '" autocomplete="off">' +
       '<label class="f" id="vzFisBox" style="display:flex;gap:10px;align-items:center" hidden><input type="checkbox" id="vzFis" style="width:26px;height:26px" checked> <span>Houve diligência presencial no endereço (desmarque se não foi lá: a parte física some do texto)</span></label>' +
@@ -6021,9 +6050,9 @@ function iaUsuarioAjuste(d) {
       mostrar(r, origem);
     };
     function drawThumbs() {
-      $('vzThumbs').innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Anexo ' + (i + 1) + ' (toque para remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para remover.</p>' : '');
+      $('vzThumbs').innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Anexo ' + (i + 1) + ' (toque para girar ou remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para girar ou remover. Para acrescentar mais, use o botão acima de novo.</p>' : '');
     }
-    $('vzThumbs').addEventListener('click', function (e) { var im = e.target.closest('img'); if (!im) { return; } prints.splice(+im.getAttribute('data-i'), 1); drawThumbs(); });
+    $('vzThumbs').addEventListener('click', function (e) { var im = e.target.closest('img'); if (!im) { return; } abrirImagem(prints, +im.getAttribute('data-i'), drawThumbs); });
     if (prints.length) { drawThumbs(); }
     $('vzPrint').addEventListener('change', async function () {
       var files = Array.prototype.slice.call(this.files || []);
@@ -6482,9 +6511,9 @@ function iaUsuarioAjuste(d) {
     ligarSalvarModelo(it, 'md', function () { return { onde: 'inteira', tipo: zapKind ? 'positiva' : 'negativa', texto: separarDil($('mdOutTxt').value).corpo }; });
     $('mdBack').onclick = function () { openCert(it); };
     function drawThumbs() {
-      $('mdThumbs').innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Print ' + (i + 1) + ' (toque para remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para remover.</p>' : '');
+      $('mdThumbs').innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Print ' + (i + 1) + ' (toque para girar ou remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para girar ou remover. Para acrescentar mais, use o botão acima de novo.</p>' : '');
     }
-    $('mdThumbs').addEventListener('click', function (e) { var im = e.target.closest('img'); if (!im) { return; } prints.splice(+im.getAttribute('data-i'), 1); drawThumbs(); });
+    $('mdThumbs').addEventListener('click', function (e) { var im = e.target.closest('img'); if (!im) { return; } abrirImagem(prints, +im.getAttribute('data-i'), drawThumbs); });
     $('mdPrint').addEventListener('change', async function () {
       var files = Array.prototype.slice.call(this.files || []);
       this.value = '';
@@ -6538,7 +6567,53 @@ function iaUsuarioAjuste(d) {
   async function identificarFoto(blob) { return null; }
   /* prints do comprovante do WhatsApp escolhidos na galeria: ficam só na memória, só deste mandado, até a certidão positiva abrir */
   var printsPend = { id: '', imgs: [], t: 0 };   /* só na memória; vale 30 minutos e só para o mesmo mandado */
+  /* Imagens anexadas: tocar na miniatura abre o visualizador com Girar (para os dois lados), anterior/próxima e Remover */
+  function girarImagem(p, graus) {
+    return new Promise(function (res, rej) {
+      var u = URL.createObjectURL(p.blob), im = new Image();
+      im.onerror = function () { URL.revokeObjectURL(u); rej(new Error('imagem')); };
+      im.onload = function () {
+        var w = im.naturalWidth, h = im.naturalHeight, c = document.createElement('canvas');
+        c.width = h; c.height = w;
+        var cx = c.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
+        cx.translate(c.width / 2, c.height / 2); cx.rotate(graus * Math.PI / 180); cx.drawImage(im, -w / 2, -h / 2);
+        URL.revokeObjectURL(u);
+        c.toBlob(function (b) { if (!b) { rej(new Error('toBlob')); return; } p.blob = b; p.url = c.toDataURL('image/jpeg', 0.5); res(p); }, 'image/jpeg', 0.85);
+      };
+      im.src = u;
+    });
+  }
+  function abrirImagem(arr, i, redraw) {
+    var ov = document.getElementById('imgView');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'imgView'; document.body.appendChild(ov); }
+    function pinta() {
+      var p = arr[i];
+      if (!p) { ov.hidden = true; ov.innerHTML = ''; return; }
+      ov.hidden = false;
+      ov.innerHTML = '<div class="iv-box"><img src="' + p.url + '" alt="Imagem ' + (i + 1) + '"><p class="iv-cnt">Imagem ' + (i + 1) + ' de ' + arr.length + '</p>' +
+        '<div class="iv-bt"><button type="button" class="btn" data-iv="rotl" aria-label="Girar para a esquerda">↺ Girar</button><button type="button" class="btn" data-iv="rot" aria-label="Girar para a direita">Girar ↻</button></div>' +
+        '<div class="iv-bt">' + (arr.length > 1 ? '<button type="button" class="btn ghost" data-iv="prev">‹ Anterior</button><button type="button" class="btn ghost" data-iv="next">Próxima ›</button>' : '') + '<button type="button" class="btn ghost" data-iv="del">Remover</button><button type="button" class="btn primary" data-iv="ok">Pronto</button></div></div>';
+    }
+    ov.onclick = async function (e) {
+      var b = e.target.closest ? e.target.closest('[data-iv]') : null;
+      if (!b) { return; }
+      var a = b.getAttribute('data-iv');
+      if (a === 'rot' || a === 'rotl') {
+        b.disabled = true;
+        try { await girarImagem(arr[i], a === 'rot' ? 90 : -90); } catch (x) { toast('Não consegui girar a imagem'); }
+        pinta(); redraw();
+      } else if (a === 'del') {
+        arr.splice(i, 1); if (i >= arr.length) { i = arr.length - 1; }
+        redraw(); pinta();
+      } else if (a === 'prev') { i = (i - 1 + arr.length) % arr.length; pinta(); }
+      else if (a === 'next') { i = (i + 1) % arr.length; pinta(); }
+      else { ov.hidden = true; ov.innerHTML = ''; }
+    };
+    pinta();
+  }
   function abrirGaleria(it) {
+    if (etipo(it) !== 'local') { abrirWaPrints(it); return; }
     if (!onlinePossivel(it)) { openFisica(it, 'print'); return; }
     openModal('Galeria',
       '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">O que você vai juntar?</p>' +
@@ -6551,14 +6626,14 @@ function iaUsuarioAjuste(d) {
     var imgs = [];
     printsPend = { id: '', imgs: [], t: 0 };
     openModal('Print do WhatsApp',
-      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha o print da conversa (o comprovante). Depois você faz a certidão positiva pelo WhatsApp e o print já vai anexado.</p>' +
+      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha o print da conversa (o comprovante). Depois escolha a certidão positiva ou negativa: o print já vai anexado (pode acrescentar mais de um).</p>' +
       '<div class="actions"><button class="btn primary" id="wpGal">Escolher os prints (galeria)</button></div><input type="file" id="wpIn" accept="image/*" multiple hidden>' +
       '<div class="thumbs" id="wpThumbs"></div>' +
-      '<div class="actions"><button class="btn primary" id="wpGo">Continuar: certidão positiva</button><button class="btn ghost" id="wpNo">Voltar</button></div>');
+      '<div class="actions" style="display:grid;grid-template-columns:1fr"><button class="btn primary" id="wpGo">Continuar: certidão positiva</button><button class="btn" id="wpNeg">Continuar: certidão negativa (comprovante da tentativa)</button><button class="btn ghost" id="wpNo">Voltar</button></div>');
     function $(id) { return document.getElementById(id); }
-    function draw() { $('wpThumbs').innerHTML = imgs.map(function (p, i) { return '<img data-i="' + i + '" alt="Print ' + (i + 1) + ' (toque para remover)" src="' + p.url + '">'; }).join('') + (imgs.length ? '<p class="note" style="width:100%">Toque numa miniatura para remover.</p>' : ''); }
+    function draw() { $('wpThumbs').innerHTML = imgs.map(function (p, i) { return '<img data-i="' + i + '" alt="Print ' + (i + 1) + ' (toque para girar ou remover)" src="' + p.url + '">'; }).join('') + (imgs.length ? '<p class="note" style="width:100%">Toque numa miniatura para girar ou remover. Para acrescentar mais, use o botão acima de novo.</p>' : ''); }
     $('wpGal').onclick = function () { $('wpIn').click(); };
-    $('wpThumbs').addEventListener('click', function (e) { var im = e.target.closest ? e.target.closest('img') : null; if (!im) { return; } imgs.splice(+im.getAttribute('data-i'), 1); draw(); });
+    $('wpThumbs').addEventListener('click', function (e) { var im = e.target.closest ? e.target.closest('img') : null; if (!im) { return; } abrirImagem(imgs, +im.getAttribute('data-i'), draw); });
     $('wpIn').addEventListener('change', async function () {
       var fl = Array.prototype.slice.call(this.files || []); this.value = '';
       for (var k = 0; k < fl.length; k++) { try { imgs.push(await shrinkImage(fl[k])); } catch (e) { toast('Não consegui ler uma das imagens'); } }
@@ -6568,6 +6643,11 @@ function iaUsuarioAjuste(d) {
       if (!imgs.length) { toast('Escolha ao menos um print'); return; }
       printsPend = { id: it.id, imgs: imgs, t: Date.now() };
       abrirResposta(it, 'on', 'pos');
+    };
+    $('wpNeg').onclick = function () {
+      if (!imgs.length) { toast('Escolha ao menos um print'); return; }
+      printsPend = { id: it.id, imgs: imgs, t: Date.now() };
+      abrirResposta(it, etipo(it) === 'local' ? 'fis' : 'on', 'neg');
     };
     $('wpNo').onclick = closeModal;
   }
@@ -6596,9 +6676,9 @@ function iaUsuarioAjuste(d) {
       '<p class="note" style="margin:12px 0 4px">Deseja certificar?</p>' +
       '<div class="actions" style="display:grid;grid-template-columns:1fr"><button class="btn primary" id="pfSim">Sim, quero certificar (a foto vai anexada)</button><button class="btn" id="pfNao">Não, já certifiquei (a foto é a certidão)</button><button class="btn ghost" id="pfNo">Cancelar</button></div>');
     function $(id) { return document.getElementById(id); }
-    function draw() { $('pfThumbs').innerHTML = imgs.map(function (x, i) { return '<img data-i="' + i + '" alt="Foto ' + (i + 1) + ' (toque para remover)" src="' + x.url + '">'; }).join('') + (imgs.length ? '<p class="note" style="width:100%">' + imgs.length + (imgs.length === 1 ? ' foto' : ' fotos') + '. Toque numa miniatura para remover.</p>' : ''); }
+    function draw() { $('pfThumbs').innerHTML = imgs.map(function (x, i) { return '<img data-i="' + i + '" alt="Foto ' + (i + 1) + ' (toque para girar ou remover)" src="' + x.url + '">'; }).join('') + (imgs.length ? '<p class="note" style="width:100%">' + imgs.length + (imgs.length === 1 ? ' foto' : ' fotos') + '. Toque numa miniatura para girar ou remover. Para acrescentar mais, use o botão acima de novo.</p>' : ''); }
     draw();
-    $('pfThumbs').addEventListener('click', function (e) { var im = e.target.closest ? e.target.closest('img') : null; if (!im) { return; } imgs.splice(+im.getAttribute('data-i'), 1); draw(); });
+    $('pfThumbs').addEventListener('click', function (e) { var im = e.target.closest ? e.target.closest('img') : null; if (!im) { return; } abrirImagem(imgs, +im.getAttribute('data-i'), draw); });
     $('pfMais').onclick = function () { tirarFoto(it, imgs); };
     $('pfSim').onclick = function () { if (!imgs.length) { toast('Tire ao menos uma foto'); return; } abrirComoFoi(it, imgs); };
     $('pfNao').onclick = function () { if (!imgs.length) { toast('Tire ao menos uma foto'); return; } openFisica(it, '', imgs); };
@@ -6650,9 +6730,9 @@ function iaUsuarioAjuste(d) {
     function drawThumbs() {
       var t = $('fiThumbs');
       if (!t) { return; }
-      t.innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Foto ' + (i + 1) + ' (toque para remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">' + prints.length + (prt ? (prints.length === 1 ? ' print' : ' prints') : (prints.length === 1 ? ' foto' : ' fotos')) + '. Toque numa miniatura para remover.</p>' : '');
+      t.innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Foto ' + (i + 1) + ' (toque para girar ou remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">' + prints.length + (prt ? (prints.length === 1 ? ' print' : ' prints') : (prints.length === 1 ? ' foto' : ' fotos')) + '. Toque numa miniatura para girar ou remover. Para acrescentar mais, use o botão acima de novo.</p>' : '');
     }
-    $('fiThumbs').addEventListener('click', function (e) { var im = e.target.closest('img'); if (!im) { return; } prints.splice(+im.getAttribute('data-i'), 1); drawThumbs(); });
+    $('fiThumbs').addEventListener('click', function (e) { var im = e.target.closest('img'); if (!im) { return; } abrirImagem(prints, +im.getAttribute('data-i'), drawThumbs); });
     if (prints.length) { drawThumbs(); }
     async function reconhecer() {
       var nt = $('fiNote');
@@ -7749,7 +7829,7 @@ function iaUsuarioAjuste(d) {
       '<p class="note">' + (rsm ? esc(rsm) + '<br>' : '') + 'Proc. ' + esc(it.processo) + (vcu ? ' · ' + esc(vcu) : '') + '</p>' +
       '<p><strong>' + esc(fullAddr(it)) + '</strong></p>' +
       (us.length ? '<p class="stopnote">' + us.map(function (u) { return esc(u.txt); }).join(' · ') + '</p>' : '') +
-      '<a class="btn primary seqgo" href="' + mapsUrlB('', [it]) + '" target="_blank" rel="noopener">Navegar até aqui</a>' +
+      '<a class="btn primary seqgo" href="' + navUrlTexto(textoParadaB(it)) + '" target="_blank" rel="noopener">Navegar até aqui</a>' +
       '<div class="rmgrid"><button class="rmbtn pos" data-rm="pos">Positiva</button><button class="rmbtn neg" data-rm="neg">Negativa</button><button class="rmbtn voz" data-rm="voz">Voz</button></div>' +
       '<div class="actions"><button class="btn" data-rm="skip">Pular</button><button class="btn ghost" data-rm="stop">Encerrar rota</button></div>');
     document.getElementById('mbody').onclick = rotaClique;
