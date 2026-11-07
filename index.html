@@ -865,6 +865,65 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .inick { flex: none; color: #2563EB; font-weight: 800; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .inirow.on { background: #1E3566; } :root:not([data-theme="light"]) .inin { background: #2B3A66; color: #CFE0FF; } :root:not([data-theme="light"]) .inick { color: #8DB4FF; } }
 :root[data-theme="dark"] .inirow.on { background: #1E3566; } :root[data-theme="dark"] .inin { background: #2B3A66; color: #CFE0FF; } :root[data-theme="dark"] .inick { color: #8DB4FF; }
+
+/* ===== v34: só os cartões de dúvida (amarelo) e de não enviar (vermelho) ganham cor; os outros ficam brancos ===== */
+@media (prefers-color-scheme: light) {
+:root:not([data-theme="dark"]) .card.conferir { background: #FFF3C4; border-color: #E5B93C; box-shadow: 0 8px 22px rgba(160, 110, 0, 0.22); }
+:root:not([data-theme="dark"]) .card.conferir .grp { background: #FFF9E0; border-color: #F0DA94; }
+:root:not([data-theme="dark"]) .card.nao_enviar { background: #FFE1E1; border-color: #E58A8A; box-shadow: 0 8px 22px rgba(170, 30, 30, 0.2); }
+:root:not([data-theme="dark"]) .card.nao_enviar .grp { background: #FFF0F0; border-color: #F2BFBF; }
+}
+:root[data-theme="light"] .card.conferir { background: #FFF3C4; border-color: #E5B93C; box-shadow: 0 8px 22px rgba(160, 110, 0, 0.22); }
+:root[data-theme="light"] .card.conferir .grp { background: #FFF9E0; border-color: #F0DA94; }
+:root[data-theme="light"] .card.nao_enviar { background: #FFE1E1; border-color: #E58A8A; box-shadow: 0 8px 22px rgba(170, 30, 30, 0.2); }
+:root[data-theme="light"] .card.nao_enviar .grp { background: #FFF0F0; border-color: #F2BFBF; }
+@media (prefers-color-scheme: dark) {
+:root:not([data-theme="light"]) .card.conferir { background: #3B3315; border-color: #8A6D1A; }
+:root:not([data-theme="light"]) .card.conferir .grp { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 220, 120, 0.25); }
+:root:not([data-theme="light"]) .card.nao_enviar { background: #3D1D21; border-color: #8F3038; }
+:root:not([data-theme="light"]) .card.nao_enviar .grp { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 140, 150, 0.25); }
+}
+:root[data-theme="dark"] .card.conferir { background: #3B3315; border-color: #8A6D1A; }
+:root[data-theme="dark"] .card.conferir .grp { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 220, 120, 0.25); }
+:root[data-theme="dark"] .card.nao_enviar { background: #3D1D21; border-color: #8F3038; }
+:root[data-theme="dark"] .card.nao_enviar .grp { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 140, 150, 0.25); }
+/* ponto de interrogação amarelo da legenda de dúvida */
+.qm { display: inline-flex; align-items: center; justify-content: center; width: 1.2em; height: 1.2em; border-radius: 50%; background: #FFC93C; color: #5A3A00; font-weight: 900; font-size: 0.9em; line-height: 1; vertical-align: -0.1em; }
+
+.lgi .qm { width: 1.25em; height: 1.25em; font-size: 0.95em; vertical-align: 0.14em; margin: 0 1px; }
+
+/* ===== v35: "Saindo de" recolhido, botão do modo cumprimento ===== */
+.iniselect { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 15px; text-align: left; cursor: pointer; }
+.iniselect .iniselt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iniselect .iniselt.vazio { color: var(--muted); }
+.iniselect .iniseta { flex: none; width: 22px; height: 22px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat; transition: transform 0.15s; }
+.iniselect.aberto .iniseta { transform: rotate(180deg); }
+.saidabox .inilista { margin-top: 6px; }
+.inirow.sem { opacity: 0.55; cursor: not-allowed; }
+.cumprbtn { background: #0B0B0F; color: #fff; border: 1px solid #0B0B0F; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; font-weight: 800; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
+.cumprbtn.small { min-height: 40px; padding: 0 14px; }
+.cumprbtn .homem { flex: none; width: 28px; height: 28px; background: #fff; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='black'%3E%3Crect x='12' y='2.6' width='8' height='4.6' rx='1.7'/%3E%3Crect x='8.6' y='6.9' width='14.8' height='1.9' rx='.95'/%3E%3Ccircle cx='16' cy='12.1' r='3.1'/%3E%3Cpath d='M11.2 16.6Q16 14.8 20.8 16.6L21.4 24.2H10.6Z'/%3E%3Cpath d='M11.4 17l-3 6.4 1.9.8 3.2-6z'/%3E%3Cpath d='M20.6 17l3.2 6.8-1.9.8-3.3-6.2z'/%3E%3Cpath d='M11.4 24L15.6 24 13.6 31.6 10.6 31.6z'/%3E%3Cpath d='M16.8 24L21 24 22.6 31.6 19.6 31.6z'/%3E%3Crect x='22.6' y='23.2' width='8' height='5.8' rx='1.2'/%3E%3Cpath d='M25.2 23.2v-1.3a1.4 1.4 0 0 1 1.4-1.4h1a1.4 1.4 0 0 1 1.4 1.4v1.3h-1.3v-1h-1.2v1z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='black'%3E%3Crect x='12' y='2.6' width='8' height='4.6' rx='1.7'/%3E%3Crect x='8.6' y='6.9' width='14.8' height='1.9' rx='.95'/%3E%3Ccircle cx='16' cy='12.1' r='3.1'/%3E%3Cpath d='M11.2 16.6Q16 14.8 20.8 16.6L21.4 24.2H10.6Z'/%3E%3Cpath d='M11.4 17l-3 6.4 1.9.8 3.2-6z'/%3E%3Cpath d='M20.6 17l3.2 6.8-1.9.8-3.3-6.2z'/%3E%3Cpath d='M11.4 24L15.6 24 13.6 31.6 10.6 31.6z'/%3E%3Cpath d='M16.8 24L21 24 22.6 31.6 19.6 31.6z'/%3E%3Crect x='22.6' y='23.2' width='8' height='5.8' rx='1.2'/%3E%3Cpath d='M25.2 23.2v-1.3a1.4 1.4 0 0 1 1.4-1.4h1a1.4 1.4 0 0 1 1.4 1.4v1.3h-1.3v-1h-1.2v1z'/%3E%3C/svg%3E") center / contain no-repeat; }
+.cumprbtn.small .homem { width: 24px; height: 24px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cumprbtn { border-color: rgba(255, 255, 255, 0.35); } }
+:root[data-theme="dark"] .cumprbtn { border-color: rgba(255, 255, 255, 0.35); }
+
+/* ===== v35: Selecionar dia + Selecionar todos empilhados, IA no fim do cartão ===== */
+.dayrow2 { align-items: flex-start; }
+.daycol { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.iafim { margin-top: 8px; }
+.iafim .btn { width: 100%; }
+
+/* ===== v35: legenda por remessa, ✅ do cartão ===== */
+.remlegend { display: flex; flex-wrap: wrap; gap: 0 14px; margin: 2px 6px 8px; font-size: 13px; }
+.remlegend .lgi { padding: 4px 2px; }
+.card .grp.fis .actions .btn[data-act="visita"] { font-size: 13px; padding: 0 8px; line-height: 1.1; white-space: normal; text-align: left; gap: 6px; }
+.card .grp.fis .actions .btn[data-act="certfora"] { flex: 0 0 50px; min-height: 46px; background: #fff; border: 0; border-radius: 14px; box-shadow: 0 3px 9px rgba(60, 50, 80, 0.18); padding: 0; font-size: 22px; line-height: 1; }
+.card .grp.fis .actions .btn[data-act="ver"], .card .grp.fis .actions .btn[data-act="del"] { flex-basis: 50px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card .grp.fis .actions .btn[data-act="certfora"] { background: #26314F; } }
+:root[data-theme="dark"] .card .grp.fis .actions .btn[data-act="certfora"] { background: #26314F; }
+.card .grp.fis .actions .btn[data-act="visita"] { align-items: center; justify-content: center; }
+
+.legend[hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -928,11 +987,10 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 
   <div class="tools" id="tools">
     <input type="text" id="q" placeholder="Buscar pelo nome" aria-label="Buscar pelo nome" autocomplete="off">
-    <select id="dateSel" aria-label="Filtrar por data"></select>
     <select id="ordSel" aria-label="Ordem da lista"><option value="cor">Ordem: por telefone e cor</option><option value="rota">Ordem: por rota</option></select>
     <select id="clsSel" aria-label="Mostrar"><option value="">Mostrar todos</option><option value="enviar">Só com telefone e posso enviar (verde)</option><option value="conferir">Só com telefone e em dúvida (amarelo)</option><option value="nao_enviar">Só com telefone e não envio (vermelho)</option><option value="semcel">Só sem telefone</option></select>
     <div class="actions" id="selTools">
-      <button class="btn small" id="btnAll">Selecionar todos</button>
+      <button class="btn small" id="btnAll" hidden>Selecionar todos</button>
       <button class="btn small primary" id="btnRoute" hidden>Gerar rota</button>
       <button class="btn small primary" id="btnSeq"><span class="wai" aria-hidden="true"></span> Citações/intimações em sequência</button>
       <button class="btn small" id="btnSeq2"><span class="wai" aria-hidden="true"></span> 2ª mensagem em sequência</button>
@@ -2272,6 +2330,38 @@ function ordenarPrioridade(list, prio, inicio, fimPt, zonas, raioKm, modo, prime
   return ordenarPorCep(perd).concat(ra, rm, ordenarRota(z, pt2)).map(function (x) { return porId[x.id] || x; });
 }
 
+/* Rota pelo vizinho mais próximo: a 1ª é a escolhida (ou a mais perto de "inicio"), a 2ª é a mais perto da 1ª,
+   a 3ª a mais perto da 2ª, e assim por diante. Quem não tem localização no mapa vai para o fim. */
+function ordenarVizinho(list, inicio, primeiroId) {
+  if (inicio) { definirRefLado(inicio); }
+  var porId = {};
+  list.forEach(function (x) { porId[x.id] = x; });
+  var ef = list.map(function (x) { return Object.assign({}, x, x.endRota ? { endereco: ehCoord(x.endRota) ? (x.ruaRef || x.endereco) : x.endRota } : {}); });
+  fixarPontos(ef);
+  var her = herdarBairros(ef);
+  ef.forEach(function (x) { if (her[x.id]) { x.bairro = her[x.id]; } });
+  var com = ef.filter(function (x) { return !!pontoDe(x); }), sem = ef.filter(function (x) { return !pontoDe(x); });
+  var out = [], resto = com.slice(), atual = inicio || null;
+  if (primeiroId != null) {
+    var k = -1; resto.forEach(function (x, n) { if (x.id === primeiroId) { k = n; } });
+    if (k >= 0) { var f = resto.splice(k, 1)[0]; out.push(f); atual = pontoDe(f); }
+  }
+  while (resto.length) {
+    var bi = 0, bd = Infinity;
+    for (var n = 0; n < resto.length; n++) {
+      var d = atual ? distKm(atual, pontoDe(resto[n])) : 0;
+      if (d < bd - 1e-9) { bd = d; bi = n; }
+    }
+    var nx = resto.splice(bi, 1)[0]; out.push(nx); atual = pontoDe(nx);
+  }
+  return out.concat(sem).map(function (x) { return porId[x.id] || x; });
+}
+function pontoEfetivo(x) {
+  var e = Object.assign({}, x, x.endRota ? { endereco: ehCoord(x.endRota) ? (x.ruaRef || x.endereco) : x.endRota } : {});
+  fixarPontos([e]);
+  return pontoDe(e) || null;
+}
+
 /* ---- Certidão por voz: o oficial dita e a página escreve no estilo dos modelos ---- */
 function tipoVoz(fala) {
   var n = norm(fala);
@@ -3363,13 +3453,17 @@ function iaUsuarioAjuste(d) {
     definirDicas({ bairros: state.cfg.bairroPts, ceps: state.cfg.cepPts, cepBairro: state.cfg.cepBairro });
     aprenderBairros(state.items);
     var o = state.origin ? pontosRua(state.origin, ['F', 'S']) : null;
-    var iniId = state.cfg.inicioId, iniIt = null;
+    var iniId = state.cfg.inicioId, iniIt = null, auto;
     if (iniId) { list.forEach(function (i) { if (i.id === iniId) { iniIt = i; } }); }
-    var pIni = iniIt ? pontoDe(iniIt) : null;
-    var auto = ordenarPrioridade(list, prioIt, pIni || ((saidaGpsOn() && gpsFresco()) || (o ? o[0] : pontoIni())), fimEf(), zonasAtivas(), zonasAtivas() ? raioCasa() : 0, modoRota(), primeiros());
-    if (iniIt) {
-      var kIni = -1; auto.forEach(function (i, n) { if (i.id === iniId) { kIni = n; } });
-      if (kIni > 0) { auto = auto.slice(); auto.unshift(auto.splice(kIni, 1)[0]); }
+    var pIni = iniIt ? pontoEfetivo(iniIt) : null, gpsPt = !iniIt && saidaGpsOn() ? gpsFresco() : null;
+    if (iniIt && pIni) { auto = ordenarVizinho(list, pIni, iniIt.id); }
+    else if (gpsPt) { auto = ordenarVizinho(list, gpsPt, null); }
+    else {
+      auto = ordenarPrioridade(list, prioIt, (saidaGpsOn() && gpsFresco()) || (o ? o[0] : pontoIni()), fimEf(), zonasAtivas(), zonasAtivas() ? raioCasa() : 0, modoRota(), primeiros());
+      if (iniIt) {
+        var kIni = -1; auto.forEach(function (i, n) { if (i.id === iniId) { kIni = n; } });
+        if (kIni > 0) { auto = auto.slice(); auto.unshift(auto.splice(kIni, 1)[0]); }
+      }
     }
     return aplicarManual(auto, state.cfg.rotaManual);
   }
@@ -3969,29 +4063,36 @@ function iaUsuarioAjuste(d) {
       function (er) { toast(er && er.code === 1 ? 'Localização negada. No iPhone: Ajustes > Privacidade > Serviços de Localização.' : 'Não consegui a sua posição agora.'); cb(null); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
-  /* "Por onde começar": uma linha por rua do dia, na ordem atual da rota; tocar refaz a rota a partir dela */
-  function iniLista() {
+  /* "Por onde começar": uma lista recolhida no lugar do campo de digitar; a setinha abre as ruas do dia */
+  var rotaIniAberta = false;
+  function iniGrupos() {
     var arr = rotaSel(), gr = [], idx = {};
     arr.forEach(function (i, n) {
       var k = textoParada(i);
       if (idx[k] == null) { idx[k] = gr.length; gr.push({ ids: [i.id], it: i, pos: n + 1, n: 1 }); } else { gr[idx[k]].ids.push(i.id); gr[idx[k]].n++; }
     });
-    if (!gr.length) { return ''; }
-    var ini = state.cfg.inicioId;
-    return '<p class="grp-t" style="margin-top:12px">Por onde começar (ruas do dia)</p>' +
-      '<div class="inilista" id="rsIni" role="listbox" aria-label="Ruas do dia">' + gr.map(function (g) {
-        var on = g.ids.indexOf(ini) !== -1;
-        return '<button type="button" class="inirow' + (on ? ' on' : '') + '" role="option" aria-selected="' + on + '" data-sd="ini" data-id="' + esc(g.ids[0]) + '"><span class="inin">' + g.pos + '</span><span class="inirua">' + esc(g.it.endereco) + (g.n > 1 ? ' (' + g.n + ')' : '') + '</span><span class="inibai">' + esc(g.it.bairro || '') + '</span>' + (on ? '<span class="inick" aria-hidden="true">✓</span>' : '') + '</button>';
-      }).join('') + '</div>' +
-      '<p class="note" style="margin:6px 0 0">' + (ini ? 'A rota foi refeita a partir da rua marcada. Toque nela de novo para voltar ao automático. ' : 'Toque numa rua: a rota é refeita a partir dela. ') + 'Depois você ainda pode reorganizar com o dedo.</p>';
+    return gr;
   }
+  function iniRotulo(g) { return esc(g.it.endereco) + (g.n > 1 ? ' (' + g.n + ')' : ''); }
   function saidaBox() {
-    var g = saidaGpsOn(), f = g && gpsPos ? new Date(gpsPos.t) : null;
+    var g = saidaGpsOn(), f = g && gpsPos ? new Date(gpsPos.t) : null, ini = state.cfg.inicioId, gr = iniGrupos(), marc = null;
+    gr.forEach(function (x) { if (ini && x.ids.indexOf(ini) !== -1) { marc = x; } });
+    var texto = marc ? '<span class="inin">' + marc.pos + '</span><span class="iniselt">' + iniRotulo(marc) + '</span>'
+      : '<span class="iniselt vazio">' + (g ? 'Minha localização atual' : 'Selecione a rua por onde deseja começar') + '</span>';
+    var lista = '';
+    if (rotaIniAberta) {
+      lista = '<div class="inilista" id="rsIni" role="listbox" aria-label="Ruas do dia">' + gr.map(function (x) {
+        var on = x.ids.indexOf(ini) !== -1, sem = !pontoEfetivo(x.it);
+        return '<button type="button" class="inirow' + (on ? ' on' : '') + (sem ? ' sem' : '') + '" role="option" aria-selected="' + on + '"' + (sem ? ' disabled' : '') + ' data-sd="ini" data-id="' + esc(x.ids[0]) + '"><span class="inin">' + x.pos + '</span><span class="inirua">' + iniRotulo(x) + '</span><span class="inibai">' + (sem ? 'sem localização' : esc(x.it.bairro || '')) + '</span>' + (on ? '<span class="inick" aria-hidden="true">✓</span>' : '') + '</button>';
+      }).join('') + '</div>';
+    }
     return '<div class="grp saidabox"><p class="grp-t">Saindo de</p>' +
-      '<div class="seg"><button class="btn" type="button" data-sd="gps" aria-pressed="' + g + '">Onde estou agora</button><button class="btn" type="button" data-sd="end" aria-pressed="' + !g + '">Endereço de saída</button></div>' +
-      (g ? '<p class="note">' + (f ? 'Posição lida às ' + pad(f.getHours()) + ':' + pad(f.getMinutes()) + '. A rota começa pela parada mais perto de você; o Google Maps sai de onde você estiver ao navegar. A posição fica só neste aparelho.' : 'Lendo a sua posição…') + '</p><div class="actions"><button class="btn small" type="button" data-sd="atualizar">Atualizar minha posição</button></div>'
-        : '<input type="text" id="rsOrigin" placeholder="Rua e número de saída (vazio: onde você estiver ao navegar)" value="' + esc(state.origin || '') + '" autocomplete="off"><div class="actions"><button class="btn small" type="button" data-sd="salvarend">Usar este endereço</button></div>') +
-      iniLista() + '</div>';
+      '<button type="button" class="iniselect' + (rotaIniAberta ? ' aberto' : '') + '" data-sd="abrir" aria-haspopup="listbox" aria-expanded="' + rotaIniAberta + '">' + texto + '<span class="iniseta" aria-hidden="true"></span></button>' +
+      lista +
+      '<div class="actions"><button class="btn small" type="button" data-sd="gps">Usar minha localização atual</button>' + (g ? '<button class="btn small ghost" type="button" data-sd="atualizar">Atualizar posição</button>' : '') + '</div>' +
+      (g ? '<p class="note">' + (f ? 'Posição lida às ' + pad(f.getHours()) + ':' + pad(f.getMinutes()) + '. A rota começa pela parada mais perto de você e segue sempre para a mais próxima. A posição fica só neste aparelho.' : 'Lendo a sua posição…') + '</p>'
+        : '<p class="note">' + (marc ? 'Rota refeita a partir dessa rua: cada parada é a mais perto da anterior. Para voltar ao automático, abra a lista e toque na rua marcada. Depois você ainda pode reorganizar com o dedo.' : 'Escolha a rua e a rota é refeita: a 1ª é a que você escolher, a 2ª a mais perto dela, a 3ª a mais perto da 2ª, e assim por diante.') + '</p>') +
+      '</div>';
   }
   /* O número do WhatsApp sempre aparece inteiro: se não couber no botão, a letra diminui só o necessário */
   function ajustarNumeros() {
@@ -4116,6 +4217,7 @@ function iaUsuarioAjuste(d) {
     var arr = Object.keys(keys).sort().reverse();
     if (dsel && !keys[dsel]) { dsel = ''; }
     var el = document.getElementById('dateSel');
+    if (!el) { dsel = ''; return; }
     var h = '<option value="">Todas as datas</option>';
     arr.forEach(function (k) {
       h += '<option value="' + esc(k) + '"' + (k === dsel ? ' selected' : '') + '>' + esc(dayLabel(k, new Date())) + '</option>';
@@ -4144,15 +4246,13 @@ function iaUsuarioAjuste(d) {
     renderBackupBanner();
     var vvA = visiveis(); document.getElementById('btnAll').textContent = vvA.length && vvA.every(function (i) { return sel[i.id]; }) ? 'Limpar todos' : 'Selecionar todos';
     var lg = document.getElementById('legend');
-    lg.hidden = tab !== 'enviar';
+    lg.hidden = tab !== 'enviar' || state.cfg.ordemLista !== 'rota';
     document.getElementById('clsSel').hidden = tab !== 'enviar';
     document.getElementById('ordSel').hidden = tab !== 'enviar';
     document.getElementById('ordSel').value = state.cfg.ordemLista === 'rota' ? 'rota' : 'cor';
     if (tab === 'enviar') {
       var pc = function (c) { return state.items.filter(function (i) { return inTab(i, 'enviar') && grupoDe(i) === c; }).length; };
-      lg.innerHTML = [['enviar', 'g', 'WhatsApp ✅'], ['conferir', 'y', 'WhatsApp ❓'], ['nao_enviar', 'r', 'WhatsApp ❌'], ['semcel', 'k', 'sem WhatsApp']].map(function (x) {
-        return '<button type="button" class="lgi ' + x[1] + '" data-lg="' + x[0] + '">' + x[2] + ': <b>' + pc(x[0]) + '</b></button>';
-      }).join('');
+      lg.innerHTML = legBotoes(pc);
     }
     var flt = arquivosFaltando();
     var errIds = Object.keys(errArq), barraTxt = '', barraErro = false;
@@ -4261,6 +4361,7 @@ function iaUsuarioAjuste(d) {
             list.forEach(function (x) { if (itemDay(x) === dk && chavesDia.indexOf(remKey[x.id]) < 0) { chavesDia.push(remKey[x.id]); } });
             var nArq = Object.keys(arqs).length, ts = new Date(remOrd[rk]), fech = !!fechadas[rk];
             html += '<div class="remrow"><button class="remhead' + (fech ? ' fechada' : '') + '" data-act="remtoggle" data-rem="' + esc(rk) + '" aria-expanded="' + (!fech) + '"><span class="remseta" aria-hidden="true"></span>Remessa ' + (chavesDia.length - chavesDia.indexOf(rk)) + ' · ' + pad(ts.getHours()) + ':' + pad(ts.getMinutes()) + ' · ' + grp.length + (grp.length === 1 ? ' mandado' : ' mandados') + (nArq ? ' · ' + nArq + (nArq === 1 ? ' arquivo' : ' arquivos') : '') + (fech ? ' · recolhida (fora da fila e do “Selecionar”)' : '') + '</button></div>';
+            if (!fech) { html += remLegenda(grp); }
           }
           if (fechadas[rk]) { return; }
         }
@@ -4289,6 +4390,13 @@ function iaUsuarioAjuste(d) {
     document.getElementById('btnPrint').disabled = !n;
   }
 
+  /* Legenda de cores: a global (lista por rota) e uma em cima de cada remessa, contando só os mandados dela */
+  function legBotoes(contar) {
+    return [['enviar', 'g', 'WhatsApp ✅'], ['conferir', 'y', 'WhatsApp <span class="qm" aria-hidden="true">?</span>'], ['nao_enviar', 'r', 'WhatsApp ❌'], ['semcel', 'k', 'sem WhatsApp']].map(function (x) {
+      return '<button type="button" class="lgi ' + x[1] + '" data-lg="' + x[0] + '">' + x[2] + ': <b>' + contar(x[0]) + '</b></button>';
+    }).join('');
+  }
+  function remLegenda(grp) { return '<div class="remlegend">' + legBotoes(function (c) { return grp.filter(function (x) { return grupoDe(x) === c; }).length; }) + '</div>'; }
   function filesHtml() {
     if (!state.files.length) {
       return '<p class="empty">Nenhum arquivo guardado. Os PDFs e fotos que você adicionar ficam aqui, só neste aparelho.</p>';
@@ -4420,10 +4528,10 @@ function iaUsuarioAjuste(d) {
       var addTxt = temNumero ? 'Adicionar outro WhatsApp' : 'Inserir WhatsApp';
       var addBtn = '<button class="btn small plusbtn" data-act="teldil" aria-label="' + addTxt + '" title="' + addTxt + '"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>';
       var corWa = i.cls === 'nao_enviar' ? 'wa-stop' : (i.cls === 'conferir' ? 'wa-conf' : (temNumero ? 'wa-ok' : 'wa-sem'));
-      h += '<div class="grp on ' + corWa + '"><div class="grp-h"><p class="grp-t">WhatsApp Virtual</p>' + addBtn + '</div>' + onl + (iaAtiva() ? '<div class="actions">' + iaBtnHtml('on') + '</div>' : '') + '</div>';
+      h += '<div class="grp on ' + corWa + '"><div class="grp-h"><p class="grp-t">WhatsApp Virtual</p>' + addBtn + '</div>' + onl + '</div>';
       if (parPrin) { h += '<div class="grp cert2"><p class="grp-t">Certificar</p><div class="resp"><button class="rbtn neg" data-act="resp" data-p="' + parPrin + '" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><div class="rpos"><button class="rbtn pos" data-act="resp" data-p="' + parPrin + '" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button>' + (loc && temOn2 ? '<button class="rbtn rwa" data-act="resp" data-p="on" data-t="pos" aria-label="Positivo virtual (WhatsApp)" title="Positivo virtual (WhatsApp)"><span class="wai" aria-hidden="true"></span></button>' : '') + '</div></div></div>'; }
       if (loc) {
-        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z"/></svg> Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª diligência física</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' diligências</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + (iaAtiva() ? iaBtnHtml('fis') : '') + '</div></div>';
+        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<button class="btn small primary wide" data-act="visita"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z"/></svg> Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª diligência física</button>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' diligências</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small certfora" data-act="certfora" aria-label="Encaminhar para Certidões (certificado por outro meio)" title="Encaminhar para Certidões">✅</button><button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
       }
       if (!((temNum && temNumero) || loc)) { h += '<div class="grp cer"><div class="actions"><button class="btn small primary wide" data-act="certmenu">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button></div></div>'; }
       var man = '';
@@ -4431,6 +4539,7 @@ function iaUsuarioAjuste(d) {
       if (i.cls === 'conferir' || i.cls === 'nao_enviar') { man += '<button class="btn small" data-act="toenv">Marcar: pode enviar</button>'; }
       if (!loc) { man += '<button class="btn small ghost" data-act="del">Excluir</button>'; }
       if (man) { h += '<div class="grp man"><p class="grp-t">Mandado</p><div class="actions">' + man + '</div></div>'; }
+      if (iaAtiva()) { h += '<div class="iafim">' + iaBtnHtml(parPrin || 'on') + '</div>'; }
     } else {
       h += '<p class="badge ' + i.certidao.tipo + '">Certidão ' + i.certidao.tipo + ' pronta' + (i.certidao.canal === 'wa' ? ' (WhatsApp)' : (i.certidao.canal === 'fisica' ? (i.certidao.origem === 'print' ? ' (feita por print)' : ' (feita à mão)') : (i.certidao.canal === 'externo' ? ' (feita fora da página, sem PDF)' : ''))) + (i.certidao.prints && i.certidao.prints.length ? ', ' + i.certidao.prints.length + (i.certidao.canal === 'fisica' && i.certidao.origem !== 'print' ? (i.certidao.prints.length === 1 ? ' foto' : ' fotos') : (i.certidao.prints.length === 1 ? ' print' : ' prints')) : '') + (i.baixada ? ', já baixada' : '') + '</p>';
       h += '<div class="actions">' + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small" data-act="viewcert">Ver certidão</button>' + (externo(i) ? '' : '<button class="btn small primary" data-act="baixar">Baixar PDF</button><button class="btn small" data-act="compart">Compartilhar</button>') + '<button class="btn small ghost" data-act="naocert">Mandado não certificado</button><button class="btn small ghost" data-act="purge">Excluir definitivamente</button></div>';
@@ -4826,7 +4935,7 @@ function iaUsuarioAjuste(d) {
     tab = b.getAttribute('data-tab'); render();
   });
   document.getElementById('q').addEventListener('input', function () { q = this.value.trim(); render(); });
-  document.getElementById('dateSel').addEventListener('change', function () { dsel = this.value; render(); });
+  if (document.getElementById('dateSel')) { document.getElementById('dateSel').addEventListener('change', function () { dsel = this.value; render(); }); }
   document.getElementById('clsSel').addEventListener('change', function () { clsF = this.value; render(); });
   document.getElementById('ordSel').addEventListener('change', function () { state.cfg.ordemLista = this.value === 'rota' ? 'rota' : 'cor'; save(); render(); });
   document.getElementById('btnFisica').onclick = function () { openFisica(null); };
@@ -4836,6 +4945,18 @@ function iaUsuarioAjuste(d) {
     var c = b.getAttribute('data-lg'), el = document.querySelector('#list article.card.' + c);
     if (!el) { toast(clsF && clsF !== c ? 'Esse grupo não está na tela: em “Mostrar”, escolha “Mostrar todos”.' : 'Nenhum cartão desse grupo aparece agora (veja se a remessa está recolhida).'); return; }
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  document.getElementById('list').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.remlegend [data-lg]') : null;
+    if (!b) { return; }
+    var c = b.getAttribute('data-lg'), el = b.closest('.remlegend').nextElementSibling, ach = null;
+    while (el) {
+      if (el.classList && (el.classList.contains('remrow') || el.classList.contains('dayrow'))) { break; }
+      if (el.matches && el.matches('article.card.' + c)) { ach = el; break; }
+      el = el.nextElementSibling;
+    }
+    if (!ach) { toast('Nenhum cartão desse grupo nesta remessa.'); return; }
+    ach.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   function visiveis() { return state.items.filter(function (i) { return inTab(i, tab); }).filter(matches).filter(function (i) { return !dsel || itemDay(i) === dsel; }); }
   document.getElementById('btnAll').onclick = function () {
@@ -4885,6 +5006,7 @@ function iaUsuarioAjuste(d) {
     if (act === 'me') { openMe(); return; }
     if (act === 'selday' || act === 'printday' || act === 'zipday') { dayAction(act, b.getAttribute('data-day') || ''); return; }
     if (act === 'gerarrota') { document.getElementById('btnRoute').onclick(); return; }
+    if (act === 'selall') { document.getElementById('btnAll').onclick(); return; }
     if (act === 'vlabrir') { abrirValores(); return; }
     if (act === 'remtoggle') { var rkt = b.getAttribute('data-rem'), ff = state.cfg.remFechadas = state.cfg.remFechadas || {}; if (ff[rkt]) { delete ff[rkt]; } else { ff[rkt] = true; } save(); render(); return; }
     var c = e.target.closest('.card');
@@ -4946,6 +5068,7 @@ function iaUsuarioAjuste(d) {
     else if (act === 'resp') { abrirResposta(it, b.getAttribute('data-p'), b.getAttribute('data-t')); }
     else if (act === 'viewcert') { viewCert(it); }
     else if (act === 'ver') { viewMandado(it); }
+    else if (act === 'certfora') { abrirCertFora(it); }
     else if (act === 'share') { shareMandado(it); }
     else if (act === 'watry') { openTent(it); }
     else if (act === 'certwa') { openCert(it, 'wa'); }
@@ -5322,18 +5445,11 @@ function iaUsuarioAjuste(d) {
       }
       return h;
     }
-    var html = '<p class="note">Processo ' + esc(it.processo) + '. Dá para dar zoom com os dedos.</p>';
+    var html = '<p class="note">Processo ' + esc(it.processo) + '. Mandado e contrafé. Dá para dar zoom com os dedos.</p>';
     html += mp.length ? await pagesHtml(mp, 'Mandado') : '<p class="chk bad">Nenhuma página do mandado definida. Use “Compartilhar mandado” para escolher as páginas.</p>';
-    if (cf.length) { html += '<div class="actions"><button class="btn" id="vmCf">Mostrar a contrafé (' + cf.length + (cf.length === 1 ? ' página' : ' páginas') + ')</button></div><div id="vmCfBox"></div>'; }
+    if (cf.length) { html += '<p class="grp-t" style="margin-top:14px">Contrafé (' + cf.length + (cf.length === 1 ? ' página' : ' páginas') + ')</p>' + await pagesHtml(cf, 'Contrafé'); }
     html += '<div class="actions"><button class="btn primary" id="vmSh">Compartilhar</button></div>';
     body.innerHTML = html;
-    if (cf.length) {
-      document.getElementById('vmCf').onclick = async function () {
-        this.disabled = true; this.textContent = 'Abrindo…';
-        document.getElementById('vmCfBox').innerHTML = await pagesHtml(cf, 'Contrafé');
-        this.hidden = true;
-      };
-    }
     document.getElementById('vmSh').onclick = function () { shareMandado(it); };
   }
 
@@ -5500,9 +5616,39 @@ function iaUsuarioAjuste(d) {
     return new Promise(function (res) { c.toBlob(res, 'image/jpeg', 0.85); });
   }
 
+  /* a remessa mais recente da lista (mandados excluídos não contam) */
+  function ultimaRemessa() {
+    if (state.sample) { return null; }
+    var vivos = state.items.filter(function (x) { return x.status !== 'excluido'; });
+    if (!vivos.length) { return null; }
+    var ch = remessaChaves(vivos), melhor = null;
+    Object.keys(ch).forEach(function (id) { var t = parseInt(ch[id].slice(1), 10) || 0; if (!melhor || t > melhor.t) { melhor = { t: t, chave: ch[id] }; } });
+    if (melhor) { melhor.n = vivos.filter(function (x) { return ch[x.id] === melhor.chave; }).length; melhor.ch = ch; }
+    return melhor;
+  }
+  function perguntarJuntar(ult) {
+    return new Promise(function (res) {
+      var h = (Date.now() - ult.t) / 3600000, ts = new Date(ult.t), hh = Math.floor(h);
+      var quando = hh < 1 ? 'há menos de 1 hora' : 'há ' + hh + (hh === 1 ? ' hora' : ' horas');
+      openModal('Juntar com a remessa anterior?',
+        '<p>A última remessa tem <strong>' + ult.n + (ult.n === 1 ? ' mandado' : ' mandados') + '</strong> e foi adicionada ' + quando + ' (às ' + pad(ts.getHours()) + ':' + pad(ts.getMinutes()) + ').</p>' +
+        '<p class="note">Como foi há menos de 12 horas, estes mandados provavelmente são do mesmo dia. Juntando, eles ficam no mesmo quadro de remessa.</p>' +
+        '<div class="actions"><button class="btn primary" id="rjSim">Sim, juntar</button><button class="btn" id="rjNao">Não, deixar separada</button></div>');
+      var fc = document.getElementById('mclose'); fc.hidden = true;
+      function fim(v) { fc.hidden = false; closeModal(); res(v); }
+      document.getElementById('rjSim').onclick = function () { fim(true); };
+      document.getElementById('rjNao').onclick = function () { fim(false); };
+    });
+  }
   async function readFiles(files) {
     var sample = null;
-    remAtual = Date.now();
+    var ult = ultimaRemessa(), juntar = false;
+    if (ult && Date.now() - ult.t < 12 * 3600000) { juntar = await perguntarJuntar(ult); }
+    if (juntar) {
+      remAtual = ult.t;
+      state.items.forEach(function (x) { if (!x.rem && ult.ch[x.id] === ult.chave) { x.rem = ult.t; } });
+      save();
+    } else { remAtual = Date.now(); }
     reatt = 0; dups = 0; volt = 0; semIA = null; rs = { esperados: 0, ia: 0, local: 0 };
     runCtl = new AbortController();
     var ctl = runCtl;
@@ -5730,6 +5876,20 @@ function iaUsuarioAjuste(d) {
       it.status = 'certidao'; delete sel[it.id]; save();
       closeModal(); render();
       toast('Guardado em Certidões, sem PDF.');
+    };
+  }
+  /* ✅ do cartão: pergunta e, se sim, guarda em Certidões como "certificado por outro meio" (sem positiva/negativa, sem PDF) */
+  function abrirCertFora(it) {
+    openModal('Encaminhar para Certidões',
+      '<p><strong>' + esc(it.nome) + '</strong></p>' +
+      '<p>Deseja encaminhar este mandado para <strong>Certidões</strong> como <strong>certificado por outro meio</strong> (sem PDF)? Ele sai desta lista e entra nos totais, sem precisar dizer se foi positiva ou negativa.</p>' +
+      '<div class="actions"><button class="btn primary" id="cfSim">Sim, encaminhar</button><button class="btn ghost" id="cfNao">Cancelar</button></div>');
+    document.getElementById('cfNao').onclick = closeModal;
+    document.getElementById('cfSim').onclick = function () {
+      var now = new Date(), today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+      it.certidao = { tipo: 'externo', canal: 'externo', externo: true, texto: '', sig: null, data: today, prints: [], custas: parseValor(custasCard(it)) };
+      it.status = 'certidao'; delete sel[it.id]; save(); closeModal(); render();
+      toast('Encaminhado para Certidões (outro meio).', function () { it.status = 'pendente'; it.certidao = null; save(); render(); });
     };
   }
   function externo(i) { return !!(i.certidao && i.certidao.externo); }
@@ -7059,7 +7219,8 @@ function iaUsuarioAjuste(d) {
     var txt = 'Indenização de transporte: <strong>' + fmtReais(fis * transporte()) + '</strong> (' + fis + (fis === 1 ? ' mandado' : ' mandados') + ' com endereço físico)';
     if (tab === 'devolver') { txt += ' · Custas: <strong>' + fmtReais(somar(doDia, custasDe)) + '</strong>'; }
     var nSelP = pendAll().filter(function (i) { return sel[i.id]; }).length;
-    var linha = tab === 'enviar' || tab === 'aguardando' ? '<div class="dayrow2">' + btnSelDia(dk) + '<button class="btn small primary rotabtn" data-act="gerarrota"' + (nSelP ? '' : ' disabled') + '>Gerar rota</button></div>' : '';
+    var primeiroDia = list.length > 0 && itemDay(list[0]) === dk, vv = visiveis(), todosSel = vv.length > 0 && vv.every(function (i) { return sel[i.id]; });
+    var linha = tab === 'enviar' || tab === 'aguardando' ? '<div class="dayrow2"><div class="daycol">' + btnSelDia(dk) + (primeiroDia ? '<button class="btn small sdia" data-act="selall">' + (todosSel ? 'Limpar todos' : 'Selecionar todos') + '</button>' : '') + '</div><button class="btn small primary rotabtn" data-act="gerarrota"' + (nSelP ? '' : ' disabled') + '>Gerar rota</button></div>' : '';
     return '<p class="note dayval">' + txt + '</p>' + linha;
   }
   function resumoMensal() {
@@ -8004,7 +8165,7 @@ function iaUsuarioAjuste(d) {
     if (!ra) { el.hidden = true; return; }
     var rest = rotaRestantes(), n = ra.ids.length;
     el.hidden = false;
-    el.innerHTML = '<p><strong>Rota em andamento</strong>: ' + (rest.length ? 'parada ' + (n - rest.length + 1) + ' de ' + n + '.' : 'todas as paradas atendidas.') + '</p><div class="actions"><button class="btn primary" data-rb="cont">' + (rest.length ? 'Continuar rota' : 'Ver o resumo') + '</button><button class="btn small" data-rb="cumpr">Modo cumprimento</button><button class="btn small ghost" data-rb="stop">Encerrar</button></div>';
+    el.innerHTML = '<p><strong>Rota em andamento</strong>: ' + (rest.length ? 'parada ' + (n - rest.length + 1) + ' de ' + n + '.' : 'todas as paradas atendidas.') + '</p><div class="actions"><button class="btn primary" data-rb="cont">' + (rest.length ? 'Continuar rota' : 'Ver o resumo') + '</button><button class="btn small cumprbtn" data-rb="cumpr"><span class="homem" aria-hidden="true"></span><span>Modo cumprimento</span></button><button class="btn small ghost" data-rb="stop">Encerrar</button></div>';
   }
   document.getElementById('rotaBanner').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-rb]') : null;
@@ -8015,9 +8176,13 @@ function iaUsuarioAjuste(d) {
   });
   function iniciarBox() {
     var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
-    return lista.length ? '<div class="actions"><button class="btn primary wide" data-rinicia="1">Iniciar rota (' + lista.length + (lista.length === 1 ? ' parada' : ' paradas') + ')</button><button class="btn wide" data-rcumpr="1">Modo cumprimento: um cartão por vez</button></div>' : '';
+    return lista.length ? '<div class="actions"><button class="btn primary wide" data-rinicia="1">Iniciar rota (' + lista.length + (lista.length === 1 ? ' parada' : ' paradas') + ')</button></div>' : '';
   }
-  function rotaCorpo() { return saidaBox() + iniciarBox() + reordBox() + comoRotaHtml() + manualNota() + foraDaRota() + '<div id="rOut">' + routeHtml() + '</div>' + listasBox() + mapaBox() + zapBox() + '<div id="rSelBox">' + selRotaHtml() + '</div>'; }
+  function cumprBtnHtml() {
+    var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
+    return lista.length ? '<button class="btn wide cumprbtn" type="button" data-rcumpr="1"><span class="homem" aria-hidden="true"></span><span>Modo cumprimento</span></button>' : '';
+  }
+  function rotaCorpo() { return cumprBtnHtml() + saidaBox() + iniciarBox() + reordBox() + comoRotaHtml() + manualNota() + foraDaRota() + '<div id="rOut">' + routeHtml() + '</div>' + listasBox() + mapaBox() + zapBox() + '<div id="rSelBox">' + selRotaHtml() + '</div>'; }
   function zapBox() {
     var txt = rotaLinks.map(function (u, k) { return 'Rota ' + (k + 1) + ': ' + u; }).join('\n');
     if (!rotaLinks.length) { return ''; }
@@ -8026,7 +8191,7 @@ function iaUsuarioAjuste(d) {
   }
     document.getElementById('btnRoute').onclick = function () {
     if (!sortedSel().length) { toast('Marque os cartões que vão na rota.'); return; }
-    modoReord = false;
+    modoReord = false; rotaIniAberta = false;
     if (!rotaSel().length) { openModal('Rota de hoje', '<p>Nenhum dos mandados marcados tem endereço físico em ' + cidadesTxt() + ', então não há rota para montar.</p>' + foraDaRota()); return; }
     openModal('Rota de hoje',
       '<div id="rBody">' + rotaCorpo() + '</div>' +
@@ -8040,19 +8205,18 @@ function iaUsuarioAjuste(d) {
       var b = e.target.closest ? e.target.closest('[data-sd]') : null;
       if (!b) { return; }
       var a = b.getAttribute('data-sd');
-      if (a === 'gps') { state.cfg.saidaGps = true; state.cfg.inicioId = null; save(); refaz(); pegarGps(function () { refaz(); render(); }); }
+      if (a === 'abrir') { rotaIniAberta = !rotaIniAberta; refaz(); }
+      else if (a === 'gps') { state.cfg.saidaGps = true; state.cfg.inicioId = null; state.cfg.rotaManual = null; state.origin = ''; rotaIniAberta = false; save(); refaz(); pegarGps(function (pt) { if (!pt) { state.cfg.saidaGps = false; save(); } refaz(); render(); }); }
       else if (a === 'atualizar') { pegarGps(function () { refaz(); render(); }); }
-      else if (a === 'end') { state.cfg.saidaGps = false; save(); refaz(); render(); }
-      else if (a === 'salvarend') { var v = ($('rsOrigin').value || '').trim(); state.origin = v; state.cfg.saidaGps = false; state.cfg.inicioId = null; save(); refaz(); render(); toast(v ? 'Saída: ' + v : 'Saída: onde você estiver ao navegar.'); }
       else if (a === 'ini') {
         var idI = b.getAttribute('data-id'), itI = byId(idI);
         if (!itI) { return; }
-        var antes = { ini: state.cfg.inicioId || null, man: state.cfg.rotaManual || null }, volta = state.cfg.inicioId === idI;
-        state.cfg.inicioId = volta ? null : idI; state.cfg.rotaManual = null; save(); refaz(); render();
-        toast(volta ? 'Rota de volta ao automático.' : 'Rota refeita a partir de: ' + itI.endereco, function () { state.cfg.inicioId = antes.ini; state.cfg.rotaManual = antes.man; save(); refaz(); render(); });
+        var antes = { ini: state.cfg.inicioId || null, man: state.cfg.rotaManual || null, gps: !!state.cfg.saidaGps }, volta = state.cfg.inicioId === idI;
+        state.cfg.inicioId = volta ? null : idI; state.cfg.saidaGps = false; state.cfg.rotaManual = null; state.origin = ''; rotaIniAberta = false; save(); refaz(); render();
+        toast(volta ? 'Rota de volta ao automático.' : 'Rota refeita a partir de: ' + itI.endereco, function () { state.cfg.inicioId = antes.ini; state.cfg.saidaGps = antes.gps; state.cfg.rotaManual = antes.man; save(); refaz(); render(); });
       }
     });
-    if (saidaGpsOn() && !gpsFresco()) { pegarGps(function () { refaz(); render(); }); }
+    if (saidaGpsOn() && !gpsFresco()) { pegarGps(function (pt) { if (!pt) { state.cfg.saidaGps = false; save(); } refaz(); render(); }); }
     $('rPrint').onclick = function () { imprimir(rotaSel()); };
     $('rAjustes').onclick = function () { abrirMinhaRota(true); };
     aprenderBairros(state.items);
