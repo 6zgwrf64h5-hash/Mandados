@@ -1000,6 +1000,21 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 #dgObs, #dgTxt { width: 100%; box-sizing: border-box; }
 
 .card .btn.eyelbl { font-size: 13px !important; font-weight: 800; min-width: 0 !important; padding: 0 14px 0 10px !important; gap: 6px !important; }
+
+.cumprlogo { display: flex; align-items: center; gap: 12px; background: #0B0B0F; color: #fff; border-radius: 16px; padding: 6px 14px; margin: 0 0 8px; min-height: 64px; font-weight: 800; font-size: 17px; }
+.cumprlogo .avatar { height: 52px; width: auto; border-radius: 10px; background: #000; flex: none; }
+.rtodos { margin: 2px 0 6px; }
+
+.sqtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sqeye { display: inline-flex; align-items: center; gap: 6px; flex: none; font-size: 13px; font-weight: 800; }
+.semzapobs { font-size: 14px; padding: 4px 2px 8px; }
+
+.cumprcron { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 6px; font-size: 15px; }
+.cumprcron strong { font-variant-numeric: tabular-nums; font-size: 20px; }
+.cumprcron small { opacity: .75; flex: 1; }
+
+.seqitem { display: flex; align-items: center; gap: 8px; }
+.seqitem .seqrow { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
@@ -1055,7 +1070,7 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 
   <nav class="tabs" id="tabs" aria-label="Listas">
     <button class="tab" data-tab="enviar" aria-pressed="true">Mandados <span class="count" data-c="enviar"></span></button>
-    <button class="tab" data-tab="aguardando" aria-pressed="false">Aguardando on-line <span class="count" data-c="aguardando"></span></button>
+    <button class="tab" data-tab="aguardando" aria-pressed="false">Exclusivo online <span class="count" data-c="aguardando"></span></button>
     <button class="tab" data-tab="devolver" aria-pressed="false">Certidões <span class="count" data-c="devolver"></span></button>
     <button class="tab" data-tab="arquivos" aria-pressed="false">Arquivos <span class="count" data-c="arquivos"></span></button>
   </nav>
@@ -2741,18 +2756,19 @@ function enderecoSimples(end) {
   return { rua: rua, numero: numero, texto: rua + (numero ? ', ' + numero : '') };
 }
 var DIL_SIT = { ninguem: 'não encontrei ninguém no local', indicada: 'não encontrei a pessoa indicada', vizinhos: 'conversei com vizinhos' };
-var DIL_REC = { portao: 'com contato no portão ou na caixa de correio', vizinho: 'com vizinho', familiar: 'com familiar', amigo: 'com amigo', funcionario: 'com funcionário' };
+var DIL_REC = { portao: 'com contato no portão/caixa de correios', vizinho: 'com vizinho', familiar: 'com familiar', amigo: 'com amigo', funcionario: 'com funcionário' };
 function diligFrase(n) {
   if (!n) { return ''; }
   if (n.modo === 'livre') { return String(n.txt || '').trim().replace(/\.+$/, ''); }
-  var f = DIL_SIT[n.sit] || DIL_SIT.ninguem;
+  var f = n.sit ? (DIL_SIT[n.sit] || DIL_SIT.ninguem) : (n.rec === 'portao' ? DIL_SIT.ninguem : '');
   if (n.sit === 'vizinhos' && n.viz) { f += ', que afirmaram não conhecer a pessoa indicada'; }
   if (n.rec === 'pessoa') {
-    f += ', deixei recado com contato com o(a) Sr.(a) ' + (String(n.recNome || '').trim() || 'pessoa não identificada') + (n.recRel ? ' (' + n.recRel + ')' : '');
+    f += (f ? ', ' : '') + 'deixei recado com contato com o(a) Sr.(a) ' + (String(n.recNome || '').trim() || 'pessoa não identificada') + (n.recRel ? ' (' + n.recRel + ')' : '');
   } else if (n.rec) {
-    f += ', deixei recado ' + (n.rec === 'outro' ? 'com ' + (String(n.recOutro || '').trim() || 'outra pessoa') : (DIL_REC[n.rec] || 'no local'));
+    f += (f ? ', ' : '') + 'deixei recado ' + (n.rec === 'outro' ? 'com ' + (String(n.recOutro || '').trim() || 'outra pessoa') : (DIL_REC[n.rec] || 'no local'));
   }
   if (n.rec && n.semRet) { f += ', porém não obtive retorno'; }
+  if (f && n.rec === 'portao' && !n.sit) { f = f.replace(/^não encontrei ninguém no local, deixei recado/, 'não encontrei ninguém no local, deixei recado'); }
   return f;
 }
 function diligObs(n) { var o = n && n.modo !== 'livre' && n.obs ? String(n.obs).trim().replace(/\.+$/, '') : ''; return o ? ' Observação: ' + o + '.' : ''; }
@@ -2767,6 +2783,7 @@ function diligNotasFrases(it) {
     return quando + (n.modo === 'livre' ? ': ' : ', ') + f + '.' + diligObs(n);
   }).filter(function (x) { return x; });
 }
+function semZapTxt(it) { var o = it && it.semZapObs; return o && o.on !== false && o.nums && o.nums.length ? 'Observação: o número de telefone indicado (' + o.nums.join(', ') + ') não possui WhatsApp registrado.' : ''; }
 function diligParagrafo(notas) { return notas && notas.length ? (notas.length === 1 ? 'Registro da diligência: ' : 'Registro das diligências: ') + notas.join(' ') : ''; }
 function fmtVisita(t) {
   var d = new Date(t);
@@ -3175,6 +3192,7 @@ function parteFisicaTexto(key, o) {
   var t = ajustaAto(ov ? preencherPadrao(ov, o) : parteFisicaBase(key, o), o);
   /* as anotações das diligências só entram quando a certidão é negativa */
   if (o && o.notas && o.notas.length && !/^pos/.test(key)) { t += ' ' + diligParagrafo(o.notas); }
+  if (o && o.semZapObs && !/^pos/.test(key)) { t += ' ' + o.semZapObs; }
   return t;
 }
 function parteFisicaBase(key, o) {
@@ -3287,7 +3305,7 @@ function parteLocal(parte, fala, it, ctx) {
       var mor = moradorVoz(fala), pv = parenVoz(fala);
       if ((k === 'mudou' || k === 'naoconhece') && !mor) { faltando.push('nome do morador'); }
       key = k; tipo = 'negativa';
-      texto = parteFisicaTexto(k, { pj: ehEmpresaIt(it), tipo: it.tipo, nome: nome, morador: mor, paren: k === 'mudou' ? parenFrase(pv.op, pv.outro) : '', visitas: ctx.visitas || [], notas: ctx.notas || [] });
+      texto = parteFisicaTexto(k, { pj: ehEmpresaIt(it), tipo: it.tipo, nome: nome, morador: mor, paren: k === 'mudou' ? parenFrase(pv.op, pv.outro) : '', visitas: ctx.visitas || [], notas: ctx.notas || [], semZapObs: ctx.semZapObs || '' });
     } else if (positivo) {
       tipo = 'positiva'; texto = 'CERTIFICO que, em cumprimento ao r. mandado, ' + fraseVoz(fala) + '.';
     } else {
@@ -3399,6 +3417,7 @@ function iaUsuarioParte(d) {
     'PESSOA: ' + d.nome + (d.pj ? ' (empresa)' : ''),
     d.data && d.parte !== 'fis' ? 'DATA DO CONTATO POR WHATSAPP: ' + d.data : '',
     d.parte === 'fis' && d.visitas && d.visitas.length ? 'VISITAS REGISTRADAS: ' + d.visitas.join('; ') : '',
+    d.parte === 'fis' && d.semZapObs ? 'OBSERVAÇÃO (inclua no fim do texto, só porque o resultado é negativo): ' + d.semZapObs : '',
     d.parte === 'fis' && d.notas && d.notas.length ? 'ANOTAÇÕES DAS DILIGÊNCIAS (inclua no fim do texto, só porque o resultado é negativo): ' + d.notas.join(' ') : '',
     d.outra ? 'Já existe outra parte da certidão escrita antes desta: comece com “CERTIFICO ainda que”.' : 'Comece com “CERTIFICO que, em cumprimento ao r. mandado,”.',
     'O QUE O OFICIAL CONTOU (ditado, pode ter erros):',
@@ -4297,10 +4316,10 @@ function iaUsuarioAjuste(d) {
     openModal('Painel do dia',
       '<div class="seg pper">' + seg('hoje', 'Hoje') + seg('mes', 'Este mês') + seg('30', '30 dias') + '</div>' +
       '<p class="note">' + rot + ': ' + (per === 'hoje' ? 'só hoje' : 'de ' + lim.de.split('-').reverse().slice(0, 2).join('/') + ' até hoje') + '.</p>' +
-      '<div class="pgrid">' + card(tot, 'Certidões feitas', '', '') + card(E.z, 'Intimados por WhatsApp', 'zap', '') + card(E.p + ' <small>' + pp + '%</small>', 'Positivas (cumpridos)', 'ok', '') + card(E.n + ' <small>' + pn + '%</small>', 'Negativas', 'neg', '') + card(fmtReais(E.cu), 'Custas das certidões', 'val', '') + card(fmtReais(E.tr), 'Indenização de transporte', 'val', '') + card(E.r, 'Mandados recebidos', '', '') + card(E.m, 'Mensagens abertas', '', '') + '</div>' +
+      '<div class="pgrid">' + card(tot, 'Certidões feitas', '', '') + card(E.z, 'Intimados por WhatsApp', 'zap', '') + card(E.p + ' <small>' + pp + '%</small>', 'Positivas (cumpridos)', 'ok', '') + card(E.n + ' <small>' + pn + '%</small>', 'Negativas', 'neg', '') + card(fmtReais(E.cu), 'Custas das certidões', 'val', '') + card(fmtReais(E.tr), 'Indenização de transporte', 'val', '') + card(E.r, 'Mandados recebidos', '', '') + card(E.m, 'Mensagens abertas', '', '') + '</div>' + temposHtml() +
       (tot ? '<div class="pbar" role="img" aria-label="Positivas ' + pp + '%, negativas ' + pn + '%"><div class="pb-p" style="width:' + (E.p / tot * 100) + '%"></div><div class="pb-n" style="width:' + (E.n / tot * 100) + '%"></div></div><p class="note pleg"><span class="pk ok"></span>Positivas ' + E.p + ' <span class="pk neg"></span>Negativas ' + E.n + (E.o ? ' <span class="pk"></span>Outro meio ' + E.o : '') + '</p>' : '<p class="note">Nenhuma certidão neste período.</p>') +
       '<p class="note" style="margin:12px 0 4px"><strong>Agora</strong> · ' + d.cert + ' de ' + d.total + (d.total === 1 ? ' mandado' : ' mandados') + ' com certidão (' + pct + '%)</p><div class="seqbar"><div style="width:' + pct + '%"></div></div>' +
-      '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.aguard, 'Aguardando on-line', '', 'aguardando') + card(d.prontos, 'Prontos para certificar', '', 'enviar') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + card(d.pos + d.neg, 'Certidões na lista', '', 'devolver') + '</div>' +
+      '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.aguard, 'Exclusivo online', '', 'aguardando') + card(d.prontos, 'Prontos para certificar', '', 'enviar') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + card(d.pos + d.neg, 'Certidões na lista', '', 'devolver') + '</div>' +
       (totAudP ? '<div class="actions pnaud"><button class="btn" type="button" data-hjlista="1">Ver todas as audiências (' + totAudP + ')</button></div>' : '') +
       '<p class="note">Último backup em arquivo: ' + (state.ultimoBackup ? (function (dd) { return dd === 0 ? 'hoje' : 'há ' + dd + (dd === 1 ? ' dia' : ' dias'); })(Math.floor((Date.now() - state.ultimoBackup) / 86400000)) : 'ainda não há') + '.</p>' +
       (retomar ? '<p class="note" style="margin:10px 0 4px"><strong>Retomar de onde parei</strong></p><div class="actions">' + retomar + '</div>' : '<p class="note">Nada em andamento: nenhuma fila nem rota aberta.</p>') +
@@ -4795,7 +4814,7 @@ function iaUsuarioAjuste(d) {
       h += '<div class="grp on ' + corWa + '"><div class="grp-h"><p class="grp-t">WhatsApp Virtual</p>' + addBtn + '</div>' + onl + '</div>';
       if (parPrin) { h += '<div class="grp cert2"><p class="grp-t">Certificar</p><div class="resp"><button class="rbtn neg" data-act="resp" data-p="' + parPrin + '" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><div class="rpos"><button class="rbtn pos" data-act="resp" data-p="' + parPrin + '" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button>' + (loc && temOn2 ? '<button class="rbtn rwa" data-act="resp" data-p="on" data-t="pos" aria-label="Positivo virtual (WhatsApp)" title="Positivo virtual (WhatsApp)"><span class="wai" aria-hidden="true"></span></button>' : '') + '</div></div></div>'; }
       if (loc) {
-        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : '<div class="visgrp' + ((i.visitas || []).length ? ' tem' : '') + '"><button class="btn small primary wide" data-act="visita"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z"/></svg> Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª diligência física</button>' + ((i.visitas || []).length ? '<button class="notasbtn" type="button" data-act="notas" aria-label="Ver as anotações das diligências" title="Anotações das diligências">📝<sup>' + (i.visitas || []).length + '</sup></button>' : '') + '</div>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' diligências</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small certfora" data-act="certfora" aria-label="Encaminhar para Certidões (certificado por outro meio)" title="Encaminhar para Certidões">✅</button><button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
+        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : (i.semZapObs && i.semZapObs.nums && i.semZapObs.nums.length ? '<label class="dgop semzapobs"><input type="checkbox" data-szobs="1"' + (i.semZapObs.on !== false ? ' checked' : '') + '> Constar na certidão: telefone ' + esc(i.semZapObs.nums.join(', ')) + ' sem WhatsApp</label>' : '') + '<div class="visgrp' + ((i.visitas || []).length ? ' tem' : '') + '"><button class="btn small primary wide" data-act="visita"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z"/></svg> Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª diligência física</button>' + ((i.visitas || []).length ? '<button class="notasbtn" type="button" data-act="notas" aria-label="Ver as anotações das diligências" title="Anotações das diligências">📝<sup>' + (i.visitas || []).length + '</sup></button>' : '') + '</div>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' diligências</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small certfora" data-act="certfora" aria-label="Encaminhar para Certidões (certificado por outro meio)" title="Encaminhar para Certidões">✅</button><button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
       }
       if (!((temNum && temNumero) || loc)) { h += '<div class="grp cer"><div class="actions"><button class="btn small primary wide" data-act="certmenu">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button></div></div>'; }
       var man = '';
@@ -5490,7 +5509,15 @@ function iaUsuarioAjuste(d) {
       if (seqModo === 'segunda') { var p1 = new Date(onlineInfo(i, Date.now()).primeira); tag = 'recebeu a 1ª mensagem em ' + pad(p1.getDate()) + '/' + pad(p1.getMonth() + 1) + ' às ' + pad(p1.getHours()) + ':' + pad(p1.getMinutes()); }
     }
     var tels = nums.filter(function (u) { return ents.indexOf(id + '|' + u.n.wa) >= 0; }).map(function (u) { return u.n.label + (u.n.fixo ? ' (fixo)' : ''); });
-    return '<label class="seqrow"><input type="checkbox" data-sqk="' + esc(id) + '"' + (marc[id] ? ' checked' : '') + '> <span><strong>' + esc(i.nome) + '</strong><br><span class="note">' + esc(tag) + '</span><br><span class="note">' + (tels.length > 1 ? tels.length + ' números: ' : '') + esc(tels.join(' · ')) + '</span></span></label>';
+    return '<div class="seqitem"><label class="seqrow"><input type="checkbox" data-sqk="' + esc(id) + '"' + (marc[id] ? ' checked' : '') + '> <span><strong>' + esc(i.nome) + '</strong><br><span class="note">' + esc(tag) + '</span><br><span class="note">' + (tels.length > 1 ? tels.length + ' números: ' : '') + esc(tels.join(' · ')) + '</span></span></label><button type="button" class="btn small sqeye" data-sqver="' + esc(id) + '" aria-label="Ver o mandado"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>Mandado</span></button></div>';
+  }
+  var seqMarcPrev = null;
+  async function verMandadoSeqSel(it, modo) {
+    await viewMandado(it);
+    var d = document.createElement('div'); d.className = 'actions';
+    d.innerHTML = '<button class="btn primary" id="sqVoltaSel">Voltar à seleção</button>';
+    document.getElementById('mbody').appendChild(d);
+    document.getElementById('sqVoltaSel').onclick = function () { abrirSequencia(modo); };
   }
   function abrirSequencia(modo) {
     seqModo = modo === 'segunda' ? 'segunda' : '';
@@ -5500,6 +5527,8 @@ function iaUsuarioAjuste(d) {
     O.verdes.forEach(function (id) { marc[id] = true; });
     O.jaMsg.forEach(function (id) { marc[id] = !!sel[id] || (repOnly && precisaRepetir(byId(id))); });
     O.extras.forEach(function (id) { marc[id] = !!sel[id]; });
+    if (seqMarcPrev && Date.now() - seqMarcPrev.t < 600000) { Object.keys(seqMarcPrev.m).forEach(function (k) { if (k in marc) { marc[k] = seqMarcPrev.m[k]; } }); }
+    seqMarcPrev = null;
     var contaM = function () { return Object.keys(marc).filter(function (k) { return marc[k]; }).length; };
     var contaE = function () { return Object.keys(marc).filter(function (k) { return marc[k]; }).reduce(function (a, k) { return a + entradasDe(k).length; }, 0); };
     var frase = seqModo ? 'Entraram os mandados que receberam a 1ª mensagem no dia anterior (ou antes). A 2ª mensagem libera a partir do meio-dia. Cada número de telefone vai numa mensagem. Toque para tirar algum.' : (O.verdes.length ? 'Já entraram todos os verdes que ainda não receberam mensagem, cada número de telefone numa mensagem. Toque para tirar algum.' : 'Nenhum verde está esperando a primeira mensagem.') +
@@ -5518,6 +5547,12 @@ function iaUsuarioAjuste(d) {
     };
     pinta();
     document.getElementById('mbody').onchange = function (e) { var k = e.target.getAttribute ? e.target.getAttribute('data-sqk') : null; if (k) { marc[k] = !!e.target.checked; pinta(); } };
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-sqver]') : null;
+      if (!b) { return; }
+      var itv = byId(b.getAttribute('data-sqver'));
+      if (itv) { seqMarcPrev = { t: Date.now(), m: JSON.parse(JSON.stringify(marc)) }; verMandadoSeqSel(itv, modo); }
+    };
     document.getElementById('sqIni').onclick = function () {
       var ents = [];
       ordemVisivel.filter(function (id) { return marc[id]; }).forEach(function (id) { ents = ents.concat(entradasDe(id)); });
@@ -5544,7 +5579,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('mbody').innerHTML =
       '<div class="seqbar"><div style="width:' + pct + '%"></div></div>' +
       '<p class="note">' + (seq.k + 1) + ' de ' + n + (seq.feitos ? ' · ' + seq.feitos + (seq.feitos === 1 ? ' aberta' : ' abertas') : '') + (doMesmo.length > 1 ? ' · número ' + pos + ' de ' + doMesmo.length + ' desta pessoa' : '') + '</p>' +
-      '<h2 class="seqnome">' + esc(it.nome) + '</h2>' +
+      '<div class="sqtop"><h2 class="seqnome">' + esc(it.nome) + '</h2><button type="button" class="btn small sqeye" data-sq="ver" data-key="' + esc(key) + '" aria-label="Ver o mandado"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>Mandado</span></button></div>' +
       '<p class="note">' + (rsm ? esc(rsm) + '<br>' : '') + 'Proc. ' + esc(it.processo) + (vcu ? ' · ' + esc(vcu) : '') + '</p>' +
       (it.cls !== 'enviar' ? '<p class="stopnote">Este está marcado como ' + (it.cls === 'nao_enviar' ? 'NÃO enviar' : 'em dúvida') + (it.motivo ? ' (' + esc(it.motivo) + ')' : '') + '. Ao tocar no WhatsApp, passa a “pode enviar”.</p>' : '') +
       (jaNum ? '<p class="note">Este número já recebeu mensagem. Tocar registra mais uma tentativa.</p>' : '') +
@@ -5557,12 +5592,19 @@ function iaUsuarioAjuste(d) {
     document.getElementById('mbody').onclick = seqClique;
     document.getElementById('mbody').onchange = null;
   }
+  async function verMandadoSeq(it) {
+    await viewMandado(it);
+    var d = document.createElement('div'); d.className = 'actions';
+    d.innerHTML = '<button class="btn primary" id="sqVolta">Voltar à sequência</button>';
+    document.getElementById('mbody').appendChild(d);
+    document.getElementById('sqVolta').onclick = function () { openModal(seqModo ? '2ª mensagem em sequência' : 'Citações/intimações em sequência', ''); seqMostra(); };
+  }
   function seqFim(parou) {
     if (!seq) { return; }
     var s2 = seq, resta = s2.ents.length - s2.k;
     state.seqAtiva = null; save();
     document.getElementById('mbody').innerHTML = '<p><strong>' + (parou ? 'Parei aqui.' : 'Fila concluída.') + '</strong> ' + s2.feitos + (s2.feitos === 1 ? ' mensagem aberta' : ' mensagens abertas') + ', ' + s2.pulados + (s2.pulados === 1 ? ' pulada' : ' puladas') + (parou && resta > 0 ? ', ' + resta + (resta === 1 ? ' ficou' : ' ficaram') + ' para depois' : '') + '.</p>' +
-      '<p class="note">Quem recebeu mensagem e não tem endereço físico passa para “Aguardando on-line”. Os outros continuam na lista, com a contagem de tentativas.</p>' +
+      '<p class="note">Quem recebeu mensagem e não tem endereço físico passa para “Exclusivo online”. Os outros continuam na lista, com a contagem de tentativas.</p>' +
       '<div class="actions"><button class="btn primary" id="sqFim">Fechar</button></div>';
     var certSz = [];
     (s2.semz || []).forEach(function (k) { var id = k.slice(0, k.indexOf('|')), i = byId(id); if (i && i.status === 'pendente' && certSz.indexOf(id) === -1 && numerosSeq(i).length && numerosSeq(i).every(function (u) { return (i.semZap || []).indexOf(u.n.wa) !== -1; })) { certSz.push(id); } });
@@ -5593,11 +5635,17 @@ function iaUsuarioAjuste(d) {
       if (!b || b.disabled) { return; }
       var a = b.getAttribute('data-sq'), bkey = b.getAttribute('data-key');
       if (bkey && bkey !== seq.ents[seq.k]) { seqMostra(); return; }   /* a tela estava velha: não registra em outro destinatário */
+      if (a === 'ver') { var iv = entInfo(seq.ents[seq.k]); if (iv.it) { verMandadoSeq(iv.it); } return; }
       if (a === 'semzap') {
         var kz = seq.ents[seq.k], iz = entInfo(kz);
         if (iz.it && iz.u) {
           iz.it.semZap = (iz.it.semZap || []).filter(function (w) { return w !== iz.wa; }).concat([iz.wa]);
-          seq.semz = (seq.semz || []).filter(function (x) { return x !== kz; }).concat([kz]); save(); seqGuarda();
+          seq.semz = (seq.semz || []).filter(function (x) { return x !== kz; }).concat([kz]);
+          /* guarda para a certidão: o número indicado não tem WhatsApp (entra só se continuar negativa; dá para desmarcar no cartão) */
+          iz.it.semZapObs = iz.it.semZapObs || { nums: [], on: true };
+          if (iz.it.semZapObs.nums.indexOf(iz.u.n.label) === -1) { iz.it.semZapObs.nums.push(iz.u.n.label); }
+          save(); seqGuarda(); render();
+          if (etipo(iz.it) === 'local') { seq.k++; seqGuarda(); toast('Sem WhatsApp registrado. Segue para o próximo; a observação vai para a certidão.'); }
         }
         seqMostra(); return;   /* registra e fica nesta tela; quem avança é o botão “Próximo destinatário” */
       }
@@ -6161,7 +6209,7 @@ function iaUsuarioAjuste(d) {
   /* Depois da física: se dá para tentar on-line, aguarda; senão, certifica já */
   function posFisica(it) {
     save();
-    if (onlinePossivel(it)) { tab = 'aguardando'; render(); toast('Diligência física registrada. O mandado está em Aguardando on-line.'); }
+    if (onlinePossivel(it)) { tab = 'aguardando'; render(); toast('Diligência física registrada. O mandado está em Exclusivo online.'); }
     else { render(); toast('Sem número para a on-line: vamos certificar agora.'); openCert(it); }
   }
   var GG_LIMITE_DIA = 150, ggAndamento = false;
@@ -6248,6 +6296,12 @@ function iaUsuarioAjuste(d) {
     ggAndamento = false; definirGeoGoogle(g); save(); render();
     toast('Google: ' + r.casa + ' no número da casa' + (r.rua ? ', ' + r.rua + ' no centro da rua' : '') + (r.nao ? ', ' + r.nao + ' aproximadas (não usei)' : '') + (r.zero ? ', ' + r.zero + ' sem resultado' : '') + (r.fora ? ', ' + r.fora + ' fora da cidade (não usei)' : '') + '.' + (parou ? ' ' + parou : ''));
   }
+  document.getElementById('list').addEventListener('change', function (e) {
+    var c = e.target.closest ? e.target.closest('[data-szobs]') : null;
+    if (!c) { return; }
+    var card0 = c.closest('.card'), it0 = card0 ? byId(card0.getAttribute('data-id')) : null;
+    if (it0 && it0.semZapObs) { it0.semZapObs.on = c.checked; save(); }
+  });
   function abrirExcluirCertidoes() {
     var prontas = state.items.filter(function (i) { return i.status === 'certidao'; }), marc = prontas.filter(function (i) { return sel[i.id]; });
     var alvo = marc.length ? marc : prontas;
@@ -6294,13 +6348,10 @@ function iaUsuarioAjuste(d) {
     openModal('Registrar ' + nv + 'ª diligência física',
       '<p><strong>' + esc(it.nome) + '</strong><br><span class="note">' + esc(it.endereco) + '</span></p>' +
       '<div class="seg" id="dgModo"><button type="button" class="btn small" data-m="op" aria-pressed="true">Escolher opções</button><button type="button" class="btn small" data-m="livre" aria-pressed="false">Escrever do zero</button></div>' +
-      '<div id="dgOp"><p class="note" style="margin:10px 0 2px"><strong>O que aconteceu</strong></p>' +
-      rad('dgSit', 'ninguem', 'Não encontrei ninguém no local', true) + rad('dgSit', 'indicada', 'Não encontrei a pessoa indicada', false) + rad('dgSit', 'vizinhos', 'Conversei com vizinhos', false) +
-      '<div id="dgViz" hidden><label class="dgop"><input type="checkbox" id="dgVizNao" checked> Os vizinhos afirmam que não conhecem a pessoa indicada</label></div>' +
-      '<label class="dgop"><input type="checkbox" id="dgRec"> Deixei recado</label>' +
-      '<div id="dgRecOp" hidden>' + rad('dgRecQ', 'portao', 'com meu contato no portão ou na caixa de correio', true) + rad('dgRecQ', 'pessoa', 'com contato com o(a) Sr.(a):', false) +
+      '<div id="dgOp"><p class="note" style="margin:10px 0 2px"><strong>Deixei recado</strong></p>' +
+      rad('dgRecQ', 'portao', 'portão/caixa de correios', true) + rad('dgRecQ', 'pessoa', 'com contato com o(a) Sr.(a):', false) +
       '<div id="dgPessoa" hidden><input type="text" id="dgRecNome" placeholder="Nome de quem recebeu o recado" autocomplete="off"><select id="dgRecRel" class="sel" aria-label="Quem é"><option>familiar</option><option>filho(a)</option><option>mãe</option><option>pai</option><option>amigo(a)</option><option>funcionário(a)</option><option>vizinho(a)</option></select></div>' +
-      '<label class="dgop"><input type="checkbox" id="dgSemRet" checked> Não obtive retorno</label></div>' +
+      '<label class="dgop"><input type="checkbox" id="dgSemRet" checked> Não obtive retorno</label>' +
       '<label class="f" for="dgObs">Observação extra (opcional)</label><textarea id="dgObs" rows="2" placeholder="Ex.: cachorro no pátio, casa aparentemente vazia"></textarea></div>' +
       '<div id="dgLivre" hidden><label class="f" for="dgTxt">Escreva o que aconteceu (a nota inteira)</label><textarea id="dgTxt" rows="5" placeholder="Ex.: Não encontrei ninguém no local, conversei com vizinhos e deixei recado no portão; os vizinhos afirmam que não conhecem a pessoa indicada."></textarea></div>' +
       '<div class="dg2"><div><label class="f" for="dgData">Data</label><input type="date" id="dgData" value="' + hoje + '"></div><div><label class="f" for="dgHora">Hora</label><input type="time" id="dgHora" value="' + agora + '"></div></div>' +
@@ -6309,15 +6360,12 @@ function iaUsuarioAjuste(d) {
     function $(id) { return document.getElementById(id); }
     function lido() {
       var livre = $('dgModo').querySelector('[data-m="livre"]').getAttribute('aria-pressed') === 'true';
-      var sit = (document.querySelector('input[name="dgSit"]:checked') || {}).value || 'ninguem';
-      var rec = $('dgRec').checked ? ((document.querySelector('input[name="dgRecQ"]:checked') || {}).value || 'portao') : '';
-      return { modo: livre ? 'livre' : 'op', sit: sit, viz: sit === 'vizinhos' && $('dgVizNao').checked, rec: rec, recNome: $('dgRecNome').value, recRel: $('dgRecRel').value, obs: $('dgObs').value, semRet: !!rec && $('dgSemRet').checked, txt: $('dgTxt').value };
+      var rec = (document.querySelector('input[name="dgRecQ"]:checked') || {}).value || 'portao';
+      return { modo: livre ? 'livre' : 'op', sit: '', viz: false, rec: rec, recNome: $('dgRecNome').value, recRel: $('dgRecRel').value, obs: $('dgObs').value, semRet: $('dgSemRet').checked, txt: $('dgTxt').value };
     }
     function quando() { var t = new Date($('dgData').value + 'T' + $('dgHora').value).getTime(); return isNaN(t) ? null : t; }
     function atualizar() {
-      $('dgViz').hidden = (document.querySelector('input[name="dgSit"]:checked') || {}).value !== 'vizinhos';
-      $('dgRecOp').hidden = !$('dgRec').checked;
-      $('dgPessoa').hidden = !($('dgRec').checked && (document.querySelector('input[name="dgRecQ"]:checked') || {}).value === 'pessoa');
+      $('dgPessoa').hidden = (document.querySelector('input[name="dgRecQ"]:checked') || {}).value !== 'pessoa';
       var n = lido(), t = quando(), f = diligFrase(n);
       if (!f) { $('dgPrev').textContent = n.modo === 'livre' ? 'Escreva o texto acima.' : ''; return; }
       var d = new Date(t || Date.now());
@@ -6375,7 +6423,7 @@ function iaUsuarioAjuste(d) {
   function abrirFisNeg(it) {
     var now = new Date(), today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
     openModal('Diligência física',
-      '<p class="note">Registre o que aconteceu no endereço. O mandado vai para a aba <strong>Aguardando on-line</strong>, e a certidão final já vem com estes dados.</p>' +
+      '<p class="note">Registre o que aconteceu no endereço. O mandado vai para a aba <strong>Exclusivo online</strong>, e a certidão final já vem com estes dados.</p>' +
       '<p><strong>' + esc(it.nome) + '</strong><br><span class="note">' + esc(it.endereco) + '</span></p>' +
       '<label class="f" for="fnTipo">O que aconteceu</label><select id="fnTipo" class="sel"><option value="mudou">Mudou-se (o morador atual informou)</option><option value="naoconhece">Não conhece (o morador atual informou)</option><option value="numero">Não achei a numeração</option><option value="outro">Outro (escrever na observação)</option></select>' +
       '<div id="fnMor"><label class="f" for="fnNome">Nome de quem informou (morador atual)</label><input type="text" id="fnNome" autocomplete="off"></div>' +
@@ -6451,7 +6499,7 @@ function iaUsuarioAjuste(d) {
       return '<li>' + esc(u.n.ok ? u.n.label : u.raw) + (u.n.ok ? ' <a class="wa" data-k="' + k + '" href="' + link + '">Abrir o WhatsApp com a mensagem padrão</a>' : ' (não reconhecido)') + ' <button class="btn small ghost" data-rm="' + k + '">Apagar</button></li>';
     }).join('');
     openModal('WhatsApp novo',
-      '<p class="note">Digite o número que você conseguiu. Ele passa a valer como os números do mandado, mesmo que o mandado esteja em vermelho ou amarelo: botão do WhatsApp, copiar mensagem, “já mandei”, contagem das 24 h e das 48 h e aba Aguardando on-line. O 9 e o DDD 45 são incluídos sozinhos.</p>' +
+      '<p class="note">Digite o número que você conseguiu. Ele passa a valer como os números do mandado, mesmo que o mandado esteja em vermelho ou amarelo: botão do WhatsApp, copiar mensagem, “já mandei”, contagem das 24 h e das 48 h e aba Exclusivo online. O 9 e o DDD 45 são incluídos sozinhos.</p>' +
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
       '<p class="note">' + (it.vara ? 'Vara: ' + esc(it.vara) + '<br>' : '') + (resumoAto(it) ? 'O que fazer: ' + esc(resumoAto(it)) : '') + '</p>' +
       '<label class="f" for="tdNum">Número</label><input type="text" id="tdNum" inputmode="tel" placeholder="(45) 99999-9999" autocomplete="off">' +
@@ -6885,7 +6933,7 @@ function iaUsuarioAjuste(d) {
     if (!(opt && opt.final)) { try { $('vzFala').focus(); } catch (e) {} }
     ligarSalvarModelo(it, 'vz', function () { return { onde: 'inteira', tipo: tipoCert, texto: separarDil($('vzOut').value).corpo }; });
     function ctxVoz() {
-      return { visitas: (it.fisica && it.fisica.visitas) || (it.visitas || []).map(fmtVisita), notas: (it.fisica && it.fisica.notas) || diligNotasFrases(it), oficial: oficial, diaCont: diaCont, custas: $('vzCustas').value.replace(/[^\d.,]/g, '').trim(), temCel: temTelefone(it) || !!(it.tentativas && it.tentativas.length), just: justDaTentativa(it.tentativas),
+      return { visitas: (it.fisica && it.fisica.visitas) || (it.visitas || []).map(fmtVisita), notas: (it.fisica && it.fisica.notas) || diligNotasFrases(it), semZapObs: semZapTxt(it), oficial: oficial, diaCont: diaCont, custas: $('vzCustas').value.replace(/[^\d.,]/g, '').trim(), temCel: temTelefone(it) || !!(it.tentativas && it.tentativas.length), just: justDaTentativa(it.tentativas),
         telefones: telefonesUnicos(it.telefones).map(function (u) { return u.n.ok ? u.n.label : u.raw; }),
         fisica: fisicaFeita(it) ? rotuloFis(it.fisica) + (it.fisica.morador ? ' (morador: ' + it.fisica.morador + ')' : '') : '',
         online: onlineInfo(it, Date.now()).n ? onlineInfo(it, Date.now()).n + ' (última em ' + fmtDate(dayKey(onlineInfo(it, Date.now()).ult)) + ')' : '' };
@@ -7027,7 +7075,7 @@ function iaUsuarioAjuste(d) {
   }
   async function iaParte(it, parte, resultado, fala, ctx) {
     var cfg = iaLer() || {}, nome = String(it.nome || '').toUpperCase(), oc = !!cfg.escNome;
-    var d = { parte: parte, resultado: resultado || '', tipoAto: it.tipo || '', nome: oc ? '[NOME]' : nome, pj: ehEmpresaIt(it), outra: !!(ctx && ctx.outra), data: ctx && ctx.diaCont ? fmtDate(ctx.diaCont) : '', visitas: (ctx && ctx.visitas) || [], notas: resultado !== 'positiva' && ctx && ctx.notas ? ctx.notas : [], fala: oc ? iaOcultarNome(fala, nome) : fala };
+    var d = { parte: parte, resultado: resultado || '', tipoAto: it.tipo || '', nome: oc ? '[NOME]' : nome, pj: ehEmpresaIt(it), outra: !!(ctx && ctx.outra), data: ctx && ctx.diaCont ? fmtDate(ctx.diaCont) : '', visitas: (ctx && ctx.visitas) || [], notas: resultado !== 'positiva' && ctx && ctx.notas ? ctx.notas : [], semZapObs: resultado !== 'positiva' && ctx && ctx.semZapObs ? ctx.semZapObs : '', fala: oc ? iaOcultarNome(fala, nome) : fala };
     var sep = iaSepararTipo(iaLimpar(await iaChamar(iaSistema(it.tipo), iaUsuarioParte(d))));
     var texto = iaRestaurarNome(sep.corpo, nome);
     return { modelo: 'ia', tipo: resultado || sep.tipo || 'negativa', texto: texto, faltando: iaFaltando(texto), entendi: 'A IA organizou o que você contou.' };
@@ -7312,7 +7360,7 @@ function iaUsuarioAjuste(d) {
       var fala = $('piFala').value.trim();
       if (!fala) { toast('Conte o que aconteceu'); return; }
       var outra = fis ? (it.partes || {}).on : (it.partes || {}).fis;
-      var ctx = { oficial: oficial, diaCont: diaCont, just: justDaTentativa(it.tentativas), temFisica: etipo(it) === 'local', visitas: (it.fisica && it.fisica.visitas) || (it.visitas || []).map(fmtVisita), notas: (it.fisica && it.fisica.notas) || diligNotasFrases(it), outra: outra ? outra.texto : '' };
+      var ctx = { oficial: oficial, diaCont: diaCont, just: justDaTentativa(it.tentativas), temFisica: etipo(it) === 'local', visitas: (it.fisica && it.fisica.visitas) || (it.visitas || []).map(fmtVisita), notas: (it.fisica && it.fisica.notas) || diligNotasFrases(it), semZapObs: semZapTxt(it), outra: outra ? outra.texto : '' };
       $('piNote').textContent = ia ? 'A IA está escrevendo…' : 'Escrevendo…'; $('piGo').disabled = true;
       var r = null, origem = '', aviso = '';
       if (ia) {
@@ -8243,6 +8291,7 @@ function iaUsuarioAjuste(d) {
     var perto = pertoDaCasa(arr, fimEf(), zonasAtivas() ? raioCasa() : 0);
     var modo = modoRota(), bg = modo === 'bairro' ? agruparBairros(arr) : null, num = 0;
     var bgx = bg || agruparBairros(arr);
+    out += '<div class="actions rtodos"><button class="btn small" data-rtodos="1">' + (marcadasRota().length ? 'Limpar todos' : 'Selecionar todos') + '</button></div>';
     var susp = arr.filter(function (c) { return !pontoOverride(c) && (!ruaNoMapa(c) || (bgx.longe && bgx.longe[c.id])); });
     if (susp.length) { out += '<div class="suspbox">⚠ <strong>' + susp.length + (susp.length === 1 ? ' parada com ponto duvidoso' : ' paradas com ponto duvidoso') + '</strong> (rua não achada ou longe do resto do bairro): ' + esc(susp.map(function (c) { return c.nome; }).join(', ')) + '. Toque em <em>ver no mapa</em> para conferir ou em <em>Corrigir</em> antes de sair.</div>'; }
     if (MODO_ATALHO) {
@@ -8285,21 +8334,32 @@ function iaUsuarioAjuste(d) {
     var bg = agruparBairros(arr), pts = arr.map(function (i) { return bg.ef[i.id] || bg.pts[i.id] || null; });
     var ok = pts.filter(function (x) { return x; });
     if (ok.length < 2) { return ''; }
-    var la = ok.map(function (p) { return p[0]; }), lo = ok.map(function (p) { return p[1]; });
-    var minLa = Math.min.apply(null, la), maxLa = Math.max.apply(null, la), minLo = Math.min.apply(null, lo), maxLo = Math.max.apply(null, lo);
-    var cosl = Math.cos((minLa + maxLa) / 2 * Math.PI / 180), esc0 = Math.max((maxLo - minLo) * cosl, maxLa - minLa) || 1, S = 300, pad = 20, k = (S - 2 * pad) / esc0;
-    function X(p) { return (pad + (p[1] - minLo) * cosl * k).toFixed(1); }
-    function Y(p) { return (pad + (maxLa - p[0]) * k).toFixed(1); }
+    /* projeção Mercator (a mesma do mapa real): 0..1 em x e y */
+    function merc(p) { var sn = Math.sin(p[0] * Math.PI / 180); return [(p[1] + 180) / 360, 0.5 - Math.log((1 + sn) / (1 - sn)) / (4 * Math.PI)]; }
+    var mm = ok.map(merc), mxs = mm.map(function (q) { return q[0]; }), mys = mm.map(function (q) { return q[1]; });
+    var minX = Math.min.apply(null, mxs), maxX = Math.max.apply(null, mxs), minY = Math.min.apply(null, mys), maxY = Math.max.apply(null, mys);
+    var S = 300, pad = 26, span = Math.max(maxX - minX, maxY - minY) || 1e-6, k = (S - 2 * pad) / span;
+    var wx0 = (minX + maxX) / 2 - S / 2 / k, wy0 = (minY + maxY) / 2 - S / 2 / k;
+    function X(p) { return ((merc(p)[0] - wx0) * k).toFixed(1); }
+    function Y(p) { return ((merc(p)[1] - wy0) * k).toFixed(1); }
+    /* ladrilhos do OpenStreetMap por baixo (sem internet fica só o fundo cinza) */
+    var zt = Math.max(0, Math.min(18, Math.round(Math.log(k / 220) / Math.LN2))), nt = Math.pow(2, zt), tiles = '';
+    var tx0 = Math.floor(wx0 * nt), tx1 = Math.floor((wx0 + S / k) * nt), ty0 = Math.max(0, Math.floor(wy0 * nt)), ty1 = Math.min(nt - 1, Math.floor((wy0 + S / k) * nt));
+    for (var ty = ty0; ty <= ty1; ty++) {
+      for (var tx = tx0; tx <= tx1; tx++) {
+        tiles += '<image href="https://tile.openstreetmap.org/' + zt + '/' + (((tx % nt) + nt) % nt) + '/' + ty + '.png" x="' + ((tx / nt - wx0) * k).toFixed(1) + '" y="' + ((ty / nt - wy0) * k).toFixed(1) + '" width="' + (k / nt + 0.6).toFixed(1) + '" height="' + (k / nt + 0.6).toFixed(1) + '" preserveAspectRatio="none"/>';
+      }
+    }
     var N = arr.length, linhas = '', bolas = '', ant = null, total = 0, maior = { d: 0, a: null, b: null }, antI = null;
     arr.forEach(function (i, n) {
       var p = pts[n];
       if (!p) { return; }
       var cor = 'hsl(' + Math.round(120 - 120 * n / Math.max(1, N - 1)) + ',70%,38%)';
-      if (ant) { linhas += '<line x1="' + X(ant) + '" y1="' + Y(ant) + '" x2="' + X(p) + '" y2="' + Y(p) + '" stroke="' + cor + '" stroke-width="2" opacity=".7"/>'; var d = distKm(ant, p); total += d; if (d > maior.d) { maior = { d: d, a: antI, b: i }; } }
+      if (ant) { linhas += '<line x1="' + X(ant) + '" y1="' + Y(ant) + '" x2="' + X(p) + '" y2="' + Y(p) + '" stroke="' + cor + '" stroke-width="3.5" opacity=".9"/>'; var d = distKm(ant, p); total += d; if (d > maior.d) { maior = { d: d, a: antI, b: i }; } }
       bolas += '<circle cx="' + X(p) + '" cy="' + Y(p) + '" r="9" fill="' + cor + '"' + (bg.longe[i.id] ? ' stroke="#B3261E" stroke-width="3" stroke-dasharray="3 2"' : '') + '/><text x="' + X(p) + '" y="' + (+Y(p) + 3.5) + '" font-size="10" text-anchor="middle" fill="#fff" font-weight="700">' + (n + 1) + '</text>';
       ant = p; antI = i;
     });
-    return '<details class="chk"><summary><strong>Ver a rota no mapa</strong></summary><svg viewBox="0 0 ' + S + ' ' + S + '" width="100%" role="img" aria-label="Pontos da rota no mapa" style="background:rgba(127,127,127,.12);border-radius:10px;margin-top:8px">' + linhas + bolas + '</svg>' +
+    return '<details class="chk"><summary><strong>Ver a rota no mapa</strong></summary><svg viewBox="0 0 ' + S + ' ' + S + '" width="100%" role="img" aria-label="Pontos da rota no mapa" style="background:rgba(127,127,127,.12);border-radius:10px;margin-top:8px">' + tiles + linhas + bolas + '<rect x="196" y="288" width="104" height="12" fill="#fff" opacity=".75"/><text x="298" y="297" font-size="8" text-anchor="end" fill="#333">© OpenStreetMap</text></svg>' +
       '<p class="note">Do verde (começo) ao vermelho (fim). Percurso em linha reta: <strong>' + total.toFixed(1).replace('.', ',') + ' km</strong>.' + (maior.a ? ' Maior trecho: <strong>' + maior.d.toFixed(1).replace('.', ',') + ' km</strong>, de ' + esc(maior.a.nome) + ' para ' + esc(maior.b.nome) + '.' : '') + ' Círculo tracejado em vermelho: ponto longe do resto do bairro, confira a rua.</p></details>';
   }
   function marcadasRota() { var mk = state.cfg.rotaMarcadas || {}; return rotaSel().filter(function (i) { return mk[i.id]; }); }
@@ -8326,6 +8386,7 @@ function iaUsuarioAjuste(d) {
   }
   function selRotaHtml() {
     var d = selRotaDados(), n = d.m.length, temZap = !!zapHref('x');
+    var btTodos = document.querySelector('#rBody [data-rtodos]'); if (btTodos) { btTodos.textContent = n ? 'Limpar todos' : 'Selecionar todos'; }
     function dis(rot) { return '<span class="btn dis" role="button" aria-disabled="true">' + rot + '</span>'; }
     var wa = temZap ? (n ? '<a class="btn primary" style="text-decoration:none" id="rSelWa" href="' + zapHref(d.txt) + '">WhatsApp' + esc(zapRotulo()) + '</a>' : dis('WhatsApp')) : '';
     var sms = n ? '<button class="btn" id="rSelZap" data-smssel="1">' + esc(smsBotao()) + '</button>' : dis(esc(smsBotao()));
@@ -8709,13 +8770,18 @@ function iaUsuarioAjuste(d) {
     if (!lista.length) { toast('Todos os mandados já têm mensagem enviada e estão dentro do prazo.'); return; }
     var sig = {}, ord = {};
     lista.forEach(function (i, k) { sig[i.id] = sigRota(i); ord[i.id] = k + 1; });
-    state.rotaAtiva = { ids: lista.map(function (i) { return i.id; }), pul: {}, sig: sig, ord: ord, cumpr: true, t0: Date.now(), cur: lista[0].id, idx: 0 };
+    state.rotaAtiva = { ids: lista.map(function (i) { return i.id; }), pul: {}, sig: sig, ord: ord, cumpr: true, t0: Date.now(), cur: lista[0].id, idx: 0, est: estimativaMin(lista.map(function (i) { return i.id; })), acum: 0, seg: Date.now() };
     tab = 'enviar'; save(); closeModal(); render();
+  }
+  function fimTempo(ra, n) {
+    if (!ra.tFim) { ra.tFim = Date.now(); ra.acum = tempoDecorrido(ra); ra.seg = null; registrarTempo(ra, n); save(); }
+    var real = ra.acum || 0, est = (ra.est || 0) * 60000, dif = Math.round((real - est) / 60000);
+    return '<p>Tempo: <strong>' + fmtDur(real) + '</strong>' + (est ? ' · estimado ' + fmtDur(est) + ' (' + (dif === 0 ? 'igual à estimativa' : Math.abs(dif) + ' min a ' + (dif > 0 ? 'mais' : 'menos')) + ')' : '') + '</p>';
   }
   function cumprHtml() {
     var ra = state.rotaAtiva, lista = cumprLista(), n = ra.ids.length;
     if (!lista.length) {
-      return '<div class="cumprwrap" id="cumprWrap"><section class="cumprfim"><h2>Cumprimento concluído</h2><p>' + n + ' de ' + n + (n === 1 ? ' mandado atendido.' : ' mandados atendidos.') + '</p><button class="btn primary" type="button" data-cb="sair">Sair do modo cumprimento</button></section></div>';
+      return '<div class="cumprwrap" id="cumprWrap"><section class="cumprfim"><h2>Cumprimento concluído</h2><p>' + n + ' de ' + n + (n === 1 ? ' mandado atendido.' : ' mandados atendidos.') + '</p>' + fimTempo(ra, n) + '<button class="btn primary" type="button" data-cb="sair">Sair do modo cumprimento</button></section></div>';
     }
     var k = cumprPos(lista), id = lista[k], it = byId(id);
     if (ra.cur !== id || ra.idx !== k) { ra.cur = id; ra.idx = k; save(); }
@@ -8731,7 +8797,7 @@ function iaUsuarioAjuste(d) {
     var ra = state.rotaAtiva, lista = cumprLista(), n = ra.ids.length, feitas = n - lista.length, pct = Math.round(feitas / n * 100);
     var id = lista.length ? lista[cumprPos(lista)] : '', num = lista.length ? ((ra.ord && ra.ord[id]) || cumprPos(lista) + 1) : n;
     el.hidden = false;
-    el.innerHTML = '<div class="cb-row"><strong class="cb-cont">' + num + '/' + n + '</strong><span class="cb-falta">' + (lista.length ? 'faltam ' + lista.length : 'tudo atendido') + '</span><span class="cb-gap"></span><button type="button" class="btn small ghost" data-cb="sair">Sair</button></div><div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (lista.length > 1 ? '<p class="cb-dica">Deslize: esquerda = próximo, direita = anterior.</p>' : '');
+    el.innerHTML = '<div class="cumprlogo">' + avatarHtml() + '<span>Modo cumprimento</span></div><div class="cumprcron"><span>⏱ <strong id="cumprCron">' + fmtCron(tempoDecorrido(ra)) + '</strong></span>' + (ra.est ? '<small>estimativa ' + fmtDur(ra.est * 60000) + '</small>' : '') + '<button type="button" class="btn small ghost" data-cb="reiniciar">Reiniciar cronômetro</button></div><div class="cb-row"><strong class="cb-cont">' + num + '/' + n + '</strong><span class="cb-falta">' + (lista.length ? 'faltam ' + lista.length : 'tudo atendido') + '</span><span class="cb-gap"></span><button type="button" class="btn small ghost" data-cb="sair">Sair</button></div><div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (lista.length > 1 ? '<p class="cb-dica">Deslize: esquerda = próximo, direita = anterior.</p>' : '');
   }
   /* d = +1 próximo, -1 anterior; a ordem nunca muda, só o cartão que aparece */
   function cumprIr(d) {
@@ -8781,9 +8847,13 @@ function iaUsuarioAjuste(d) {
     var b = e.target.closest ? e.target.closest('[data-cb]') : null;
     if (!b || !state.rotaAtiva) { return; }
     var ra = state.rotaAtiva;
-    if (b.getAttribute('data-cb') === 'sair') {
-      if (!cumprLista().length) { state.rotaAtiva = null; toast('Cumprimento concluído.'); } else { ra.cumpr = false; }
+    if (b.getAttribute('data-cb') === 'reiniciar') { ra.acum = 0; ra.seg = Date.now(); save(); render(); toast('Cronômetro reiniciado.'); return; }
+      if (b.getAttribute('data-cb') === 'sair') {
+      var voltarRota = false;
+      if (!cumprLista().length) { state.rotaAtiva = null; toast('Cumprimento concluído.'); }
+      else { ra.acum = tempoDecorrido(ra); ra.seg = null; ra.cumpr = false; ra.ids.forEach(function (id) { var x = byId(id); if (x && x.status === 'pendente') { sel[id] = true; } }); voltarRota = true; }
       save(); render();
+      if (voltarRota) { document.getElementById('btnRoute').onclick(); }
     }
   });
   function iniciarRota() {
@@ -8852,16 +8922,41 @@ function iaUsuarioAjuste(d) {
     var b = e.target.closest ? e.target.closest('[data-rb]') : null;
     if (!b) { return; }
     if (b.getAttribute('data-rb') === 'stop') { var prevRa = state.rotaAtiva; state.rotaAtiva = null; save(); render(); toast('Rota encerrada.', function () { state.rotaAtiva = prevRa; save(); render(); }); }
-    else if (b.getAttribute('data-rb') === 'cumpr') { state.rotaAtiva.cumpr = true; tab = 'enviar'; save(); render(); }
+    else if (b.getAttribute('data-rb') === 'cumpr') { state.rotaAtiva.cumpr = true; state.rotaAtiva.seg = state.rotaAtiva.seg || Date.now(); tab = 'enviar'; save(); render(); }
     else { mostrarRota(); }
   });
-  function iniciarBox() {
-    var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
-    return lista.length ? '<div class="actions"><button class="btn primary wide" data-rinicia="1">Iniciar rota (' + lista.length + (lista.length === 1 ? ' parada' : ' paradas') + ')</button></div>' : '';
+  function iniciarBox() { return ''; }
+  /* ===== Tempo: estimativa da rota, cronômetro do modo cumprimento e médias ===== */
+  function fmtDur(ms) { var m = Math.round(ms / 60000), h = Math.floor(m / 60); return h ? h + ' h ' + (m % 60 < 10 ? '0' : '') + (m % 60) + ' min' : m + ' min'; }
+  function fmtCron(ms) { var t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), x = t % 60; function z(v) { return (v < 10 ? '0' : '') + v; } return z(h) + ':' + z(m) + ':' + z(x); }
+  function tempoDecorrido(ra) { return (ra.acum || 0) + (ra.seg ? Date.now() - ra.seg : 0); }
+  /* estimativa: distância em linha reta x 1,4 (as ruas são mais longas que a reta) a 25 km/h + 6 min de atendimento por parada */
+  function estimativaMin(ids) {
+    var cfg = state.cfg.est || {}, vel = cfg.vel || 25, atend = cfg.atend || 6, pts = [], tot = 0, k;
+    ids.forEach(function (id) { var i = byId(id), q = i ? pontoDe(i) : null; if (q) { pts.push(q); } });
+    for (k = 1; k < pts.length; k++) { tot += distKm(pts[k - 1], pts[k]); }
+    return Math.round(tot * 1.4 / vel * 60 + ids.length * atend);
   }
+  function registrarTempo(ra, n) {
+    state.tempos = state.tempos || [];
+    state.tempos.push({ d: dayKey(Date.now()), est: ra.est || 0, real: Math.round((ra.acum || 0) / 6000) / 10, n: n });
+    if (state.tempos.length > 400) { state.tempos.shift(); }
+  }
+  function temposHtml() {
+    var T = state.tempos || [];
+    function desde(dias) { var lim = Date.now() - dias * 86400000; return T.filter(function (r) { return new Date(r.d + 'T12:00:00').getTime() >= lim; }); }
+    var mesAtual = dayKey(Date.now()).slice(0, 7);
+    function lin(rot, L) {
+      if (!L.length) { return '<li><strong>' + rot + '</strong>: sem dados ainda</li>'; }
+      var tr = L.reduce(function (a, r) { return a + r.real; }, 0), tn = L.reduce(function (a, r) { return a + (r.n || 0); }, 0);
+      return '<li><strong>' + rot + '</strong>: ' + fmtDur(tr / L.length * 60000) + ' por rota' + (tn ? ' · ' + fmtDur(tr / tn * 60000) + ' por mandado' : '') + ' (' + L.length + (L.length === 1 ? ' rota' : ' rotas') + ')</li>';
+    }
+    return '<p class="note" style="margin:12px 0 2px"><strong>Tempo para cumprir (média)</strong></p><ul class="note" style="margin:0;padding-left:18px">' + lin('Semana', desde(7)) + lin('Quinzena', desde(15)) + lin('Mês', T.filter(function (r) { return r.d.slice(0, 7) === mesAtual; })) + lin('30 dias', desde(30)) + '</ul>';
+  }
+  setInterval(function () { var e = document.getElementById('cumprCron'); if (e && state.rotaAtiva && state.rotaAtiva.cumpr) { e.textContent = fmtCron(tempoDecorrido(state.rotaAtiva)); } }, 1000);
   function cumprBtnHtml() {
     var m = marcadasRota(), lista = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
-    return lista.length ? '<button class="btn wide cumprbtn" type="button" data-rcumpr="1">' + avatarHtml() + '<span>Modo cumprimento</span></button>' : '';
+    return lista.length ? '<button class="btn wide cumprbtn" type="button" data-rcumpr="1">' + avatarHtml() + '<span>Modo cumprimento</span></button><p class="note">⏱ Estimativa para concluir: <strong>' + fmtDur(estimativaMin(lista.map(function (i) { return i.id; })) * 60000) + '</strong> (' + lista.length + (lista.length === 1 ? ' parada' : ' paradas') + ')</p>' : '';
   }
   function rotaCorpo() { return cumprBtnHtml() + saidaBox() + iniciarBox() + reordBox() + comoRotaHtml() + manualNota() + foraDaRota() + '<div id="rOut">' + routeHtml() + '</div>' + listasBox() + mapaBox() + zapBox() + '<div id="rSelBox">' + selRotaHtml() + '</div>'; }
   function zapBox() {
@@ -9021,6 +9116,14 @@ function iaUsuarioAjuste(d) {
       var rini = e.target.closest('[data-rinicia]');
       if (rini) { iniciarRota(); return; }
       if (e.target.closest('[data-rnext]')) { proximas10(); return; }
+      if (e.target.closest('[data-rtodos]')) {
+        if (marcadasRota().length) { state.cfg.rotaMarcadas = {}; save(); sincMarcas(); return; }
+        var todasR = rotaSel(); state.cfg.rotaMarcadas = {};
+        todasR.slice(0, MAX_MARCA).forEach(function (c) { state.cfg.rotaMarcadas[c.id] = true; });
+        save(); sincMarcas();
+        if (todasR.length > MAX_MARCA) { toast('Marquei as ' + MAX_MARCA + ' primeiras: é o limite por vez. Use “Próximas ' + MAX_MARCA + '” para o resto.'); }
+        return;
+      }
       var ggb = e.target.closest('[data-gg]');
       if (ggb) { if (!ggb.disabled) { buscarGoogle(ggb.getAttribute('data-gg'), ggb).then(function () { refaz(); }); } return; }
       if (e.target.closest('[data-rcumpr]')) { iniciarCumprimento(); return; }
