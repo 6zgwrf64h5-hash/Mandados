@@ -981,6 +981,8 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .notasbtn { width: 42px; height: 36px; border-radius: 18px; white-space: nowrap; font-size: 16px; }
 .notasbtn sup { font-size: 11px; }
 .visgrp.tem .btn[data-act="visita"] { padding-right: 54px; }
+
+.ggbox { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0 8px; }
 </style>
 </head>
 <body>
@@ -1961,7 +1963,16 @@ var _ruasIdx = null;
       var v = rec.slice(q + 1).split(' ');
       cep[rec.slice(0, q)] = [base[0] + (+v[0]) / 1e5, base[1] + (+v[1]) / 1e5];
     });
-    _ruasPacotes[cod] = { n: pac.n || '', u: pac.u || '', m: m, cep: cep };
+    var num = {};
+    String(pac.a || '').split('|').forEach(function (rec) {
+      var q = rec.indexOf('=');
+      if (q < 1) { return; }
+      var k = chaveRua(rec.slice(0, q));
+      if (!k) { return; }
+      var an = rec.slice(q + 1).split(';').map(function (t) { var v = t.split(' '); return { n: +v[0], p: [base[0] + (+v[1]) / 1e5, base[1] + (+v[2]) / 1e5] }; });
+      num[k] = (num[k] || []).concat(an).sort(function (a, b) { return a.n - b.n; });
+    });
+    _ruasPacotes[cod] = { n: pac.n || '', u: pac.u || '', m: m, cep: cep, num: num };
     _ruasIdx = null;
   }
   function removerPacoteRuas(cod) { delete _ruasPacotes[cod]; _ruasIdx = null; }
@@ -2006,6 +2017,39 @@ var _ruasIdx = null;
     var cs = cidadesDoItem(x);
     for (var a = 0; a < cs.length; a++) { var q = _ruasPacotes[cs[a]]; if (q && q.cep[d]) { return q.cep[d]; } }
     return null;
+  }
+  /* Pontos numerados das ruas longas (pacote v2): o número da casa dá a posição na rua */
+  function pontoPorNumeroCod(x) {
+    var se = enderecoSimples(x.endRota && !ehCoord(x.endRota) ? x.endRota : x.endereco), n = parseInt(se.numero, 10);
+    if (!(n > 0)) { return null; }
+    var k = chaveRua(se.rua);
+    if (!k) { return null; }
+    var cs = cidadesDoItem(x);
+    for (var a = 0; a < cs.length; a++) {
+      var q = _ruasPacotes[cs[a]], an = q && q.num && q.num[k];
+      if (!an || an.length < 2) { continue; }
+      if (n <= an[0].n) { return { p: an[0].p, cod: cs[a] }; }
+      if (n >= an[an.length - 1].n) { return { p: an[an.length - 1].p, cod: cs[a] }; }
+      for (var i = 1; i < an.length; i++) {
+        if (n <= an[i].n) { var A = an[i - 1], B = an[i], f = (n - A.n) / ((B.n - A.n) || 1); return { p: [A.p[0] + (B.p[0] - A.p[0]) * f, A.p[1] + (B.p[1] - A.p[1]) * f], cod: cs[a] }; }
+      }
+    }
+    return null;
+  }
+  function pontoPorNumero(x) { var r = pontoPorNumeroCod(x); return r ? r.p : null; }
+  /* Google: o que ele respondeu fica guardado por até 30 dias (Termos do Google) */
+  var _geoGoogle = {};
+  var GEO_VALIDADE = 30 * 86400000;
+  function definirGeoGoogle(o) { _geoGoogle = o || {}; }
+  function chaveGeo(x) { return norm(String(x.endereco || '') + ' ' + String(x.bairro || '') + ' ' + String(x.cidade || '')); }
+  function geoGoogleTentou(x) { var g = _geoGoogle[chaveGeo(x)]; return !!(g && g.t && Date.now() - g.t <= GEO_VALIDADE); }
+  function geoGoogleDe(x) { var g = _geoGoogle[chaveGeo(x)]; return g && g.t && !g.nao && Date.now() - g.t <= GEO_VALIDADE ? g : null; }
+  /* Pontos que valem mais que o mapa da rua: o que você colou, o que o Google achou, o número da casa no pacote */
+  function pontoOverride(x) {
+    if (x.endRotaManual) { var mm = coordManual(x); if (mm) { return mm; } }
+    var g = geoGoogleDe(x);
+    if (g) { return [g.la, g.lo]; }
+    return pontoPorNumero(x);
   }
 /* Devolve os pontos possíveis da rua (um por trecho com o mesmo nome) ou null */
 function pontosRua(endereco, cids) {
@@ -2079,7 +2123,7 @@ function localizarRuas(list) {
   return list.map(function (x, n) { var c = _posCache[x.id]; return c && c.e === chaveItem(x) ? c.p : bruto[n]; });
 }
 function coordManual(x) { if (x && x.endRota && ehCoord(x.endRota)) { var q = String(x.endRota).split(','); return [parseFloat(q[0]), parseFloat(q[1])]; } return null; }
-  function pontoDe(x) { var c = _posCache[x.id]; if (c && c.e === chaveItem(x)) { return c.p || coordManual(x) || pontoCep(x) || null; } var p = localizarBruto([x])[0]; return p || coordManual(x) || pontoCep(x) || null; }
+  function pontoDe(x) { var ov = pontoOverride(x); if (ov) { return ov; } var c = _posCache[x.id]; if (c && c.e === chaveItem(x)) { return c.p || coordManual(x) || pontoCep(x) || null; } var p = localizarBruto([x])[0]; return p || coordManual(x) || pontoCep(x) || null; }
 function cepsUnicos(list) {
   var por = {}, out = {};
   list.forEach(function (i) { var p = pontosRua(i.endereco, cidadesDoItem(i)), c = String(i.cep || '').slice(0, 5); if (p && p.length === 1 && c.length === 5) { (por[c] = por[c] || []).push(p[0]); } });
@@ -2504,6 +2548,11 @@ function refinarCaminho(lista, inicio, fixos) {
 /* De onde veio o ponto usado para a parada (para o usuário poder conferir) */
 function fonteDoPonto(x) {
   var end = x.endRota && !ehCoord(x.endRota) ? x.endRota : (x.ruaRef || x.endereco), k = chaveDoEndereco(end);
+  if (x.endRotaManual && coordManual(x)) { return 'ponto que você colou'; }
+  var gg = geoGoogleDe(x);
+  if (gg) { return 'Google, ' + (gg.tp === 'ROOFTOP' || gg.tp === 'RANGE_INTERPOLATED' ? 'número da casa' : (gg.tp === 'GEOMETRIC_CENTER' ? 'centro da rua' : 'aproximado')); }
+  var pn = pontoPorNumeroCod(x);
+  if (pn) { return 'pacote de ' + _ruasPacotes[pn.cod].n + ', pelo número da casa'; }
   if (k && _ruasUsuario[k]) { return 'rua que você ensinou'; }
   var cs = cidadesDoItem(x), idx = ruasIdx(), a, n;
   for (a = 0; a < cs.length; a++) {
@@ -3639,7 +3688,7 @@ function iaUsuarioAjuste(d) {
   }
   var posRota = {}, ordemVisivel = [], cardN = 0;
   function ordemRota(list) {
-    definirRuasUsuario(state.cfg.ruasAprendidas);
+    definirRuasUsuario(state.cfg.ruasAprendidas); definirGeoGoogle(state.cfg.geoGoogle);
     definirAprendizado(state.cfg.aprender === false ? null : aprendido());
     definirDicas({ bairros: state.cfg.bairroPts, ceps: state.cfg.cepPts, cepBairro: state.cfg.cepBairro });
     aprenderBairros(state.items);
@@ -4422,7 +4471,7 @@ function iaUsuarioAjuste(d) {
 
   /* Tela */
   function render() {
-    definirRuasUsuario(state.cfg.ruasAprendidas);
+    definirRuasUsuario(state.cfg.ruasAprendidas); definirGeoGoogle(state.cfg.geoGoogle);
     var tabs = ['enviar', 'aguardando', 'devolver'];
     tabs.forEach(function (t) {
       var n = state.items.filter(function (i) { return inTab(i, t); }).length;
@@ -4770,7 +4819,7 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="meMat">Matrícula</label><input type="text" id="meMat" value="' + esc(me.mat) + '" autocomplete="off">' +
       '<label class="f" for="meDDD">DDD da sua região (completa os telefones que vêm sem DDD)</label><input type="text" id="meDDD" inputmode="numeric" maxlength="2" placeholder="Ex.: 45" value="' + esc(state.cfg.ddd || '') + '" autocomplete="off">' +
       '<label class="dgop"><input type="checkbox" id="meEnq"' + (state.cfg.enquadrarAuto === false ? '' : ' checked') + '> Enquadrar fotos automaticamente ao juntar (recorta as bordas; dá para desfazer em cada imagem)</label>' +
-      '<label class="f" for="meNav">Aplicativo de navegação (ao tocar no endereço do cartão)</label><select id="meNav" class="sel"><option value="google"' + (navApp() === 'google' ? ' selected' : '') + '>Google Maps</option><option value="waze"' + (navApp() === 'waze' ? ' selected' : '') + '>Waze</option><option value="apple"' + (navApp() === 'apple' ? ' selected' : '') + '>Apple Maps</option></select><p class="note">Google Maps e Waze começam a navegação direto. O Apple Maps abre a rota pronta e pode pedir um toque em “Iniciar”. Vale um destino por vez; com o CarPlay, a rota aparece na tela do carro.</p>' +
+      '' + (MODO_ATALHO ? '<label class="f" for="meGoogle">Chave do Google (opcional, para conferir endereços)</label><input type="password" id="meGoogle" value="' + esc(chaveGoogle()) + '" autocomplete="off"><p class="note">Só rua, número, bairro e cidade vão ao Google, <strong>nunca o nome da parte</strong>. A chave fica só neste aparelho. No Google Cloud, ative a Geocoding API e <strong>limite o uso diário</strong>. O app também para em ' + GG_LIMITE_DIA + ' consultas por dia.</p>' : '') + '<label class="f" for="meNav">Aplicativo de navegação (ao tocar no endereço do cartão)</label><select id="meNav" class="sel"><option value="google"' + (navApp() === 'google' ? ' selected' : '') + '>Google Maps</option><option value="waze"' + (navApp() === 'waze' ? ' selected' : '') + '>Waze</option><option value="apple"' + (navApp() === 'apple' ? ' selected' : '') + '>Apple Maps</option></select><p class="note">Google Maps e Waze começam a navegação direto. O Apple Maps abre a rota pronta e pode pedir um toque em “Iniciar”. Vale um destino por vez; com o CarPlay, a rota aparece na tela do carro.</p>' +
       '<label class="f" for="meDil">Custas (valor padrão), em R$: vai nas certidões</label><input type="text" id="meDil" value="' + esc(me.diligencia || '108,63') + '" inputmode="decimal" autocomplete="off">' +
       '<label class="f" for="meSms">Celular que recebe a rota por SMS (quando você toca em “Enviar por SMS”)</label><input type="text" id="meSms" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuSmsTxt()) + '" autocomplete="off"><p class="note" id="meSmsNota"></p>' +
       '<label class="f" for="meZap">WhatsApp que recebe a rota (abre a conversa com o link já pronto)</label><input type="text" id="meZap" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuZapTxt()) + '" autocomplete="off"><p class="note" id="meZapNota"></p>' +
@@ -4848,6 +4897,10 @@ function iaUsuarioAjuste(d) {
         var ch = String(document.getElementById('meChave').value || '').trim();
         try { if (ch) { localStorage.setItem('mandados-ia-chave', ch); } else { localStorage.removeItem('mandados-ia-chave'); } } catch (e) {}
         state.cfg.iaModelo = String(document.getElementById('meModelo').value || '').trim() || null;
+      }
+      if (MODO_ATALHO && document.getElementById('meGoogle')) {
+        var gk = String(document.getElementById('meGoogle').value || '').trim();
+        try { if (gk) { localStorage.setItem('mandados-google-chave', gk); } else { localStorage.removeItem('mandados-google-chave'); } } catch (e) {}
       }
       state.cfg.meuZap = String(document.getElementById('meZap').value || '').trim();
       state.cfg.enquadrarAuto = document.getElementById('meEnq').checked ? null : false;
@@ -6093,6 +6146,90 @@ function iaUsuarioAjuste(d) {
     save();
     if (onlinePossivel(it)) { tab = 'aguardando'; render(); toast('Diligência física registrada. O mandado está em Aguardando on-line.'); }
     else { render(); toast('Sem número para a on-line: vamos certificar agora.'); openCert(it); }
+  }
+  var GG_LIMITE_DIA = 150, ggAndamento = false;
+  function chaveGoogle() { try { return localStorage.getItem('mandados-google-chave') || ''; } catch (e) { return ''; } }
+  function enderecoParaGoogle(c) {
+    var se = enderecoSimples(c.endereco), bruto = String(c.cidade || ''), cid = bruto.split('/')[0].trim() || (cidades()[0] || '');
+    var uf = (/\/\s*([A-Za-z]{2})\s*$/.exec(bruto) || [])[1] || ufCfg();
+    return [se.texto, c.bairro, cid + (uf ? ' - ' + String(uf).toUpperCase() : ''), 'Brasil'].filter(function (x) { return x; }).join(', ');
+  }
+  function carregarGoogleJs(key) {
+    return new Promise(function (res, rej) {
+      if (window.google && window.google.maps && window.google.maps.Geocoder) { res(); return; }
+      var sc = document.createElement('script');
+      sc.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&language=pt-BR&region=BR'; sc.async = true;
+      sc.onload = function () { if (window.google && window.google.maps && window.google.maps.Geocoder) { res(); } else { rej(new Error('sem Geocoder')); } };
+      sc.onerror = function () { rej(new Error('script')); };
+      document.head.appendChild(sc);
+    });
+  }
+  async function geocodificarGoogleJs(end, key) {
+    try { await carregarGoogleJs(key); } catch (e) { return { status: 'SEM_REDE' }; }
+    return await new Promise(function (res) {
+      new window.google.maps.Geocoder().geocode({ address: end, componentRestrictions: { country: 'BR' }, region: 'BR' }, function (rs, st) {
+        if (st !== 'OK' || !rs || !rs[0]) { res({ status: st || 'ERRO' }); return; }
+        var x = rs[0], l = x.geometry.location;
+        res({ status: 'OK', la: l.lat(), lo: l.lng(), tp: x.geometry.location_type, pm: !!x.partial_match });
+      });
+    });
+  }
+  async function geocodificarGoogle(end) {
+    var key = chaveGoogle(), r;
+    try { r = await fetch('https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(end) + '&components=country:BR&region=br&language=pt-BR&key=' + encodeURIComponent(key)); }
+    catch (e) { return await geocodificarGoogleJs(end, key); }
+    if (!r.ok) { return { status: 'HTTP_' + r.status }; }
+    var j = await r.json(), x = j.results && j.results[0];
+    if (j.status !== 'OK' || !x) { return { status: j.status || 'ERRO' }; }
+    return { status: 'OK', la: x.geometry.location.lat, lo: x.geometry.location.lng, tp: x.geometry.location_type, pm: !!x.partial_match };
+  }
+  function ggMsgErro(st) {
+    if (st === 'REQUEST_DENIED') { return 'O Google recusou a chave. Confira se a Geocoding API está ativada e se a chave não bloqueia este site.'; }
+    if (st === 'OVER_QUERY_LIMIT' || st === 'OVER_DAILY_LIMIT') { return 'O Google atingiu o limite de consultas da sua chave.'; }
+    if (st === 'INVALID_REQUEST') { return 'O Google não aceitou o pedido (confira o endereço).'; }
+    return 'Sem resposta do Google (internet ou bloqueio).';
+  }
+  function ggRefPonto(excluir) {
+    var pts = rotaSel().filter(function (c) { return c.id !== excluir; }).map(function (c) { return pontoEfetivo(c); }).filter(Boolean);
+    if (pts.length < 2) { return null; }
+    var la = pts.map(function (q) { return q[0]; }).sort(function (a, b) { return a - b; }), lo = pts.map(function (q) { return q[1]; }).sort(function (a, b) { return a - b; });
+    return [la[Math.floor(la.length / 2)], lo[Math.floor(lo.length / 2)]];
+  }
+  async function buscarGoogle(modo, btn) {
+    if (ggAndamento) { return; }
+    if (!chaveGoogle()) { toast('Cadastre a chave do Google em Meus dados.'); return; }
+    var arr = rotaSel(), bgx = agruparBairros(arr);
+    var alvo = arr.filter(function (c) {
+      if (geoGoogleTentou(c) || pontoOverride(c)) { return false; }
+      return modo === 'todas' ? true : (!ruaNoMapa(c) || (bgx.longe && bgx.longe[c.id]));
+    });
+    if (!alvo.length) { toast('Nada para buscar no Google.'); return; }
+    if (!state.cfg.ggAviso) {
+      if (window.confirm && !window.confirm('Vou mandar ao Google, para ' + alvo.length + (alvo.length === 1 ? ' parada' : ' paradas') + ', só a rua, o número, o bairro e a cidade (sem o nome da parte). Continuar?')) { return; }
+      state.cfg.ggAviso = true; save();
+    }
+    var hoje = dayKey(Date.now()), dia = state.cfg.ggDia && state.cfg.ggDia.d === hoje ? state.cfg.ggDia : { d: hoje, n: 0 };
+    state.cfg.ggDia = dia;
+    var g = state.cfg.geoGoogle = state.cfg.geoGoogle || {}, r = { casa: 0, rua: 0, nao: 0, zero: 0, fora: 0 }, parou = '';
+    ggAndamento = true;
+    for (var k = 0; k < alvo.length; k++) {
+      if (dia.n >= GG_LIMITE_DIA) { parou = 'Parei: limite de ' + GG_LIMITE_DIA + ' consultas por dia do app.'; break; }
+      var c = alvo[k];
+      if (btn) { btn.textContent = 'Buscando ' + (k + 1) + ' de ' + alvo.length + '…'; }
+      var local = pontoEfetivo(c); dia.n++;
+      var x = await geocodificarGoogle(enderecoParaGoogle(c));
+      if (x.status === 'ZERO_RESULTS') { r.zero++; g[chaveGeo(c)] = { t: Date.now(), nao: true, tp: 'ZERO' }; continue; }
+      if (x.status !== 'OK') { parou = ggMsgErro(x.status); break; }
+      var ref = ggRefPonto(c.id);
+      if (ref && distKm([x.la, x.lo], ref) > 60) { r.fora++; g[chaveGeo(c)] = { t: Date.now(), nao: true, tp: x.tp }; continue; }
+      var casaNivel = x.tp === 'ROOFTOP' || x.tp === 'RANGE_INTERPOLATED', aprox = x.tp === 'APPROXIMATE' || x.pm;
+      var usar = !aprox && (casaNivel || (x.tp === 'GEOMETRIC_CENTER' && !local));
+      g[chaveGeo(c)] = { la: x.la, lo: x.lo, t: Date.now(), tp: x.tp, pm: !!x.pm, nao: !usar };
+      if (usar) { if (casaNivel) { r.casa++; } else { r.rua++; } } else { r.nao++; }
+      await new Promise(function (res) { setTimeout(res, 120); });
+    }
+    ggAndamento = false; definirGeoGoogle(g); save(); render();
+    toast('Google: ' + r.casa + ' no número da casa' + (r.rua ? ', ' + r.rua + ' no centro da rua' : '') + (r.nao ? ', ' + r.nao + ' aproximadas (não usei)' : '') + (r.zero ? ', ' + r.zero + ' sem resultado' : '') + (r.fora ? ', ' + r.fora + ' fora da cidade (não usei)' : '') + '.' + (parou ? ' ' + parou : ''));
   }
   function abrirDiligencia(it) {
     var nv = (it.visitas || []).length + 1, now = new Date();
@@ -7960,7 +8097,7 @@ function iaUsuarioAjuste(d) {
   function sortedSel() {
     return ordemRota(pendAll().filter(function (i) { return sel[i.id]; }));
   }
-  function ruaNoMapa(i) { if (typeof RUAS_OSM === 'undefined' || (i.endRota && ehCoord(i.endRota))) { return true; } var cs = cidadesDoItem(i); return !!pontosRua(i.endRota || i.endereco, cs.length ? cs : codigosRuas()); }
+  function ruaNoMapa(i) { if (pontoOverride(i)) { return true; } if (typeof RUAS_OSM === 'undefined' || (i.endRota && ehCoord(i.endRota))) { return true; } var cs = cidadesDoItem(i); return !!pontosRua(i.endRota || i.endereco, cs.length ? cs : codigosRuas()); }
   var RE_COORD = /^\s*-?\d{1,3}\.\d+\s*,\s*-?\d{1,3}\.\d+\s*$/;
   function pontoTexto(i, txt) {
     var cs = cidadesDoItem(i), p = pontosRua(txt || i.endRota || i.endereco, cs.length ? cs : codigosRuas());
@@ -8011,7 +8148,7 @@ function iaUsuarioAjuste(d) {
     return sp.length ? '<p class="note"><strong>' + sp.length + (sp.length === 1 ? ' endereço sem rua achada no mapa, sem CEP e sem bairro conhecido está' : ' endereços sem rua achada no mapa, sem CEP e sem bairro conhecido estão') + ' no fim da lista:</strong> ' + esc(sp.map(function (i) { return i.nome; }).join(', ')) + '. A ordem deles pode não ser a melhor.</p>' : '';
   }
   function pontoUsadoHtml(c, bgx) {
-    var p = (bgx && ((bgx.ef && bgx.ef[c.id]) || (bgx.pts && bgx.pts[c.id]))) || pontoEfetivo(c);
+    var p = pontoOverride(c) || (bgx && ((bgx.ef && bgx.ef[c.id]) || (bgx.pts && bgx.pts[c.id]))) || pontoEfetivo(c);
     if (!p) { return '<div class="pusado">📍 sem ponto no mapa: fica no fim da rota</div>'; }
     var f = fonteDoPonto(c), la = p[0].toFixed(6), lo = p[1].toFixed(6);
     return '<div class="pusado">📍 ' + p[0].toFixed(5) + ', ' + p[1].toFixed(5) + (f ? ' · ' + esc(f) : '') + ' · <a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + la + ',' + lo + '">ver no mapa</a></div>';
@@ -8025,8 +8162,12 @@ function iaUsuarioAjuste(d) {
     var perto = pertoDaCasa(arr, fimEf(), zonasAtivas() ? raioCasa() : 0);
     var modo = modoRota(), bg = modo === 'bairro' ? agruparBairros(arr) : null, num = 0;
     var bgx = bg || agruparBairros(arr);
-    var susp = arr.filter(function (c) { return !ruaNoMapa(c) || (bgx.longe && bgx.longe[c.id]); });
+    var susp = arr.filter(function (c) { return !pontoOverride(c) && (!ruaNoMapa(c) || (bgx.longe && bgx.longe[c.id])); });
     if (susp.length) { out += '<div class="suspbox">⚠ <strong>' + susp.length + (susp.length === 1 ? ' parada com ponto duvidoso' : ' paradas com ponto duvidoso') + '</strong> (rua não achada ou longe do resto do bairro): ' + esc(susp.map(function (c) { return c.nome; }).join(', ')) + '. Toque em <em>ver no mapa</em> para conferir ou em <em>Corrigir</em> antes de sair.</div>'; }
+    if (MODO_ATALHO) {
+      var ggTem = !!chaveGoogle(), nDuv = susp.length, nTodas = arr.filter(function (c) { return !geoGoogleTentou(c) && !pontoOverride(c); }).length;
+      out += '<div class="ggbox">' + (ggTem ? '<button class="btn small" data-gg="duv"' + (nDuv ? '' : ' disabled') + '>Buscar no Google as duvidosas (' + nDuv + ')</button><button class="btn small ghost" data-gg="todas"' + (nTodas ? '' : ' disabled') + '>Todas (' + nTodas + ')</button>' : '<span class="note">Para conferir endereços no Google, cadastre a chave em Meus dados.</span>') + '</div>';
+    }
     rotaLinks = []; rotaLinksB = []; rotaBlocos = [];
     function chaveBlk(x) { return perto[x.id] ? 'C' : (bg ? (bg.chave[x.id] || '-') : (zmap[x.id] != null ? zmap[x.id] : -1)); }
     var blocos = quebrarBlocos(arr, tamRota(), function () { return 0; });
@@ -8043,7 +8184,7 @@ function iaUsuarioAjuste(d) {
         var txt = chip + '<strong>' + esc(c.nome) + '</strong> - ' + esc(c.endRota || se.texto) + (c.bairro ? ', ' + esc(c.bairro) : '') +
           (c.endRota ? ' <span class="flag">' + (RE_COORD.test(c.endRota) ? 'ponto da rua (coordenadas)' : 'endereço corrigido') + '</span>' : (!se.numero ? ' <span class="flag">sem número: só a rua</span>' : '')) +
           (!ruaNoMapa(c) ? ' <span class="flag stop">rua não encontrada no mapa: confira</span>' : '') +
-          (bgx.longe && bgx.longe[c.id] ? ' <span class="flag stop">ponto longe do resto do bairro: confira a rua</span>' : '') + pontoUsadoHtml(c, bgx);
+          (bgx.longe && bgx.longe[c.id] && !pontoOverride(c) ? ' <span class="flag stop">ponto longe do resto do bairro: confira a rua</span>' : '') + pontoUsadoHtml(c, bgx);
         if (modoReord) { out += '<li data-id="' + esc(c.id) + '" class="reord"><div class="prow" data-drag><span class="drag">≡</span><div class="pc">' + txt + '</div></div></li>'; }
         else {
           out += '<li data-id="' + esc(c.id) + '"><div class="prow"><div class="pc"><label class="rsel"><input type="checkbox" data-rsel="' + esc(c.id) + '"' + ((state.cfg.rotaMarcadas || {})[c.id] ? ' checked' : '') + ' aria-label="Marcar ' + esc(c.nome) + ' para uma rota só com as paradas marcadas"></label>' + txt +
@@ -8768,6 +8909,8 @@ function iaUsuarioAjuste(d) {
       var rini = e.target.closest('[data-rinicia]');
       if (rini) { iniciarRota(); return; }
       if (e.target.closest('[data-rnext]')) { proximas10(); return; }
+      var ggb = e.target.closest('[data-gg]');
+      if (ggb) { if (!ggb.disabled) { buscarGoogle(ggb.getAttribute('data-gg'), ggb).then(function () { refaz(); }); } return; }
       if (e.target.closest('[data-rcumpr]')) { iniciarCumprimento(); return; }
       var sm1 = e.target.closest('[data-smsrota]'), smA = e.target.closest('[data-smsall]'), smS = e.target.closest('[data-smssel]'), rsAll = e.target.closest('[data-rselall]');
       if (sm1) { var jr = +sm1.getAttribute('data-smsrota') - 1; enviarSms('Rota ' + (jr + 1) + ': ' + (rotaLinks[jr] || '')); return; }
@@ -8871,29 +9014,30 @@ function iaUsuarioAjuste(d) {
       if (/maps\.app\.goo\.gl|goo\.gl\/maps/i.test(v)) { toast('Esse link curto não traz as coordenadas. Segure o dedo no ponto e copie os números.'); return; }
       var pt = lerPontoMaps(v);
       if (!pt) { toast('Não achei coordenadas aí. Cole algo como -25.5486, -54.5580 ou o link completo do Google Maps.'); return; }
-      it.endRota = pt[0].toFixed(6) + ',' + pt[1].toFixed(6); it.ruaRef = it.ruaRef || it.endereco;
+      it.endRota = pt[0].toFixed(6) + ',' + pt[1].toFixed(6); it.endRotaManual = true; it.ruaRef = it.ruaRef || it.endereco;
       var k = chaveDoEndereco(it.endereco);
       if (k) { (state.cfg.ruasAprendidas = state.cfg.ruasAprendidas || {})[k] = [pt]; }
-      definirRuasUsuario(state.cfg.ruasAprendidas);
+      definirRuasUsuario(state.cfg.ruasAprendidas); definirGeoGoogle(state.cfg.geoGoogle);
       volta(); toast('Ponto guardado: o app lembra dessa rua.');
     };
     $('ceSave').onclick = function () { var v = $('ceTxt').value.trim(); it.endRota = v || null; if (!v) { delete it.endRota; } volta(); };
     $('ceRua').onclick = function () { it.endRota = enderecoSimples($('ceTxt').value).rua || se.rua; volta(); };
     $('ceOrig').onclick = function () {
-      delete it.endRota;
+      delete it.endRota; delete it.endRotaManual;
       var k = chaveDoEndereco(it.endereco);
-      if (k && state.cfg.ruasAprendidas) { delete state.cfg.ruasAprendidas[k]; definirRuasUsuario(state.cfg.ruasAprendidas); }
+      if (k && state.cfg.ruasAprendidas) { delete state.cfg.ruasAprendidas[k]; definirRuasUsuario(state.cfg.ruasAprendidas); definirGeoGoogle(state.cfg.geoGoogle); }
       volta();
     };
     $('ceCoord').onclick = function () {
       var c = pontoTexto(it, $('ceTxt').value.trim() || it.endereco);
       if (!c) { toast('Não achei essa rua no mapa daqui. Cole o ponto do Google Maps acima.'); return; }
-      it.endRota = c; it.ruaRef = $('ceTxt').value.trim() || it.endereco; volta();
+      it.endRota = c; delete it.endRotaManual; it.ruaRef = $('ceTxt').value.trim() || it.endereco; volta();
     };
   }
 
   render();
   carregarRuasSalvas();
+  (function () { var g = state.cfg.geoGoogle || {}; Object.keys(g).forEach(function (k) { if (!g[k] || !g[k].t || Date.now() - g[k].t > 30 * 86400000) { delete g[k]; } }); state.cfg.geoGoogle = g; definirGeoGoogle(g); })();
 
   /* Botão × do lado direito dos campos de texto: apaga o que foi digitado.
      Fica de fora das caixas grandes (texto da certidão), para um toque sem querer não apagar tudo. */

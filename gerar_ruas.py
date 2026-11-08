@@ -27,6 +27,10 @@ BASE_PADRAO = ("https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins
 API_MUNICIPIOS = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
 CELULA = 0.005          # ~550 m: ruas longas viram vários pontos (um por trecho)
 MAX_PONTOS_RUA = 10
+MAX_ANCORAS = 16        # pontos numerados por rua longa (número da casa -> posição)
+SALTO_KM = 0.35         # distância entre números vizinhos que separa um trecho do outro
+RUA_LONGA_KM = 0.4      # só ruas mais longas que isto ganham pontos numerados
+MIN_NUMEROS = 6
 JUNTAR_KM = 0.35       # pontos da mesma rua mais perto que isto viram um só
 RAIO_CEP_MAX_KM = 0.6   # CEP só entra se os endereços dele forem juntos (senão é "CEP da cidade inteira")
 MIN_ENDERECOS_CEP = 3
@@ -274,8 +278,11 @@ def processar(linhas, cod_municipio=None, log=print):
         if not chave:
             continue
         usadas += 1
-        d = ruas.setdefault(chave, {'nomes': Counter(), 'cel': {}})
+        d = ruas.setdefault(chave, {'nomes': Counter(), 'cel': {}, 'nums': []})
         d['nomes'][nome.upper()] += 1
+        nn = re.sub(r'\D', '', g(r, 'NUM_ENDERECO'))
+        if nn and 0 < int(nn) < 100000:
+            d['nums'].append((int(nn), lat, lng))
         cel = (math.floor(lat / CELULA), math.floor(lng / CELULA))
         a = d['cel'].setdefault(cel, [0, 0.0, 0.0])
         a[0] += 1; a[1] += lat; a[2] += lng
@@ -283,8 +290,43 @@ def processar(linhas, cod_municipio=None, log=print):
     return ruas, ceps
 
 
+def ancoras_da_rua(nums):
+    """Ruas longas: alguns pontos (número da casa, lat, lng) em ordem de número, para achar a posição de um número."""
+    if len(nums) < MIN_NUMEROS:
+        return None
+    ext = max(km(a[1], a[2], b[1], b[2]) for a in (nums[0], nums[len(nums) // 2], nums[-1]) for b in (nums[0], nums[len(nums) // 2], nums[-1]))
+    if max(ext, max(km(nums[0][1], nums[0][2], x[1], x[2]) for x in nums)) < RUA_LONGA_KM:
+        return None
+    nums = sorted(nums)
+    # 1) separa os trechos contínuos (salto de distância entre números vizinhos = outro trecho da rua)
+    runs, atual = [], [nums[0]]
+    for x in nums[1:]:
+        if km(atual[-1][1], atual[-1][2], x[1], x[2]) > SALTO_KM:
+            runs.append(atual); atual = []
+        atual.append(x)
+    runs.append(atual)
+    # 2) dentro de cada trecho, alguns pontos com a média de posição (nunca mistura trechos diferentes)
+    out, vistos = [], set()
+    for run in runs:
+        k = max(1, min(6, len(run) // 3))
+        for i in range(k):
+            grupo = run[i * len(run) // k:(i + 1) * len(run) // k]
+            if not grupo:
+                continue
+            num = grupo[len(grupo) // 2][0]
+            if num in vistos:
+                continue
+            vistos.add(num)
+            out.append((num, sum(x[1] for x in grupo) / len(grupo), sum(x[2] for x in grupo) / len(grupo)))
+    out.sort()
+    if len(out) > MAX_ANCORAS:
+        out = [out[round(i * (len(out) - 1) / (MAX_ANCORAS - 1))] for i in range(MAX_ANCORAS)]
+    return out if len(out) >= 2 else None
+
+
 def montar_pacote(cidade, ruas, ceps):
     pontos_ruas = {}
+    ancoras = {}
     todos = []
     for chave, d in ruas.items():
         nome = d['nomes'].most_common(1)[0][0]
@@ -298,6 +340,10 @@ def montar_pacote(cidade, ruas, ceps):
                 break
         pontos_ruas[nome] = pts
         todos.extend(pts)
+        a = ancoras_da_rua(d['nums'])
+        if a:
+            ancoras[nome] = a
+            todos.extend((x[1], x[2]) for x in a)
     pontos_cep = {}
     for cep, (n, sx, sy, sxx, syy) in ceps.items():
         if n < MIN_ENDERECOS_CEP:
@@ -316,9 +362,10 @@ def montar_pacote(cidade, ruas, ceps):
     r = '|'.join('%s=%s' % (nome.replace('|', ' ').replace('=', ' '), ';'.join(enc(p) for p in pts))
                  for nome, pts in sorted(pontos_ruas.items()))
     p = '|'.join('%s=%s' % (cep, enc(pt)) for cep, pt in sorted(pontos_cep.items()))
-    return {'v': 1, 'c': cidade['c'], 'n': cidade['n'], 'u': cidade['u'],
+    nn = '|'.join('%s=%s' % (nome.replace('|', ' ').replace('=', ' '), ';'.join('%d %s' % (a[0], enc((a[1], a[2]))) for a in an)) for nome, an in sorted(ancoras.items()))
+    return {'v': 2, 'c': cidade['c'], 'n': cidade['n'], 'u': cidade['u'],
             'f': 'IBGE, Censo Demográfico 2022, CNEFE', 't': time.strftime('%Y-%m-%d'),
-            'b': [b0, b1], 'r': r, 'p': p}, len(pontos_ruas), len(pontos_cep)
+            'b': [b0, b1], 'r': r, 'p': p, 'a': nn}, len(pontos_ruas), len(pontos_cep)
 
 
 def gravar(saida, cidade, pacote, n_ruas, n_ceps):
