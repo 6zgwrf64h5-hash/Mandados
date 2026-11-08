@@ -924,6 +924,28 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .card .grp.fis .actions .btn[data-act="visita"] { align-items: center; justify-content: center; }
 
 .legend[hidden] { display: none !important; }
+
+.pusado { font-size: 12px; opacity: .8; margin: 3px 0 6px; line-height: 1.35; }
+.pusado a { color: inherit; font-weight: 700; }
+.suspbox { background: #FFE1E1; color: #7A1B1B; border: 1px solid #F0B4B4; border-radius: 12px; padding: 10px 12px; margin: 8px 0; font-size: 13px; line-height: 1.4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .suspbox { background: #4A2323; color: #FFD6D6; border-color: #7A3A3A; } }
+:root[data-theme="dark"] .suspbox { background: #4A2323; color: #FFD6D6; border-color: #7A3A3A; }
+
+.pcard.val strong { font-size: 20px; }
+
+#rSelBox { position: sticky; bottom: 0; z-index: 7; }
+.rselbar.vazia { border-color: var(--line); box-shadow: 0 -2px 8px rgba(0,0,0,.1); }
+.rselbar .actions { grid-template-columns: repeat(3, 1fr); }
+.rselbar .actions .btn { font-size: 13px; padding: 6px 4px; line-height: 1.2; }
+.rselhead { flex-wrap: wrap; }
+.rselbtns { display: flex; gap: 6px; }
+.btn.dis { background: #C9CDD6 !important; color: #6B7280 !important; border-color: #C9CDD6 !important; opacity: .6; pointer-events: none; box-shadow: none !important; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.dis { background: #3A3D47 !important; color: #8A8F9C !important; border-color: #3A3D47 !important; } }
+:root[data-theme="dark"] .btn.dis { background: #3A3D47 !important; color: #8A8F9C !important; border-color: #3A3D47 !important; }
+.rbar { display: flex; gap: 8px; align-items: stretch; }
+.rbar .cumprbtn { flex: 1; justify-content: flex-start; text-align: left; }
+.rbar .cumprbtn small { font-weight: 600; opacity: .8; }
+.rbx { flex: none; width: 52px; border-radius: 14px; border: 1px solid rgba(255,255,255,.35); background: #0B0B0F; color: #fff; font-size: 20px; font-weight: 800; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -2401,7 +2423,64 @@ function ordenarVizinho(list, inicio, primeiroId) {
     }
     var nx = resto.splice(bi, 1)[0]; out.push(nx); atual = pontoDe(nx);
   }
+  out = refinarCaminho(out, inicio || null, Math.min(1, out.length));
   return out.concat(sem).map(function (x) { return porId[x.id] || x; });
+}
+/* Refina a ordem: depois do "vizinho mais próximo" (guloso), troca trechos (2-opt) e muda paradas de lugar (Or-opt) enquanto o caminho encurtar.
+   O ponto de partida e a 1ª parada ficam fixos. Guarda o último resultado para não recalcular a cada tela. */
+var _refCache = {};
+var GANHO_MIN = 0.25;   /* km: só troca a ordem se ganhar pelo menos isto (evita sair da vizinhança e voltar por quase nada) */
+function refinarCaminho(lista, inicio, fixos) {
+  var n = lista.length;
+  if (n < 4) { return lista; }
+  var P = lista.map(function (x) { return pontoDe(x); });
+  var chave = lista.map(function (x) { return x.id; }).join(',') + '|' + (inicio ? inicio[0].toFixed(5) + ',' + inicio[1].toFixed(5) : '') + '|' + fixos + '|' + P.map(function (q) { return q[0].toFixed(5) + q[1].toFixed(5); }).join(';');
+  if (_refCache[chave]) { return _refCache[chave].map(function (i) { return lista[i]; }); }
+  var ord = lista.map(function (_, i) { return i; });
+  function comp(o) { var t = 0, a = inicio || null, k; for (k = 0; k < o.length; k++) { if (a) { t += distKm(a, P[o[k]]); } a = P[o[k]]; } return t; }
+  var melhor = comp(ord), voltas = 0, mexeu = true, i, j, k2, seg, rv, cand, c, resto, s0, v, achou;
+  while (mexeu && voltas++ < 40) {
+    mexeu = false;
+    for (i = fixos; i < n - 1; i++) {
+      for (j = i + 1; j < n; j++) {
+        cand = ord.slice(0, i).concat(ord.slice(i, j + 1).reverse(), ord.slice(j + 1)); c = comp(cand);
+        if (c < melhor - GANHO_MIN) { ord = cand; melhor = c; mexeu = true; }
+      }
+    }
+    achou = false;
+    for (seg = 1; seg <= 3 && !achou; seg++) {
+      for (i = fixos; i + seg <= n && !achou; i++) {
+        s0 = ord.slice(i, i + seg); resto = ord.slice(0, i).concat(ord.slice(i + seg));
+        for (k2 = fixos; k2 <= resto.length && !achou; k2++) {
+          if (k2 === i) { continue; }
+          for (rv = 0; rv < 2 && !achou; rv++) {
+            v = rv ? s0.slice().reverse() : s0;
+            cand = resto.slice(0, k2).concat(v, resto.slice(k2)); c = comp(cand);
+            if (c < melhor - GANHO_MIN) { ord = cand; melhor = c; mexeu = true; achou = true; }
+          }
+        }
+      }
+    }
+  }
+  var ks = Object.keys(_refCache); if (ks.length > 12) { delete _refCache[ks[0]]; }
+  _refCache[chave] = ord;
+  return ord.map(function (i) { return lista[i]; });
+}
+/* De onde veio o ponto usado para a parada (para o usuário poder conferir) */
+function fonteDoPonto(x) {
+  var end = x.endRota && !ehCoord(x.endRota) ? x.endRota : (x.ruaRef || x.endereco), k = chaveDoEndereco(end);
+  if (k && _ruasUsuario[k]) { return 'rua que você ensinou'; }
+  var cs = cidadesDoItem(x), idx = ruasIdx(), a, n;
+  for (a = 0; a < cs.length; a++) {
+    if (idx[cs[a]] && idx[cs[a]].m[k]) {
+      n = idx[cs[a]].m[k].length;
+      return (/^\d+$/.test(cs[a]) ? 'pacote de ' + _ruasPacotes[cs[a]].n : 'lista básica') + (n > 1 ? ', ' + n + ' trechos' : ', 1 ponto só');
+    }
+  }
+  if (pontosRua(end, cs.length ? cs : codigosRuas())) { return 'rua parecida no mapa'; }
+  if (coordManual(x)) { return 'ponto que você colou'; }
+  if (pontoCep(x)) { return 'pelo CEP'; }
+  return 'pela vizinhança do bairro';
 }
 function pontoEfetivo(x) {
   var e = Object.assign({}, x, x.endRota ? { endereco: ehCoord(x.endRota) ? (x.ruaRef || x.endereco) : x.endRota } : {});
@@ -4026,11 +4105,12 @@ function iaUsuarioAjuste(d) {
         var c = dia(i.certidao.data || dayKey(i.added || Date.now())), tp = i.certidao.tipo;
         if (tp === 'positiva') { c.p = (c.p || 0) + 1; if (i.certidao.canal === 'wa' || (i.partes && i.partes.on && i.partes.on.tipo === 'positiva')) { c.z = (c.z || 0) + 1; } }
         else if (tp === 'negativa') { c.n = (c.n || 0) + 1; } else { c.o = (c.o || 0) + 1; }
+        c.cu = Math.round(((c.cu || 0) + (custasDe(i) || 0)) * 100) / 100; c.tr = Math.round(((c.tr || 0) + (transpDe(i) || 0)) * 100) / 100;
       }
     });
   }
   function estatPeriodo(de, ate) {
-    var t = { p: 0, n: 0, o: 0, z: 0, r: 0, m: 0 };
+    var t = { p: 0, n: 0, o: 0, z: 0, r: 0, m: 0, cu: 0, tr: 0 };
     function soma(e) { for (var k in t) { t[k] += e[k] || 0; } }
     Object.keys(state.hist || {}).forEach(function (d) { if (d >= de && d <= ate) { soma(state.hist[d]); } });
     state.items.forEach(function (i) {
@@ -4041,9 +4121,11 @@ function iaUsuarioAjuste(d) {
         if (dc >= de && dc <= ate) {
           if (tp === 'positiva') { t.p++; if (i.certidao.canal === 'wa' || (i.partes && i.partes.on && i.partes.on.tipo === 'positiva')) { t.z++; } }
           else if (tp === 'negativa') { t.n++; } else { t.o++; }
+          t.cu += custasDe(i) || 0; t.tr += transpDe(i) || 0;
         }
       }
     });
+    t.cu = Math.round(t.cu * 100) / 100; t.tr = Math.round(t.tr * 100) / 100;
     return t;
   }
   function limitesPeriodo(per) {
@@ -4082,7 +4164,7 @@ function iaUsuarioAjuste(d) {
     openModal('Painel do dia',
       '<div class="seg pper">' + seg('hoje', 'Hoje') + seg('mes', 'Este mês') + seg('30', '30 dias') + '</div>' +
       '<p class="note">' + rot + ': ' + (per === 'hoje' ? 'só hoje' : 'de ' + lim.de.split('-').reverse().slice(0, 2).join('/') + ' até hoje') + '.</p>' +
-      '<div class="pgrid">' + card(tot, 'Certidões feitas', '', '') + card(E.z, 'Intimados por WhatsApp', 'zap', '') + card(E.p + ' <small>' + pp + '%</small>', 'Positivas (cumpridos)', 'ok', '') + card(E.n + ' <small>' + pn + '%</small>', 'Negativas', 'neg', '') + card(E.r, 'Mandados recebidos', '', '') + card(E.m, 'Mensagens abertas', '', '') + '</div>' +
+      '<div class="pgrid">' + card(tot, 'Certidões feitas', '', '') + card(E.z, 'Intimados por WhatsApp', 'zap', '') + card(E.p + ' <small>' + pp + '%</small>', 'Positivas (cumpridos)', 'ok', '') + card(E.n + ' <small>' + pn + '%</small>', 'Negativas', 'neg', '') + card(fmtReais(E.cu), 'Custas das certidões', 'val', '') + card(fmtReais(E.tr), 'Indenização de transporte', 'val', '') + card(E.r, 'Mandados recebidos', '', '') + card(E.m, 'Mensagens abertas', '', '') + '</div>' +
       (tot ? '<div class="pbar" role="img" aria-label="Positivas ' + pp + '%, negativas ' + pn + '%"><div class="pb-p" style="width:' + (E.p / tot * 100) + '%"></div><div class="pb-n" style="width:' + (E.n / tot * 100) + '%"></div></div><p class="note pleg"><span class="pk ok"></span>Positivas ' + E.p + ' <span class="pk neg"></span>Negativas ' + E.n + (E.o ? ' <span class="pk"></span>Outro meio ' + E.o : '') + '</p>' : '<p class="note">Nenhuma certidão neste período.</p>') +
       '<p class="note" style="margin:12px 0 4px"><strong>Agora</strong> · ' + d.cert + ' de ' + d.total + (d.total === 1 ? ' mandado' : ' mandados') + ' com certidão (' + pct + '%)</p><div class="seqbar"><div style="width:' + pct + '%"></div></div>' +
       '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.aguard, 'Aguardando on-line', '', 'aguardando') + card(d.prontos, 'Prontos para certificar', '', 'enviar') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + card(d.pos + d.neg, 'Certidões na lista', '', 'devolver') + '</div>' +
@@ -6286,7 +6368,7 @@ function iaUsuarioAjuste(d) {
     };
     document.getElementById('cPdf').onclick = async function () {
       if (!(await ensureLib('pdflib'))) { toast('Ferramenta de PDF não carregou. Confira a internet.'); return; }
-      try { await savePdf(certName(it) + '.pdf', await certPdf(it, document.getElementById('cOut').value, pad1.data(), prints.map(function (p) { return p.blob; }))); }
+      try { await savePdf(certName(it, tipo === 'wa' ? 'positiva' : tipo) + '.pdf', await certPdf(it, document.getElementById('cOut').value, pad1.data(), prints.map(function (p) { return p.blob; }))); }
       catch (e) { toast('Não consegui gerar o PDF'); }
     };
     async function saveCert(baixar) {
@@ -6461,7 +6543,7 @@ function iaUsuarioAjuste(d) {
     $('vzPdf').onclick = async function () {
       if (falta()) { return; }
       if (!(await ensureLib('pdflib'))) { toast('Ferramenta de PDF não carregou. Confira a internet.'); return; }
-      try { await savePdf(certName(it) + '.pdf', await certPdf(it, $('vzOut').value, null, prints.map(function (p) { return p.blob; }))); } catch (e) { toast('Não consegui gerar o PDF'); }
+      try { await savePdf(certName(it, tipoCert) + '.pdf', await certPdf(it, $('vzOut').value, null, prints.map(function (p) { return p.blob; }))); } catch (e) { toast('Não consegui gerar o PDF'); }
     };
     async function salvar(baixar) {
       if (falta()) { return; }
@@ -6927,7 +7009,7 @@ function iaUsuarioAjuste(d) {
     $('mdPdf').onclick = async function () {
       if (faltaAlgo()) { return; }
       if (!(await ensureLib('pdflib'))) { toast('Ferramenta de PDF não carregou. Confira a internet.'); return; }
-      try { await savePdf(certName(it) + '.pdf', await certPdf(it, $('mdOutTxt').value, null, prints.map(function (p) { return p.blob; }))); }
+      try { await savePdf(certName(it, zapKind ? 'positiva' : 'negativa') + '.pdf', await certPdf(it, $('mdOutTxt').value, null, prints.map(function (p) { return p.blob; }))); }
       catch (e) { toast('Não consegui gerar o PDF'); }
     };
     var avisouPrint = false;
@@ -7248,9 +7330,14 @@ function iaUsuarioAjuste(d) {
   }
 
   /* Certidões: baixar */
-  function certName(it) {
-    return (String(it.nome || '').trim() || 'Certidão').replace(/[\x2f\x5c:*?"<>|]/g, '-').replace(/\s+/g, ' ');
+  function certName(it, tipoOpt) {
+    var base = (String(it.nome || '').trim() || 'Certidão').replace(/[\x2f\x5c:*?"<>|]/g, '-').replace(/\s+/g, ' ');
+    var tp = tipoOpt || (it.certidao && it.certidao.tipo) || '';
+    if (tp !== 'positiva' && tp !== 'negativa') { return base; }
+    /* só online (nenhum endereço físico): "NOME positivo online". Com endereço físico (mesmo que o cumprimento tenha sido online): "NOME positivo" */
+    return base + ' ' + (tp === 'positiva' ? 'positivo' : 'negativo') + (etipo(it) === 'eletronico' ? ' online' : '');
   }
+  window.__mandadosTeste = { certName: certName };
   async function baixarUma(it) {
     if (externo(it)) { toast('Esta certidão foi feita fora da página e não tem PDF aqui.'); return; }
     if (!(await ensureLib('pdflib'))) { toast('Ferramenta de PDF não carregou. Confira a internet.'); return; }
@@ -7696,6 +7783,12 @@ function iaUsuarioAjuste(d) {
     var sp = semPosicaoRota(rotaSel());
     return sp.length ? '<p class="note"><strong>' + sp.length + (sp.length === 1 ? ' endereço sem rua achada no mapa, sem CEP e sem bairro conhecido está' : ' endereços sem rua achada no mapa, sem CEP e sem bairro conhecido estão') + ' no fim da lista:</strong> ' + esc(sp.map(function (i) { return i.nome; }).join(', ')) + '. A ordem deles pode não ser a melhor.</p>' : '';
   }
+  function pontoUsadoHtml(c, bgx) {
+    var p = (bgx && ((bgx.ef && bgx.ef[c.id]) || (bgx.pts && bgx.pts[c.id]))) || pontoEfetivo(c);
+    if (!p) { return '<div class="pusado">📍 sem ponto no mapa: fica no fim da rota</div>'; }
+    var f = fonteDoPonto(c), la = p[0].toFixed(6), lo = p[1].toFixed(6);
+    return '<div class="pusado">📍 ' + p[0].toFixed(5) + ', ' + p[1].toFixed(5) + (f ? ' · ' + esc(f) : '') + ' · <a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + la + ',' + lo + '">ver no mapa</a></div>';
+  }
   var rotaLinks = [], rotaLinksB = [], rotaBlocos = [];
   var modoReord = false;
   function routeHtml() {
@@ -7704,6 +7797,9 @@ function iaUsuarioAjuste(d) {
     var out = '', prev = origin, prevB = origin, zm = zonaMapa(arr), zmap = zm.z, zlivre = zm.livre, zs = zonasAtivas();
     var perto = pertoDaCasa(arr, fimEf(), zonasAtivas() ? raioCasa() : 0);
     var modo = modoRota(), bg = modo === 'bairro' ? agruparBairros(arr) : null, num = 0;
+    var bgx = bg || agruparBairros(arr);
+    var susp = arr.filter(function (c) { return !ruaNoMapa(c) || (bgx.longe && bgx.longe[c.id]); });
+    if (susp.length) { out += '<div class="suspbox">⚠ <strong>' + susp.length + (susp.length === 1 ? ' parada com ponto duvidoso' : ' paradas com ponto duvidoso') + '</strong> (rua não achada ou longe do resto do bairro): ' + esc(susp.map(function (c) { return c.nome; }).join(', ')) + '. Toque em <em>ver no mapa</em> para conferir ou em <em>Corrigir</em> antes de sair.</div>'; }
     rotaLinks = []; rotaLinksB = []; rotaBlocos = [];
     function chaveBlk(x) { return perto[x.id] ? 'C' : (bg ? (bg.chave[x.id] || '-') : (zmap[x.id] != null ? zmap[x.id] : -1)); }
     var blocos = quebrarBlocos(arr, tamRota(), function () { return 0; });
@@ -7712,11 +7808,7 @@ function iaUsuarioAjuste(d) {
       rotaLinks.push(url); rotaLinksB.push(urlB); rotaBlocos.push(chunk);
       var k0 = chaveBlk(chunk[0]);
       var rot = '';
-      out += '<div class="chunk">' + (rot ? '<p class="note"><strong>' + esc(rot) + '</strong></p>' : '') +
-        '<a class="btn primary" style="display:block;text-align:center;text-decoration:none" href="' + url + '">Abrir rota ' + n + ' no Maps (' + chunk.length + (chunk.length === 1 ? ' parada' : ' paradas') + ')</a>' +
-        '<div class="actions">' + (zapHref('Rota ' + n + ': ' + url) ? '<a class="btn small primary" style="text-decoration:none" href="' + zapHref('Rota ' + n + ': ' + url) + '">Enviar por WhatsApp' + esc(zapRotulo()) + '</a>' : '') + '<button class="btn small" data-smsrota="' + n + '">' + esc(smsBotao()) + '</button></div>' +
-        '<details class="chunkmais"><summary>Mais opções desta rota</summary><div class="actions"><button class="btn small" data-rc="' + n + '">Copiar link da rota ' + n + '</button><button class="btn small" data-rce="' + n + '">Copiar os endereços desta rota</button></div>' +
-        '<div class="actions"><a class="btn small" style="text-decoration:none" href="' + urlB + '">Deu erro? Abrir pelas coordenadas das ruas</a><button class="btn small ghost" data-rcb="' + n + '">Copiar esse link</button></div><div class="actions"><a class="btn small ghost" style="text-decoration:none" href="' + smsHref('Rota ' + n + ': ' + url) + '">Tentar abrir direto no Mensagens</a></div></details><div class="actions"><button class="btn small" data-rselall="' + n + '">' + (chunk.length && chunk.every(function (c) { return (state.cfg.rotaMarcadas || {})[c.id]; }) ? 'Desmarcar todas desta rota' : 'Selecionar todas desta rota') + '</button></div><ol start="' + (num + 1) + '">';
+      out += (bi === 0 ? '<div class="chunk"><ol start="1">' : '');
       chunk.forEach(function (c) {
         num++;
         var se = enderecoSimples(c.endereco), zi = zmap[c.id];
@@ -7724,14 +7816,14 @@ function iaUsuarioAjuste(d) {
         var txt = chip + '<strong>' + esc(c.nome) + '</strong> - ' + esc(c.endRota || se.texto) + (c.bairro ? ', ' + esc(c.bairro) : '') +
           (c.endRota ? ' <span class="flag">' + (RE_COORD.test(c.endRota) ? 'ponto da rua (coordenadas)' : 'endereço corrigido') + '</span>' : (!se.numero ? ' <span class="flag">sem número: só a rua</span>' : '')) +
           (!ruaNoMapa(c) ? ' <span class="flag stop">rua não encontrada no mapa: confira</span>' : '') +
-          (bg && bg.longe[c.id] ? ' <span class="flag stop">ponto longe do resto do bairro: confira a rua</span>' : '');
+          (bgx.longe && bgx.longe[c.id] ? ' <span class="flag stop">ponto longe do resto do bairro: confira a rua</span>' : '') + pontoUsadoHtml(c, bgx);
         if (modoReord) { out += '<li data-id="' + esc(c.id) + '" class="reord"><div class="prow" data-drag><span class="drag">≡</span><div class="pc">' + txt + '</div></div></li>'; }
         else {
           out += '<li data-id="' + esc(c.id) + '"><div class="prow"><div class="pc"><label class="rsel"><input type="checkbox" data-rsel="' + esc(c.id) + '"' + ((state.cfg.rotaMarcadas || {})[c.id] ? ' checked' : '') + ' aria-label="Marcar ' + esc(c.nome) + ' para uma rota só com as paradas marcadas"></label>' + txt +
             '<div class="acoes">' + posBar(c, num, arr.length) + '<a class="btn small ghost" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(textoParada(c)) + '">Testar no Maps</a><button class="btn small ghost" data-fix="' + esc(c.id) + '">Corrigir</button><button class="btn small ghost" data-rm="' + esc(c.id) + '">Tirar da rota</button></div></div></div></li>';
         }
       });
-      out += '</ol></div>';
+      if (bi === blocos.length - 1) { out += '</ol></div>'; }
       var ult = chunk[chunk.length - 1];
       prev = textoParada(ult); prevB = textoParadaB(ult);
     });
@@ -7762,20 +7854,36 @@ function iaUsuarioAjuste(d) {
       '<p class="note">Do verde (começo) ao vermelho (fim). Percurso em linha reta: <strong>' + total.toFixed(1).replace('.', ',') + ' km</strong>.' + (maior.a ? ' Maior trecho: <strong>' + maior.d.toFixed(1).replace('.', ',') + ' km</strong>, de ' + esc(maior.a.nome) + ' para ' + esc(maior.b.nome) + '.' : '') + ' Círculo tracejado em vermelho: ponto longe do resto do bairro, confira a rua.</p></details>';
   }
   function marcadasRota() { var mk = state.cfg.rotaMarcadas || {}; return rotaSel().filter(function (i) { return mk[i.id]; }); }
+  var MAX_MARCA = 10;
   function selRotaDados() {
-    var m = marcadasRota(), origin = saidaGpsOn() ? '' : String(state.origin || '').trim(), prev = origin;
-    var blocos = m.length ? quebrarBlocos(m, tamRota(), function () { return 0; }) : [], links = [];
-    blocos.forEach(function (ch) { links.push(mapsUrl(prev, ch)); prev = textoParada(ch[ch.length - 1]); });
+    var m = marcadasRota().slice(0, MAX_MARCA), origin = saidaGpsOn() ? '' : String(state.origin || '').trim(), prev = origin, prevB = origin;
+    var blocos = m.length ? quebrarBlocos(m, MAX_MARCA, function () { return 0; }) : [], links = [], linksB = [];
+    blocos.forEach(function (ch) { links.push(mapsUrl(prev, ch)); linksB.push(mapsUrlB(prevB, ch)); prev = textoParada(ch[ch.length - 1]); prevB = textoParadaB(ch[ch.length - 1]); });
     var txt = links.length === 1 ? 'Rota selecionada: ' + links[0] : links.map(function (u, k) { return 'Rota selecionada ' + (k + 1) + ': ' + u; }).join('\n');
-    return { m: m, blocos: blocos, links: links, txt: txt };
+    return { m: m, blocos: blocos, links: links, linksB: linksB, txt: txt };
+  }
+  function sincMarcas() {
+    var mk = state.cfg.rotaMarcadas || {};
+    Array.prototype.forEach.call(document.querySelectorAll('#rBody [data-rsel]'), function (cb) { cb.checked = !!mk[cb.getAttribute('data-rsel')]; });
+    var box = document.getElementById('rSelBox'); if (box) { box.innerHTML = selRotaHtml(); }
+  }
+  function proximas10() {
+    var arr = rotaSel(), mk = state.cfg.rotaMarcadas || {}, ult = -1;
+    arr.forEach(function (c, k) { if (mk[c.id]) { ult = k; } });
+    var prox = arr.slice(ult + 1, ult + 1 + MAX_MARCA);
+    if (!prox.length) { toast('Todas as paradas já foram marcadas.'); return; }
+    state.cfg.rotaMarcadas = {}; prox.forEach(function (c) { state.cfg.rotaMarcadas[c.id] = true; });
+    save(); sincMarcas();
   }
   function selRotaHtml() {
-    var d = selRotaDados();
-    if (!d.m.length) { return ''; }
-    return '<div class="rselbar"><div class="rselhead"><span><strong>' + d.m.length + (d.m.length === 1 ? ' parada marcada' : ' paradas marcadas') + '</strong>: rota só com elas, na ordem da lista</span><button class="btn small ghost" data-rselclear="1">Limpar</button></div>' +
-      '<div class="actions">' + (zapHref(d.txt) ? '<a class="btn primary" style="text-decoration:none" id="rSelWa" href="' + zapHref(d.txt) + '">Enviar por WhatsApp' + esc(zapRotulo()) + '</a>' : '') + '<button class="btn" id="rSelZap" data-smssel="1">' + esc(smsBotao()) + '</button>' +
-      d.links.map(function (u, k) { return '<a class="btn" style="text-decoration:none" href="' + u + '">Abrir no Maps' + (d.links.length > 1 ? ' (parte ' + (k + 1) + ')' : '') + '</a>'; }).join('') + '</div>' +
-      '<details class="rselmais"><summary>Mais opções</summary><div class="actions"><button class="btn small" data-rselcopy="1">Copiar link</button><button class="btn small" data-rseladdr="1">Copiar endereços</button><button class="btn small" data-rselprint="1">Imprimir só as marcadas</button></div><div class="actions"><a class="btn small ghost" style="text-decoration:none" href="' + smsHref(d.txt) + '">Tentar abrir direto no Mensagens</a></div></details></div>';
+    var d = selRotaDados(), n = d.m.length, temZap = !!zapHref('x');
+    function dis(rot) { return '<span class="btn dis" role="button" aria-disabled="true">' + rot + '</span>'; }
+    var wa = temZap ? (n ? '<a class="btn primary" style="text-decoration:none" id="rSelWa" href="' + zapHref(d.txt) + '">WhatsApp' + esc(zapRotulo()) + '</a>' : dis('WhatsApp')) : '';
+    var sms = n ? '<button class="btn" id="rSelZap" data-smssel="1">' + esc(smsBotao()) + '</button>' : dis(esc(smsBotao()));
+    var mp = n ? '<a class="btn" style="text-decoration:none" id="rSelMaps" href="' + d.links[0] + '">Abrir no Maps</a>' : dis('Abrir no Maps');
+    return '<div class="rselbar' + (n ? '' : ' vazia') + '"><div class="rselhead"><span><strong>' + n + ' de ' + MAX_MARCA + '</strong> ' + (n ? (n === 1 ? 'marcada: rota só com ela' : 'marcadas: rota só com elas') : 'marque as paradas que vão agora') + '</span><span class="rselbtns"><button class="btn small ghost" data-rnext="1">Próximas ' + MAX_MARCA + '</button><button class="btn small ghost" data-rselclear="1"' + (n ? '' : ' disabled') + '>Limpar</button></span></div>' +
+      '<div class="actions">' + wa + sms + mp + '</div>' +
+      (n ? '<details class="rselmais"><summary>Mais opções</summary><div class="actions"><button class="btn small" data-rselcopy="1">Copiar link</button><button class="btn small" data-rseladdr="1">Copiar endereços</button><button class="btn small" data-rselprint="1">Imprimir só as marcadas</button></div><div class="actions"><a class="btn small" style="text-decoration:none" href="' + d.linksB[0] + '">Deu erro? Abrir pelas coordenadas das ruas</a><a class="btn small ghost" style="text-decoration:none" href="' + smsHref(d.txt) + '">Tentar abrir direto no Mensagens</a></div></details>' : '') + '</div>';
   }
   function posBar(c, n, N) {
     var op = '';
@@ -8292,12 +8400,12 @@ function iaUsuarioAjuste(d) {
     if (!ra) { el.hidden = true; return; }
     var rest = rotaRestantes(), n = ra.ids.length;
     el.hidden = false;
-    el.innerHTML = '<p><strong>Rota em andamento</strong>: ' + (rest.length ? 'parada ' + (n - rest.length + 1) + ' de ' + n + '.' : 'todas as paradas atendidas.') + '</p><div class="actions"><button class="btn primary" data-rb="cont">' + (rest.length ? 'Continuar rota' : 'Ver o resumo') + '</button><button class="btn small cumprbtn" data-rb="cumpr"><span class="homem" aria-hidden="true"></span><span>Modo cumprimento</span></button><button class="btn small ghost" data-rb="stop">Encerrar</button></div>';
+    el.innerHTML = '<div class="rbar"><button class="btn cumprbtn" type="button" data-rb="' + (rest.length ? 'cumpr' : 'cont') + '"><span class="homem" aria-hidden="true"></span><span>' + (rest.length ? 'Modo cumprimento (continuar)' : 'Rota concluída (ver o resumo)') + '<small> · ' + (rest.length ? 'parada ' + (n - rest.length + 1) + ' de ' + n : n + ' de ' + n) + '</small></span></button><button class="rbx" type="button" data-rb="stop" aria-label="Encerrar a rota" title="Encerrar a rota">✕</button></div>';
   }
   document.getElementById('rotaBanner').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-rb]') : null;
     if (!b) { return; }
-    if (b.getAttribute('data-rb') === 'stop') { state.rotaAtiva = null; save(); render(); toast('Rota encerrada.'); }
+    if (b.getAttribute('data-rb') === 'stop') { var prevRa = state.rotaAtiva; state.rotaAtiva = null; save(); render(); toast('Rota encerrada.', function () { state.rotaAtiva = prevRa; save(); render(); }); }
     else if (b.getAttribute('data-rb') === 'cumpr') { state.rotaAtiva.cumpr = true; tab = 'enviar'; save(); render(); }
     else { mostrarRota(); }
   });
@@ -8406,7 +8514,10 @@ function iaUsuarioAjuste(d) {
       var ck = e.target.closest ? e.target.closest('[data-rsel]') : null;
       if (ck) {
         var mk = state.cfg.rotaMarcadas = state.cfg.rotaMarcadas || {}, id = ck.getAttribute('data-rsel');
-        if (ck.checked) { mk[id] = true; } else { delete mk[id]; }
+        if (ck.checked) {
+          if (marcadasRota().length >= MAX_MARCA) { ck.checked = false; toast('No máximo ' + MAX_MARCA + ' paradas por vez. Desmarque alguma ou toque em “Próximas ' + MAX_MARCA + '”.'); return; }
+          mk[id] = true;
+        } else { delete mk[id]; }
         save(); $('rSelBox').innerHTML = selRotaHtml();
       }
     });
@@ -8414,6 +8525,7 @@ function iaUsuarioAjuste(d) {
       var rpt = e.target.closest('[data-rprint]'), mv = e.target.closest('[data-up],[data-down]'), rsv = e.target.closest('[data-rsalva]');
       var rini = e.target.closest('[data-rinicia]');
       if (rini) { iniciarRota(); return; }
+      if (e.target.closest('[data-rnext]')) { proximas10(); return; }
       if (e.target.closest('[data-rcumpr]')) { iniciarCumprimento(); return; }
       var sm1 = e.target.closest('[data-smsrota]'), smA = e.target.closest('[data-smsall]'), smS = e.target.closest('[data-smssel]'), rsAll = e.target.closest('[data-rselall]');
       if (sm1) { var jr = +sm1.getAttribute('data-smsrota') - 1; enviarSms('Rota ' + (jr + 1) + ': ' + (rotaLinks[jr] || '')); return; }
