@@ -959,6 +959,9 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .rbar .rt small { display: block; font-weight: 600; opacity: 0.85; font-size: 12.5px; margin-top: 2px; }
 
 #rotaBanner { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin-top: 10px; margin-bottom: 10px; }
+
+#rOut li .prow { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#rOut li.arrastando { transform: scale(1.015); border-radius: 14px; position: relative; z-index: 3; }
 </style>
 </head>
 <body>
@@ -7904,16 +7907,10 @@ function iaUsuarioAjuste(d) {
       '<div class="actions">' + wa + sms + mp + '</div>' +
       (n ? '<details class="rselmais"><summary>Mais opções</summary><div class="actions"><button class="btn small" data-rselcopy="1">Copiar link</button><button class="btn small" data-rseladdr="1">Copiar endereços</button><button class="btn small" data-rselprint="1">Imprimir só as marcadas</button></div><div class="actions"><a class="btn small" style="text-decoration:none" href="' + d.linksB[0] + '">Deu erro? Abrir pelas coordenadas das ruas</a><a class="btn small ghost" style="text-decoration:none" href="' + smsHref(d.txt) + '">Tentar abrir direto no Mensagens</a></div></details>' : '') + '</div>';
   }
-  function posBar(c, n, N) {
-    var op = '';
-    for (var k = 1; k <= N; k++) { op += '<option value="' + k + '"' + (k === n ? ' selected' : '') + '>' + k + '</option>'; }
-    return '<div class="posbar"><span class="posl">Posição</span><select class="sel possel" data-posel="' + esc(c.id) + '" aria-label="Posição de ' + esc(c.nome) + '">' + op + '</select>' +
-      '<button class="btn small" data-up="' + esc(c.id) + '" aria-label="Subir uma posição"' + (n <= 1 ? ' disabled' : '') + '>▲</button>' +
-      '<button class="btn small" data-down="' + esc(c.id) + '" aria-label="Descer uma posição"' + (n >= N ? ' disabled' : '') + '>▼</button></div>';
-  }
+  function posBar() { return ''; }
   function reordBox() {
     return modoReord ? '<div class="chk"><p class="note" style="margin:0 0 8px"><strong>Modo reordenar:</strong> encoste o dedo em uma parada, arraste para cima ou para baixo e solte. Perto da borda da tela, a lista rola sozinha.</p><div class="actions"><button class="btn primary" data-rpronto="1">Pronto</button></div></div>'
-      : '<div class="actions"><button class="btn primary" data-rprint="1">Imprimir nesta ordem</button><button class="btn" data-rmodo="1">Reordenar com o dedo</button></div>';
+      : '<div class="actions"><button class="btn primary" data-rprint="1">Imprimir nesta ordem</button></div><p class="note dica">Para mudar a ordem, <strong>segure o dedo</strong> numa parada e arraste para cima ou para baixo. Perto da borda da tela a lista rola sozinha.</p>';
   }
   function abrirPosicao(it) {
     var ids = rotaSel().map(function (x) { return x.id; }), atual = ids.indexOf(it.id) + 1;
@@ -8498,18 +8495,35 @@ function iaUsuarioAjuste(d) {
       var pai = paiRolavel(arr0);
       if (pai) { if (y < 100) { pai.scrollTop -= 16; } else if (y > window.innerHeight - 100) { pai.scrollTop += 16; } }
     }
+    var pressTimer = null, pressX = 0, pressY = 0, pressLi = null, ultimoArraste = 0, ordemAntes = '';
+    function ordemDom() { return Array.prototype.slice.call($('rBody').querySelectorAll('li[data-id]')).map(function (li) { return li.getAttribute('data-id'); }).join(','); }
+    function cancelarPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } pressLi = null; }
     function soltar() {
+      cancelarPress();
       if (!arr0) { return; }
-      arr0.classList.remove('arrastando'); arr0 = null;
-      var ids = Array.prototype.slice.call($('rBody').querySelectorAll('li[data-id]')).map(function (li) { return li.getAttribute('data-id'); });
+      arr0.classList.remove('arrastando'); arr0 = null; ultimoArraste = Date.now();
+      var ids = ordemDom().split(',');
+      if (ordemAntes && ids.join(',') === ordemAntes) { ordemAntes = ''; return; }
+      ordemAntes = '';
       salvarManual(ids); refaz();
     }
     var passivo = { passive: false };
     $('rBody').addEventListener('touchstart', function (e) {
       var h = e.target.closest && e.target.closest('[data-drag]');
-      if (h && iniciarArraste(h)) { e.preventDefault(); }
+      if (h && iniciarArraste(h)) { e.preventDefault(); return; }
+      if (modoReord || arr0) { return; }
+      var li = e.target.closest && e.target.closest('#rOut li[data-id]');
+      if (!li || e.target.closest('a, button, input, select, textarea, label, summary')) { return; }
+      var t0 = e.touches && e.touches[0];
+      if (!t0 || e.touches.length > 1) { return; }
+      pressX = t0.clientX; pressY = t0.clientY; pressLi = li;
+      pressTimer = setTimeout(function () {
+        pressTimer = null;
+        if (pressLi && iniciarArraste(pressLi)) { ordemAntes = ordemDom(); if (navigator.vibrate) { try { navigator.vibrate(12); } catch (x) {} } }
+      }, 380);
     }, passivo);
     $('rBody').addEventListener('touchmove', function (e) {
+      if (pressTimer && e.touches && e.touches[0] && (Math.abs(e.touches[0].clientX - pressX) > 10 || Math.abs(e.touches[0].clientY - pressY) > 10)) { cancelarPress(); }
       if (!arr0) { return; }
       e.preventDefault();
       var t = e.touches && e.touches[0];
@@ -8517,6 +8531,7 @@ function iaUsuarioAjuste(d) {
     }, passivo);
     $('rBody').addEventListener('touchend', soltar);
     $('rBody').addEventListener('touchcancel', soltar);
+    $('rBody').addEventListener('click', function (e) { if (Date.now() - ultimoArraste < 500) { e.stopPropagation(); e.preventDefault(); } }, true);
     $('rBody').addEventListener('pointerdown', function (e) {
       if (e.pointerType !== 'mouse') { return; }
       var h = e.target.closest && e.target.closest('[data-drag]');
