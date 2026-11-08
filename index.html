@@ -991,6 +991,15 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .daycol { flex-direction: row; flex-wrap: nowrap; gap: 6px; align-items: center; }
 .dayrow2 .btn, .btn.sdia, .rotabtn { white-space: nowrap; font-size: 12.5px; padding: 0 9px; min-height: 38px; }
 .rotabtn { margin-left: auto; }
+
+.dg2 { display: flex; gap: 10px; }
+.dg2 > div { flex: 1 1 0; min-width: 0; }
+.dg2 input { width: 100%; min-width: 0; box-sizing: border-box; }
+#dgPessoa { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 6px 28px; }
+#dgPessoa[hidden] { display: none; }
+#dgObs, #dgTxt { width: 100%; box-sizing: border-box; }
+
+.card .btn.eyelbl { font-size: 13px !important; font-weight: 800; min-width: 0 !important; padding: 0 14px 0 10px !important; gap: 6px !important; }
 </style>
 </head>
 <body>
@@ -2732,18 +2741,21 @@ function enderecoSimples(end) {
   return { rua: rua, numero: numero, texto: rua + (numero ? ', ' + numero : '') };
 }
 var DIL_SIT = { ninguem: 'não encontrei ninguém no local', indicada: 'não encontrei a pessoa indicada', vizinhos: 'conversei com vizinhos' };
-var DIL_REC = { portao: 'no portão', vizinho: 'com vizinho', familiar: 'com familiar', amigo: 'com amigo', funcionario: 'com funcionário' };
+var DIL_REC = { portao: 'com contato no portão ou na caixa de correio', vizinho: 'com vizinho', familiar: 'com familiar', amigo: 'com amigo', funcionario: 'com funcionário' };
 function diligFrase(n) {
   if (!n) { return ''; }
   if (n.modo === 'livre') { return String(n.txt || '').trim().replace(/\.+$/, ''); }
   var f = DIL_SIT[n.sit] || DIL_SIT.ninguem;
   if (n.sit === 'vizinhos' && n.viz) { f += ', que afirmaram não conhecer a pessoa indicada'; }
-  if (n.rec) {
+  if (n.rec === 'pessoa') {
+    f += ', deixei recado com contato com o(a) Sr.(a) ' + (String(n.recNome || '').trim() || 'pessoa não identificada') + (n.recRel ? ' (' + n.recRel + ')' : '');
+  } else if (n.rec) {
     f += ', deixei recado ' + (n.rec === 'outro' ? 'com ' + (String(n.recOutro || '').trim() || 'outra pessoa') : (DIL_REC[n.rec] || 'no local'));
-    if (n.semRet) { f += ', porém não obtive retorno'; }
   }
+  if (n.rec && n.semRet) { f += ', porém não obtive retorno'; }
   return f;
 }
+function diligObs(n) { var o = n && n.modo !== 'livre' && n.obs ? String(n.obs).trim().replace(/\.+$/, '') : ''; return o ? ' Observação: ' + o + '.' : ''; }
 function diligNotasFrases(it) {
   var nt = (it && it.diligNotas) || [];
   return ((it && it.visitas) || []).map(function (t) {
@@ -2752,7 +2764,7 @@ function diligNotasFrases(it) {
     var d = new Date(t);
     function z(x) { return (x < 10 ? '0' : '') + x; }
     var quando = 'No dia ' + z(d.getDate()) + '/' + z(d.getMonth() + 1) + '/' + d.getFullYear() + ', às ' + z(d.getHours()) + ':' + z(d.getMinutes());
-    return quando + (n.modo === 'livre' ? ': ' : ', ') + f + '.';
+    return quando + (n.modo === 'livre' ? ': ' : ', ') + f + '.' + diligObs(n);
   }).filter(function (x) { return x; });
 }
 function diligParagrafo(notas) { return notas && notas.length ? (notas.length === 1 ? 'Registro da diligência: ' : 'Registro das diligências: ') + notas.join(' ') : ''; }
@@ -4654,7 +4666,7 @@ function iaUsuarioAjuste(d) {
       return '<p class="empty">Nenhum arquivo guardado. Os PDFs e fotos que você adicionar ficam aqui, só neste aparelho.</p>';
     }
     var lastFileDay = null;
-    return state.files.slice().reverse().map(function (f) {
+    return '<div class="actions" style="margin:4px 0 10px"><button class="btn small ghost" data-act="delallfiles" style="color:#E5484D">Excluir tudo</button></div>' + state.files.slice().reverse().map(function (f) {
       var fdk = dayKey(f.date), head = '';
       if (fdk !== lastFileDay) { lastFileDay = fdk; head = '<div class="dayrow"><h2 class="day">' + esc(dayLabel(fdk, new Date())) + '</h2></div>'; }
       var kb = f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(f.size / 1024)) + ' KB';
@@ -4794,7 +4806,7 @@ function iaUsuarioAjuste(d) {
       if (iaAtiva()) { h += '<div class="iafim">' + iaBtnHtml(parPrin || 'on') + '</div>'; }
     } else {
       h += '<p class="badge ' + i.certidao.tipo + '">Certidão ' + i.certidao.tipo + ' pronta' + (i.certidao.canal === 'wa' ? ' (WhatsApp)' : (i.certidao.canal === 'fisica' ? (i.certidao.origem === 'print' ? ' (feita por print)' : ' (feita à mão)') : (i.certidao.canal === 'externo' ? ' (feita fora da página, sem PDF)' : ''))) + (i.certidao.prints && i.certidao.prints.length ? ', ' + i.certidao.prints.length + (i.certidao.canal === 'fisica' && i.certidao.origem !== 'print' ? (i.certidao.prints.length === 1 ? ' foto' : ' fotos') : (i.certidao.prints.length === 1 ? ' print' : ' prints')) : '') + (i.baixada ? ', já baixada' : '') + '</p>';
-      h += '<div class="actions">' + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small" data-act="viewcert">Ver certidão</button>' + (externo(i) ? '' : '<button class="btn small primary" data-act="baixar">Baixar PDF</button><button class="btn small" data-act="compart">Compartilhar</button>') + '<button class="btn small ghost" data-act="naocert">Mandado não certificado</button><button class="btn small ghost" data-act="purge">Excluir definitivamente</button></div>';
+      h += '<div class="actions">' + (fileOk(i) ? '<button class="btn small eyelbl" data-act="ver">Mandado</button>' : '') + '<button class="btn small eyelbl" data-act="viewcert">Certidão</button>' + (externo(i) ? '' : '<button class="btn small primary" data-act="baixar">Baixar PDF</button><button class="btn small" data-act="compart">Compartilhar</button>') + '<button class="btn small ghost" data-act="naocert">Mandado não certificado</button><button class="btn small ghost" data-act="purge">Excluir definitivamente</button></div>';
     }
     h += '</div></article>';
     return h;
@@ -5308,7 +5320,8 @@ function iaUsuarioAjuste(d) {
   };
   /* Excluir tudo: os marcados ou todos da lista, com confirmação e "desfazer" */
   document.getElementById('btnDelAll').onclick = function () {
-    if (tab === 'devolver' || tab === 'arquivos') { toast('“Excluir tudo” vale para as listas de mandados.'); return; }
+    if (tab === 'devolver') { abrirExcluirCertidoes(); return; }
+    if (tab === 'arquivos') { toast('Em Arquivos, use o botão “Excluir tudo” no começo da lista.'); return; }
     var vis = visiveis(), marc = vis.filter(function (i) { return sel[i.id]; });
     if (!vis.length) { toast('Não há mandados nesta lista'); return; }
     var alvoEx = marc.length ? marc : vis;
@@ -5343,6 +5356,7 @@ function iaUsuarioAjuste(d) {
     if (!b || b.tagName === 'INPUT') { return; }
     var act = b.getAttribute('data-act');
     var fc = e.target.closest('[data-fid]');
+    if (act === 'delallfiles') { abrirExcluirArquivos(); return; }
     if (act === 'delfile' && fc) { delFile(fc.getAttribute('data-fid')); return; }
     if (act === 'me') { openMe(); return; }
     if (act === 'selday' || act === 'printday' || act === 'zipday') { dayAction(act, b.getAttribute('data-day') || ''); return; }
@@ -6234,6 +6248,32 @@ function iaUsuarioAjuste(d) {
     ggAndamento = false; definirGeoGoogle(g); save(); render();
     toast('Google: ' + r.casa + ' no número da casa' + (r.rua ? ', ' + r.rua + ' no centro da rua' : '') + (r.nao ? ', ' + r.nao + ' aproximadas (não usei)' : '') + (r.zero ? ', ' + r.zero + ' sem resultado' : '') + (r.fora ? ', ' + r.fora + ' fora da cidade (não usei)' : '') + '.' + (parou ? ' ' + parou : ''));
   }
+  function abrirExcluirCertidoes() {
+    var prontas = state.items.filter(function (i) { return i.status === 'certidao'; }), marc = prontas.filter(function (i) { return sel[i.id]; });
+    var alvo = marc.length ? marc : prontas;
+    if (!alvo.length) { toast('Não há certidões prontas nesta lista.'); return; }
+    openModal('Excluir certidões',
+      '<p><strong>Tem certeza que deseja excluir as certidões definitivamente?</strong></p>' +
+      '<p>' + alvo.length + (alvo.length === 1 ? ' certidão' : ' certidões') + (marc.length ? ' (as marcadas)' : ' (todas as prontas)') + '. O mandado e a certidão saem deste aparelho. <strong>Não dá para desfazer.</strong></p>' +
+      '<div class="actions"><button class="btn primary" id="ecSim" style="background:#E5484D;border-color:#E5484D">Sim, excluir definitivamente</button><button class="btn" id="ecNao">Cancelar</button></div>');
+    document.getElementById('ecNao').onclick = closeModal;
+    document.getElementById('ecSim').onclick = function () {
+      var ids = alvo.map(function (i) { return i.id; });
+      alvo.forEach(function (it) { ((it.certidao && it.certidao.prints) || []).forEach(function (pid) { idbDel(pid).catch(function () {}); }); state.apagados.push(it.id); delete sel[it.id]; });
+      arquivarEstat(alvo); state.items = state.items.filter(function (x) { return ids.indexOf(x.id) === -1; });
+      save(); closeModal(); render(); toast(ids.length + (ids.length === 1 ? ' certidão excluída' : ' certidões excluídas') + ' definitivamente');
+    };
+  }
+  function abrirExcluirArquivos() {
+    var n = state.files.length;
+    if (!n) { toast('Não há arquivos guardados.'); return; }
+    openModal('Excluir todos os arquivos',
+      '<p><strong>Tem certeza que deseja excluir todos os arquivos definitivamente?</strong></p>' +
+      '<p>' + n + (n === 1 ? ' arquivo guardado' : ' arquivos guardados') + ' neste aparelho. <strong>Não dá para desfazer.</strong></p><p class="note">Certidões já feitas não são apagadas.</p>' +
+      '<div class="actions"><button class="btn primary" id="eaSim" style="background:#E5484D;border-color:#E5484D">Sim, excluir tudo</button><button class="btn" id="eaNao">Cancelar</button></div>');
+    document.getElementById('eaNao').onclick = closeModal;
+    document.getElementById('eaSim').onclick = function () { closeModal(); state.files.slice().forEach(function (f) { apagarArquivo(f.id, false); }); toast(n + (n === 1 ? ' arquivo excluído' : ' arquivos excluídos') + ' definitivamente'); };
+  }
   function abrirExcluirCartao(it) {
     openModal('Excluir este mandado?',
       '<p><strong>' + esc(it.nome) + '</strong></p><p>Ele sai da lista.</p>' +
@@ -6258,9 +6298,10 @@ function iaUsuarioAjuste(d) {
       rad('dgSit', 'ninguem', 'Não encontrei ninguém no local', true) + rad('dgSit', 'indicada', 'Não encontrei a pessoa indicada', false) + rad('dgSit', 'vizinhos', 'Conversei com vizinhos', false) +
       '<div id="dgViz" hidden><label class="dgop"><input type="checkbox" id="dgVizNao" checked> Os vizinhos afirmam que não conhecem a pessoa indicada</label></div>' +
       '<label class="dgop"><input type="checkbox" id="dgRec"> Deixei recado</label>' +
-      '<div id="dgRecOp" hidden>' + rad('dgRecQ', 'portao', 'no portão', true) + rad('dgRecQ', 'vizinho', 'com vizinho', false) + rad('dgRecQ', 'familiar', 'com familiar', false) + rad('dgRecQ', 'amigo', 'com amigo', false) + rad('dgRecQ', 'funcionario', 'com funcionário', false) + rad('dgRecQ', 'outro', 'com outra pessoa:', false) +
-      '<input type="text" id="dgRecOutro" placeholder="Quem? (ex.: síndico, porteiro)" autocomplete="off">' +
-      '<label class="dgop"><input type="checkbox" id="dgSemRet" checked> Não obtive retorno</label></div></div>' +
+      '<div id="dgRecOp" hidden>' + rad('dgRecQ', 'portao', 'com meu contato no portão ou na caixa de correio', true) + rad('dgRecQ', 'pessoa', 'com contato com o(a) Sr.(a):', false) +
+      '<div id="dgPessoa" hidden><input type="text" id="dgRecNome" placeholder="Nome de quem recebeu o recado" autocomplete="off"><select id="dgRecRel" class="sel" aria-label="Quem é"><option>familiar</option><option>filho(a)</option><option>mãe</option><option>pai</option><option>amigo(a)</option><option>funcionário(a)</option><option>vizinho(a)</option></select></div>' +
+      '<label class="dgop"><input type="checkbox" id="dgSemRet" checked> Não obtive retorno</label></div>' +
+      '<label class="f" for="dgObs">Observação extra (opcional)</label><textarea id="dgObs" rows="2" placeholder="Ex.: cachorro no pátio, casa aparentemente vazia"></textarea></div>' +
       '<div id="dgLivre" hidden><label class="f" for="dgTxt">Escreva o que aconteceu (a nota inteira)</label><textarea id="dgTxt" rows="5" placeholder="Ex.: Não encontrei ninguém no local, conversei com vizinhos e deixei recado no portão; os vizinhos afirmam que não conhecem a pessoa indicada."></textarea></div>' +
       '<div class="dg2"><div><label class="f" for="dgData">Data</label><input type="date" id="dgData" value="' + hoje + '"></div><div><label class="f" for="dgHora">Hora</label><input type="time" id="dgHora" value="' + agora + '"></div></div>' +
       '<p class="note" style="margin:8px 0 2px">Vai para a certidão <strong>só se ela continuar negativa</strong>:</p><p class="dgprev" id="dgPrev"></p>' +
@@ -6270,16 +6311,17 @@ function iaUsuarioAjuste(d) {
       var livre = $('dgModo').querySelector('[data-m="livre"]').getAttribute('aria-pressed') === 'true';
       var sit = (document.querySelector('input[name="dgSit"]:checked') || {}).value || 'ninguem';
       var rec = $('dgRec').checked ? ((document.querySelector('input[name="dgRecQ"]:checked') || {}).value || 'portao') : '';
-      return { modo: livre ? 'livre' : 'op', sit: sit, viz: sit === 'vizinhos' && $('dgVizNao').checked, rec: rec, recOutro: $('dgRecOutro').value, semRet: !!rec && $('dgSemRet').checked, txt: $('dgTxt').value };
+      return { modo: livre ? 'livre' : 'op', sit: sit, viz: sit === 'vizinhos' && $('dgVizNao').checked, rec: rec, recNome: $('dgRecNome').value, recRel: $('dgRecRel').value, obs: $('dgObs').value, semRet: !!rec && $('dgSemRet').checked, txt: $('dgTxt').value };
     }
     function quando() { var t = new Date($('dgData').value + 'T' + $('dgHora').value).getTime(); return isNaN(t) ? null : t; }
     function atualizar() {
       $('dgViz').hidden = (document.querySelector('input[name="dgSit"]:checked') || {}).value !== 'vizinhos';
       $('dgRecOp').hidden = !$('dgRec').checked;
+      $('dgPessoa').hidden = !($('dgRec').checked && (document.querySelector('input[name="dgRecQ"]:checked') || {}).value === 'pessoa');
       var n = lido(), t = quando(), f = diligFrase(n);
       if (!f) { $('dgPrev').textContent = n.modo === 'livre' ? 'Escreva o texto acima.' : ''; return; }
       var d = new Date(t || Date.now());
-      $('dgPrev').textContent = 'No dia ' + z(d.getDate()) + '/' + z(d.getMonth() + 1) + '/' + d.getFullYear() + ', às ' + z(d.getHours()) + ':' + z(d.getMinutes()) + (n.modo === 'livre' ? ': ' : ', ') + f + '.';
+      $('dgPrev').textContent = 'No dia ' + z(d.getDate()) + '/' + z(d.getMonth() + 1) + '/' + d.getFullYear() + ', às ' + z(d.getHours()) + ':' + z(d.getMinutes()) + (n.modo === 'livre' ? ': ' : ', ') + f + '.' + diligObs(n);
     }
     $('mbody').addEventListener('input', atualizar); $('mbody').addEventListener('change', atualizar);
     $('dgModo').addEventListener('click', function (e) {
@@ -6293,6 +6335,7 @@ function iaUsuarioAjuste(d) {
       var n = lido(), t = quando();
       if (t === null) { toast('Confira a data e a hora.'); return; }
       if (n.modo === 'livre' && !n.txt.trim()) { toast('Escreva o que aconteceu.'); return; }
+      if (n.modo !== 'livre' && n.rec === 'pessoa' && !String(n.recNome || '').trim()) { toast('Escreva o nome de quem recebeu o recado.'); return; }
       it.visitas = it.visitas || []; it.diligNotas = it.diligNotas || [];
       while (it.visitas.indexOf(t) >= 0) { t += 1; }
       n.t = t; it.visitas.push(t); it.diligNotas.push(n); it.visitas.sort(function (a, b) { return a - b; });
@@ -6307,7 +6350,7 @@ function iaUsuarioAjuste(d) {
     var vs = it.visitas || [], nt = it.diligNotas || [];
     var linhas = vs.map(function (t, k) {
       var n = nt.filter(function (x) { return x.t === t; })[0], f = diligFrase(n);
-      return '<div class="dgnota"><p><strong>' + (k + 1) + 'ª · ' + esc(fmtVisita(t)) + '</strong></p><p>' + (f ? esc(f.charAt(0).toUpperCase() + f.slice(1)) + '.' : '<span class="note">sem detalhes (registrada só com a hora)</span>') + '</p><button class="btn small ghost" data-nd="' + t + '">Apagar</button></div>';
+      return '<div class="dgnota"><p><strong>' + (k + 1) + 'ª · ' + esc(fmtVisita(t)) + '</strong></p><p>' + (f ? esc(f.charAt(0).toUpperCase() + f.slice(1)) + '.' + esc(diligObs(n)) : '<span class="note">sem detalhes (registrada só com a hora)</span>') + '</p><button class="btn small ghost" data-nd="' + t + '">Apagar</button></div>';
     }).join('');
     openModal('Anotações das diligências',
       '<p><strong>' + esc(it.nome) + '</strong></p>' + (linhas || '<p class="note">Nenhuma diligência registrada.</p>') +
@@ -7662,7 +7705,7 @@ function iaUsuarioAjuste(d) {
     $('fiSave').onclick = function () { salvar(true); };
     $('fiSaveOnly').onclick = function () { salvar(false); };
   }
-  function viewCert(it) {
+  function viewCertTexto(it) {
     if (externo(it)) {
       openModal('Certidão de ' + it.nome,
         '<p class="note">Certificada fora da página: aqui só fica o registro, sem PDF.</p><p>Dia: <strong>' + esc(fmtDate(it.certidao.data)) + '</strong><br>Resultado: <strong>' + esc(it.certidao.tipo === 'externo' ? 'não informado' : it.certidao.tipo) + '</strong><br>Custas: <strong>' + fmtReais(custasDe(it)) + '</strong><br>Transporte: <strong>' + fmtReais(transpDe(it)) + '</strong></p>');
@@ -7695,6 +7738,29 @@ function iaUsuarioAjuste(d) {
     };
   }
 
+  async function viewCert(it) {
+    if (externo(it)) { viewCertTexto(it); return; }
+    openModal('Certidão de ' + it.nome, '<p class="prog" id="vcP">Montando o PDF da certidão…</p>');
+    var body = document.getElementById('mbody'), doc = null;
+    try {
+      if (!(await ensureLib('pdflib')) || !(await ensureLib('pdfjs'))) { throw new Error('lib'); }
+      var blobs = await loadPrints(it), gen = window.__mandadosTeste && window.__mandadosTeste.gerarPdfCert;
+      var bytes = gen ? await gen(it, blobs) : await certPdf(it, it.certidao.texto, it.certidao.sig, blobs);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      doc = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+      liveDocs.push(doc);
+      var html = '<p class="note">É o PDF que vai anexado ao processo' + (doc.numPages > 1 ? ' (' + doc.numPages + ' páginas)' : '') + '. Dá para dar zoom com os dedos.</p>';
+      for (var k = 1; k <= doc.numPages; k++) {
+        var page = await doc.getPage(k), src = await renderThumb(page, 1.8, 0.8);
+        html += '<figure class="vm"><img alt="Certidão, página ' + k + '" src="' + src + '"><figcaption>Página ' + k + ' de ' + doc.numPages + '</figcaption></figure>';
+      }
+      html += '<div class="actions"><button class="btn primary" id="vcPdf">Baixar PDF</button><button class="btn" id="vcSh">Compartilhar</button>' + (it.certidao.texto ? '<button class="btn ghost" id="vcCp">Copiar texto</button>' : '') + '</div>';
+      body.innerHTML = html;
+      document.getElementById('vcPdf').onclick = function () { baixarUma(it); };
+      document.getElementById('vcSh').onclick = function () { compartilharCerts([it]); };
+      if (document.getElementById('vcCp')) { document.getElementById('vcCp').onclick = function () { copyText(it.certidao.texto).then(function (ok) { toast(ok ? 'Certidão copiada' : 'Não foi possível copiar'); }); }; }
+    } catch (e) { closeModal(); viewCertTexto(it); }
+  }
   function purge(it) {
     openModal('Excluir definitivamente',
       '<p>Isso apaga o mandado de <strong>' + esc(it.nome) + '</strong> e a certidão deste aparelho Não dá para desfazer.</p>' +
