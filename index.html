@@ -983,6 +983,14 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .visgrp.tem .btn[data-act="visita"] { padding-right: 54px; }
 
 .ggbox { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0 8px; }
+
+#rOut li.arrastando { transform: none !important; opacity: .35 !important; outline: 2px dashed var(--accent) !important; box-shadow: none !important; background: transparent !important; border-radius: 14px; }
+.dragghost { list-style: none; background: var(--surface, #fff); border-radius: 16px; box-shadow: 0 16px 34px rgba(0,0,0,.38); outline: 2px solid var(--accent); padding: 4px 6px; transform: rotate(-1.2deg) scale(1.02); opacity: .98; touch-action: none; }
+/* ===== v44: Selecionar dia, Selecionar todos e Gerar rota na mesma linha ===== */
+.dayrow2 { align-items: center; flex-wrap: nowrap; gap: 6px; }
+.daycol { flex-direction: row; flex-wrap: nowrap; gap: 6px; align-items: center; }
+.dayrow2 .btn, .btn.sdia, .rotabtn { white-space: nowrap; font-size: 12.5px; padding: 0 9px; min-height: 38px; }
+.rotabtn { margin-left: auto; }
 </style>
 </head>
 <body>
@@ -5303,11 +5311,11 @@ function iaUsuarioAjuste(d) {
     if (tab === 'devolver' || tab === 'arquivos') { toast('“Excluir tudo” vale para as listas de mandados.'); return; }
     var vis = visiveis(), marc = vis.filter(function (i) { return sel[i.id]; });
     if (!vis.length) { toast('Não há mandados nesta lista'); return; }
+    var alvoEx = marc.length ? marc : vis;
     openModal('Excluir mandados',
-      '<p>Esta lista tem <strong>' + vis.length + '</strong> ' + (vis.length === 1 ? 'mandado' : 'mandados') + (marc.length ? ' e <strong>' + marc.length + '</strong> ' + (marc.length === 1 ? 'está marcado' : 'estão marcados') : '') + '. O que você quer excluir?</p>' +
-      (marc.length && marc.length < vis.length ? '<div class="actions"><button class="btn primary" id="dxMarc">Só os ' + marc.length + ' marcados</button></div>' : '') +
-      '<div class="actions"><button class="btn' + (marc.length && marc.length < vis.length ? '' : ' primary') + '" id="dxTudo">Todos os ' + vis.length + ' desta lista</button><button class="btn ghost" id="dxNo">Cancelar</button></div>' +
-      '<p class="note">Eles só saem da lista: o PDF guardado não é apagado. Logo depois aparece o botão “Desfazer”, e se você ler o PDF de novo eles voltam.</p>');
+      '<p><strong>Tem certeza que deseja excluir os arquivos definitivamente?</strong></p>' +
+      '<p>' + alvoEx.length + (alvoEx.length === 1 ? ' mandado' : ' mandados') + (marc.length ? ' (os marcados)' : ' (todos desta lista)') + '.</p>' +
+      '<div class="actions"><button class="btn primary" id="dxTudo" style="background:#E5484D;border-color:#E5484D">Sim, excluir</button><button class="btn" id="dxNo">Cancelar</button></div>');
     function apagar(arr) {
       var ids = arr.map(function (i) { return i.id; });
       arr.forEach(function (i) { i.status = 'excluido'; delete sel[i.id]; });
@@ -5315,8 +5323,7 @@ function iaUsuarioAjuste(d) {
       toast(ids.length + (ids.length === 1 ? ' mandado excluído' : ' mandados excluídos') + ' da lista', function () { ids.forEach(function (id) { var x = byId(id); if (x) { x.status = 'pendente'; } }); save(); render(); });
     }
     document.getElementById('dxNo').onclick = closeModal;
-    document.getElementById('dxTudo').onclick = function () { apagar(vis); };
-    if (document.getElementById('dxMarc')) { document.getElementById('dxMarc').onclick = function () { apagar(marc); }; }
+    document.getElementById('dxTudo').onclick = function () { apagar(alvoEx); };
   };
 
   /* Ações nos cartões */
@@ -5404,11 +5411,7 @@ function iaUsuarioAjuste(d) {
     else if (act === 'certwa') { openCert(it, 'wa'); }
     else if (act === 'toenv') { it.cls = 'enviar'; it.motivo = ''; it.manual = true; save(); render(); toast('Marcado: pode enviar'); }
     else if (act === 'tonao') { it.cls = 'nao_enviar'; it.motivo = it.motivo || 'Decidido por você'; it.manual = true; save(); render(); toast('Marcado: não enviar'); }
-    else if (act === 'del') {
-      var delId = it.id;
-      it.status = 'excluido'; delete sel[delId]; save(); render();
-      toast('Mandado excluído da lista', function () { var x = byId(delId); if (x) { x.status = 'pendente'; save(); render(); } });
-    }
+    else if (act === 'del') { abrirExcluirCartao(it); }
     else if (act === 'baixar') { baixarUma(it); }
     else if (act === 'compart') { compartilharCerts([it]); }
     else if (act === 'purge') { purge(it); }
@@ -6230,6 +6233,18 @@ function iaUsuarioAjuste(d) {
     }
     ggAndamento = false; definirGeoGoogle(g); save(); render();
     toast('Google: ' + r.casa + ' no número da casa' + (r.rua ? ', ' + r.rua + ' no centro da rua' : '') + (r.nao ? ', ' + r.nao + ' aproximadas (não usei)' : '') + (r.zero ? ', ' + r.zero + ' sem resultado' : '') + (r.fora ? ', ' + r.fora + ' fora da cidade (não usei)' : '') + '.' + (parou ? ' ' + parou : ''));
+  }
+  function abrirExcluirCartao(it) {
+    openModal('Excluir este mandado?',
+      '<p><strong>' + esc(it.nome) + '</strong></p><p>Ele sai da lista.</p>' +
+      '<p class="note">Se você quer <strong>manter o arquivo em Certidões</strong>, não exclua: toque no <strong>✅</strong> do cartão.</p>' +
+      '<div class="actions"><button class="btn primary" id="exSim" style="background:#E5484D;border-color:#E5484D">Excluir mesmo</button><button class="btn" id="exNao">Cancelar</button></div>');
+    document.getElementById('exNao').onclick = closeModal;
+    document.getElementById('exSim').onclick = function () {
+      var delId = it.id;
+      it.status = 'excluido'; delete sel[delId]; save(); closeModal(); render();
+      toast('Mandado excluído da lista', function () { var x = byId(delId); if (x) { x.status = 'pendente'; save(); render(); } });
+    };
   }
   function abrirDiligencia(it) {
     var nv = (it.visitas || []).length + 1, now = new Date();
@@ -8831,52 +8846,83 @@ function iaUsuarioAjuste(d) {
       arr0 = li; li.classList.add('arrastando');
       return true;
     }
-    function moverArraste(x, y) {
+    function moverArraste(x, y, semAuto) {
       if (!arr0) { return; }
       var alvo = document.elementFromPoint(x, y), li2 = alvo && alvo.closest ? alvo.closest('li[data-id]') : null;
       if (li2 && li2 !== arr0) {
         var r = li2.getBoundingClientRect();
         li2.parentNode.insertBefore(arr0, y > r.top + r.height / 2 ? li2.nextSibling : li2);
       }
+      if (semAuto) { return; }
       var pai = paiRolavel(arr0);
       if (pai) { if (y < 100) { pai.scrollTop -= 16; } else if (y > window.innerHeight - 100) { pai.scrollTop += 16; } }
     }
-    var pressTimer = null, pressX = 0, pressY = 0, pressLi = null, ultimoArraste = 0, ordemAntes = '';
+    var pressTimer = null, pressX = 0, pressY = 0, pressLi = null, pressId = null, ultimoArraste = 0, ordemAntes = '';
+    var ghost = null, gOff = null, gX0 = 0, dragId = null, scrollId = null, scrollY = 0;
+    /* a parada "levanta" e acompanha o dedo solta pela tela; no lugar dela fica um espaço tracejado */
+    function criarGhost(li, x, y) {
+      var r = li.getBoundingClientRect(), g = li.cloneNode(true);
+      Array.prototype.forEach.call(g.querySelectorAll('[data-rsel],[data-fix],[data-pos],[data-id],[id]'), function (n) { n.removeAttribute('data-rsel'); n.removeAttribute('data-fix'); n.removeAttribute('data-pos'); n.removeAttribute('data-id'); n.removeAttribute('id'); });
+      g.removeAttribute('data-id'); g.classList.remove('arrastando'); g.classList.add('dragghost');
+      g.style.cssText = 'position:fixed;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;margin:0;z-index:9999;pointer-events:none;';
+      document.body.appendChild(g); ghost = g; gOff = { y: y - r.top, l: r.left };
+    }
+    function moverGhost(x, y) { if (!ghost) { return; } ghost.style.top = (y - gOff.y) + 'px'; ghost.style.left = (gOff.l + (x - gX0) * 0.3) + 'px'; }
     function ordemDom() { return Array.prototype.slice.call($('rBody').querySelectorAll('li[data-id]')).map(function (li) { return li.getAttribute('data-id'); }).join(','); }
     function cancelarPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } pressLi = null; }
     function soltar() {
       cancelarPress();
       if (!arr0) { return; }
-      arr0.classList.remove('arrastando'); arr0 = null; ultimoArraste = Date.now();
-      var ids = ordemDom().split(',');
-      if (ordemAntes && ids.join(',') === ordemAntes) { ordemAntes = ''; return; }
-      ordemAntes = '';
-      salvarManual(ids); refaz();
+      var li = arr0, g = ghost;
+      arr0 = null; dragId = null; scrollId = null; ghost = null; ultimoArraste = Date.now();
+      function fim() {
+        li.classList.remove('arrastando'); if (g && g.parentNode) { g.parentNode.removeChild(g); }
+        var ids = ordemDom().split(',');
+        if (ordemAntes && ids.join(',') === ordemAntes) { ordemAntes = ''; return; }
+        ordemAntes = '';
+        salvarManual(ids); refaz();
+      }
+      if (g) { var r = li.getBoundingClientRect(); g.style.transition = 'top .16s ease, left .16s ease, transform .16s ease'; g.style.top = r.top + 'px'; g.style.left = r.left + 'px'; g.style.transform = 'none'; setTimeout(fim, 170); }
+      else { fim(); }
     }
     var passivo = { passive: false };
     $('rBody').addEventListener('touchstart', function (e) {
+      if (arr0) {      /* já está arrastando: outro dedo rola a lista */
+        var ct = e.changedTouches && e.changedTouches[0];
+        if (ct && dragId !== null && ct.identifier !== dragId && scrollId === null) { scrollId = ct.identifier; scrollY = ct.clientY; e.preventDefault(); }
+        return;
+      }
       var h = e.target.closest && e.target.closest('[data-drag]');
       if (h && iniciarArraste(h)) { e.preventDefault(); return; }
-      if (modoReord || arr0) { return; }
+      if (modoReord) { return; }
       var li = e.target.closest && e.target.closest('#rOut li[data-id]');
       if (!li || e.target.closest('a, button, input, select, textarea, label, summary')) { return; }
       var t0 = e.touches && e.touches[0];
       if (!t0 || e.touches.length > 1) { return; }
-      pressX = t0.clientX; pressY = t0.clientY; pressLi = li;
+      pressX = t0.clientX; pressY = t0.clientY; pressLi = li; pressId = t0.identifier;
       pressTimer = setTimeout(function () {
         pressTimer = null;
-        if (pressLi && iniciarArraste(pressLi)) { ordemAntes = ordemDom(); if (navigator.vibrate) { try { navigator.vibrate(12); } catch (x) {} } }
+        if (pressLi && iniciarArraste(pressLi)) { ordemAntes = ordemDom(); dragId = pressId; gX0 = pressX; criarGhost(pressLi, pressX, pressY); if (navigator.vibrate) { try { navigator.vibrate(12); } catch (x) {} } }
       }, 380);
     }, passivo);
     $('rBody').addEventListener('touchmove', function (e) {
       if (pressTimer && e.touches && e.touches[0] && (Math.abs(e.touches[0].clientX - pressX) > 10 || Math.abs(e.touches[0].clientY - pressY) > 10)) { cancelarPress(); }
       if (!arr0) { return; }
       e.preventDefault();
-      var t = e.touches && e.touches[0];
-      if (t) { moverArraste(t.clientX, t.clientY); }
+      var ts = e.touches || [], tD = null, tS = null, q;
+      for (q = 0; q < ts.length; q++) { if (dragId !== null && ts[q].identifier === dragId) { tD = ts[q]; } else if (scrollId !== null && ts[q].identifier === scrollId) { tS = ts[q]; } }
+      if (!tD && dragId === null) { tD = ts[0] || null; }
+      if (tS) { var pai = paiRolavel(arr0); if (pai) { pai.scrollTop += scrollY - tS.clientY; } scrollY = tS.clientY; }
+      if (tD) { moverGhost(tD.clientX, tD.clientY); moverArraste(tD.clientX, tD.clientY, scrollId !== null); }
     }, passivo);
-    $('rBody').addEventListener('touchend', soltar);
-    $('rBody').addEventListener('touchcancel', soltar);
+    function fimToque(e) {
+      var ch = e.changedTouches || [], q, soltouDrag = false;
+      for (q = 0; q < ch.length; q++) { if (ch[q].identifier === scrollId) { scrollId = null; } if (ch[q].identifier === dragId) { soltouDrag = true; } }
+      if (arr0 && dragId !== null && !soltouDrag) { return; }
+      soltar();
+    }
+    $('rBody').addEventListener('touchend', fimToque);
+    $('rBody').addEventListener('touchcancel', fimToque);
     $('rBody').addEventListener('click', function (e) { if (Date.now() - ultimoArraste < 500) { e.stopPropagation(); e.preventDefault(); } }, true);
     $('rBody').addEventListener('pointerdown', function (e) {
       if (e.pointerType !== 'mouse') { return; }
