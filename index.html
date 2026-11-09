@@ -1031,6 +1031,56 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .cumprbar { padding-bottom: 4px !important; }
 .cumprbar .cb-dica { display: block !important; font-size: 10px !important; line-height: 1.1 !important; margin: 1px 0 0 !important; }
 .cumprbar .seqbar { margin: 3px 0 0 !important; }
+
+/* ===== v57: topo do modo cumprimento (preto e dourado) ===== */
+.cumprbar { background: linear-gradient(180deg, #0d0d11, #17130a) !important; border-bottom: 1.5px solid rgba(245,179,53,.65); box-shadow: 0 6px 18px rgba(0,0,0,.35), inset 0 -1px 0 rgba(245,179,53,.25) !important; color: #fff; }
+.cumprbar .cb2 { display: grid; grid-template-columns: 52px 1fr auto; grid-template-areas: "av tit btns" "av st btns"; column-gap: 8px; align-items: center; }
+.cumprbar .cumprlogo { display: contents !important; background: #0B0B0F; color: #fff; }
+.cumprbar .cumprlogo img.avatar { grid-area: av; height: 58px !important; width: auto !important; max-width: 52px; object-fit: contain; align-self: end; background: transparent !important; filter: drop-shadow(0 0 7px rgba(245,179,53,.5)); }
+.cumprbar .cumprlogo > span { grid-area: tit; font-size: 15px; font-weight: 800; letter-spacing: .1px; line-height: 1.1; }
+.cumprbar .cumprcron { grid-area: st; display: flex !important; align-items: center; gap: 0 !important; margin: 0 !important; flex-wrap: nowrap; }
+.cumprbar .cb2-st { display: flex; align-items: center; gap: 4px; padding: 0 7px; border-left: 1px solid rgba(255,255,255,.18); min-width: 0; }
+.cumprbar .cb2-st:first-child { padding-left: 0; border-left: 0; }
+.cumprbar .cb2-st svg { color: #F5B335; flex: none; width: 16px; height: 16px; }
+.cumprbar .cb2-st > strong { font-size: 17px !important; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.cumprbar .cb2-t { display: flex; flex-direction: column; line-height: 1.05; }
+.cumprbar .cb2-t small { font-size: 9px; opacity: .8; }
+.cumprbar .cb2-t b, .cumprbar .cb2-t .cb-cont { font-size: 12px; font-weight: 800; }
+.cumprbar .cb2-t .cb-cont { font-size: 14px; }
+.cumprbar .cb2-btns { grid-area: btns; display: flex; flex-direction: column; gap: 4px; width: 118px; }
+.cumprbar .cb2-btns2 { display: flex; gap: 4px; }
+.cumprbar .cb2-btns button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: rgba(0,0,0,.35); color: #fff; border: 1.5px solid #D9A441; border-radius: 999px; font-weight: 800; font-size: 10.5px; padding: 0 6px; min-height: 26px; white-space: nowrap; }
+.cumprbar .cb2-btns button svg { color: #F5B335; width: 14px; height: 14px; }
+.cumprbar .cb2-btns2 button[data-cb="min"] { flex: 0 0 40px; }
+.cumprbar .cb2-btns2 button[data-cb="sair"] { flex: 1; }
+.cumprbar .cb2-traco { width: 14px; height: 2px; background: #fff; border-radius: 2px; display: block; }
+.cumprbar .seqbar { margin: 4px 0 0 !important; height: 6px !important; background: rgba(255,255,255,.2) !important; border-radius: 6px; }
+.cumprbar .seqbar > div { background: linear-gradient(90deg, #D9962B, #FFD36B) !important; border-radius: 6px; }
+.cumprbar .cb-dica { display: flex !important; align-items: center; gap: 6px; font-size: 10px !important; margin: 3px 0 0 !important; opacity: .85; }
+.cumprbar .cb-dica svg { color: #F5B335; width: 16px; height: 16px; flex: none; }
+
+/* v57: larguras do topo do modo cumprimento (tudo numa linha, de 360 a 430 px) */
+.cumprbar { overflow: hidden; }
+.cumprbar .cb2 { grid-template-columns: 42px minmax(0, 1fr) 118px; column-gap: 6px; }
+.cumprbar .cumprlogo img.avatar { height: 52px !important; max-width: 42px; }
+.cumprbar .cumprlogo > span { white-space: nowrap; font-size: 15px; }
+.cumprbar .cumprcron { min-width: 0; overflow: hidden; }
+.cumprbar .cb2-st { padding: 0 5px; gap: 3px; white-space: nowrap; flex: none; }
+.cumprbar .cb2-st > strong { font-size: 15px !important; }
+.cumprbar .cb2-t b, .cumprbar .cb2-t small, .cumprbar .cb2-t .cb-cont { white-space: nowrap; }
+.cumprbar .cb2-t b { font-size: 11.5px; }
+.cumprbar .cb2-st svg { width: 14px; height: 14px; }
+.cumprbar .cb2-btns { width: 118px; min-width: 0; }
+.cumprbar .cb2-btns button { font-size: 10px; padding: 0 4px; white-space: nowrap; min-width: 0; }
+.cumprbar .cb2-btns button[data-cb="reiniciar"] svg { display: none; }
+@media (max-width: 400px) {
+  .cumprbar .cb2 { grid-template-columns: 38px minmax(0, 1fr) 104px; column-gap: 5px; }
+  .cumprbar .cumprlogo img.avatar { height: 46px !important; max-width: 38px; }
+  .cumprbar .cb2-st svg { display: none; }
+  .cumprbar .cb2-btns { width: 104px; }
+  .cumprbar .cb2-btns button { font-size: 9px; }
+  .cumprbar .cumprlogo > span { font-size: 14px; }
+}
 </style>
 </head>
 <body>
@@ -8836,7 +8886,12 @@ function iaUsuarioAjuste(d) {
     var ra = state.rotaAtiva, lista = cumprLista(), n = ra.ids.length, feitas = n - lista.length, pct = Math.round(feitas / n * 100);
     var id = lista.length ? lista[cumprPos(lista)] : '', num = lista.length ? ((ra.ord && ra.ord[id]) || cumprPos(lista) + 1) : n;
     el.hidden = false;
-    el.innerHTML = '<div class="cumprlogo">' + avatarHtml() + '<span>Modo cumprimento</span></div><div class="cumprcron"><span>⏱ <strong id="cumprCron">' + fmtCron(tempoDecorrido(ra)) + '</strong></span>' + (ra.est ? '<small>estimativa ' + fmtDur(ra.est * 60000) + '</small>' : '') + '<button type="button" class="btn small ghost" data-cb="reiniciar">Reiniciar cronômetro</button></div><div class="cb-row"><strong class="cb-cont">' + num + '/' + n + '</strong><span class="cb-falta">' + (lista.length ? 'faltam ' + lista.length : 'tudo atendido') + '</span><span class="cb-gap"></span><button type="button" class="btn small ghost" data-cb="min">Minimizar</button><button type="button" class="btn small ghost" data-cb="sair">Sair</button></div><div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (lista.length > 1 ? '<p class="cb-dica">Deslize: esquerda = próximo, direita = anterior.</p>' : '');
+    el.innerHTML = '<div class="cb2"><div class="cumprlogo">' + avatarHtml() + '<span>Modo cumprimento</span></div>' +
+      '<div class="cumprcron"><span class="cb2-st"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="14" r="7"/><path d="M12 14l3-3M9 3h6M12 3v4"/></svg><strong id="cumprCron">' + fmtCron(tempoDecorrido(ra)) + '</strong></span>' +
+      (ra.est ? '<span class="cb2-st"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="16" cy="16" r="3"/></svg><span class="cb2-t"><small>Estimativa</small><b>' + fmtDur(ra.est * 60000) + '</b></span></span>' : '') +
+      '<span class="cb2-st"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="cb2-t"><strong class="cb-cont">' + num + '/' + n + '</strong><small class="cb-falta">' + (lista.length ? 'Faltam ' + lista.length : 'Tudo atendido') + '</small></span></span></div>' +
+      '<div class="cb2-btns"><button type="button" data-cb="reiniciar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.6M20 4v5h-5"/></svg> Reiniciar cronômetro</button><div class="cb2-btns2"><button type="button" data-cb="min" aria-label="Minimizar" title="Minimizar"><span class="cb2-traco"></span></button><button type="button" data-cb="sair"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></svg> Sair</button></div></div></div>' +
+      '<div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (lista.length > 1 ? '<p class="cb-dica"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h5M5 4L2 7l3 3M21 7h-5M19 4l3 3-3 3"/><path d="M12 21v-9a1.5 1.5 0 013 0v4l2 .5a2 2 0 011.5 2V21z"/></svg> Deslize: esquerda = próximo, direita = anterior.</p>' : '');
     var l1 = document.getElementById('list'); if (l1) { l1.style.paddingTop = (el.offsetHeight + 10) + 'px'; }
   }
   /* d = +1 próximo, -1 anterior; a ordem nunca muda, só o cartão que aparece */
