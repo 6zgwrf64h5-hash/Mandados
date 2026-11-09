@@ -1157,6 +1157,9 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 
 /* v61: avatar sem fundo preto no modo cumprimento (o fundo vira o branco do cartão) */
 .cumprbar .cumprlogo img.avatar { background: transparent !important; border-radius: 0 !important; filter: drop-shadow(0 1px 3px rgba(226,162,31,.35)) !important; }
+
+#qWrap { width: 100%; }
+#qWrap.qinlist { margin: 6px 0 12px; }
 </style>
 </head>
 <body>
@@ -1219,7 +1222,7 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
   <p class="legend" id="legend"></p>
 
   <div class="tools" id="tools">
-    <input type="text" id="q" placeholder="Buscar pelo nome" aria-label="Buscar pelo nome" autocomplete="off">
+    <div id="qHome"><div id="qWrap"><input type="text" id="q" placeholder="Buscar pelo nome" aria-label="Buscar pelo nome" autocomplete="off"></div></div>
     <select id="ordSel" aria-label="Ordem da lista"><option value="cor">Ordem: por telefone e cor</option><option value="rota">Ordem: por rota</option></select>
     <select id="clsSel" aria-label="Mostrar"><option value="">Mostrar todos</option><option value="enviar">Só com telefone e posso enviar (verde)</option><option value="conferir">Só com telefone e em dúvida (amarelo)</option><option value="nao_enviar">Só com telefone e não envio (vermelho)</option><option value="semcel">Só sem telefone</option></select>
     <div class="actions" id="selTools">
@@ -4811,7 +4814,14 @@ function iaUsuarioAjuste(d) {
     }
     if (tab === 'devolver' && list.length) { html = resumoMensal() + html; }
     if (cumprAtivo()) { html = cumprHtml(); }
+    /* o campo de busca fica logo acima do primeiro cartão (embaixo do quadro de WhatsApp); sem cartões ele volta ao topo, para dar para apagar a busca */
+    var qW = document.getElementById('qWrap'), qI = document.getElementById('q'), qHome = document.getElementById('qHome');
+    var qFoco = document.activeElement === qI, qA = qI.selectionStart, qB = qI.selectionEnd;
+    if (qW.parentNode !== qHome) { qHome.appendChild(qW); }
     document.getElementById('list').innerHTML = html;
+    if (tab !== 'arquivos' && !cumprAtivo()) { var qPrim = document.querySelector('#list article.card'); if (qPrim) { qPrim.parentNode.insertBefore(qW, qPrim); } }
+    qW.classList.toggle('qinlist', qW.parentNode !== qHome);
+    if (qFoco) { qI.focus(); try { qI.setSelectionRange(qA, qB); } catch (e) { /* sem seleção */ } }
     cumprBarra();
     ajustarNumeros();
 
