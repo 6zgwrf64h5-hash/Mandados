@@ -1015,6 +1015,22 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 
 .seqitem { display: flex; align-items: center; gap: 8px; }
 .seqitem .seqrow { flex: 1; min-width: 0; }
+
+.cumprlogo { min-height: 34px !important; padding: 2px 10px !important; font-size: 13px !important; gap: 8px !important; margin: 0 0 3px !important; border-radius: 12px !important; }
+.cumprlogo .avatar { height: 28px !important; }
+.cumprcron { font-size: 12px !important; margin: 0 0 2px !important; gap: 6px !important; }
+.cumprcron strong { font-size: 14px !important; }
+.cumprcron .btn { min-height: 24px !important; padding: 1px 8px !important; font-size: 11px !important; }
+.cumprbar { padding: 5px 12px 6px !important; padding-top: max(5px, env(safe-area-inset-top)) !important; }
+.cumprbar .cb-row { font-size: 13px !important; gap: 6px !important; }
+.cumprbar .cb-row .btn { min-height: 26px !important; padding: 1px 10px !important; font-size: 12px !important; }
+.cumprbar .cb-dica { font-size: 10px !important; margin: 2px 0 0 !important; }
+
+.cumprlogo { min-height: 28px !important; padding: 1px 8px !important; font-size: 12px !important; margin: 0 0 2px !important; }
+.cumprlogo .avatar { height: 24px !important; }
+.cumprbar { padding-bottom: 4px !important; }
+.cumprbar .cb-dica { display: block !important; font-size: 10px !important; line-height: 1.1 !important; margin: 1px 0 0 !important; }
+.cumprbar .seqbar { margin: 3px 0 0 !important; }
 </style>
 </head>
 <body>
@@ -1070,7 +1086,7 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 
   <nav class="tabs" id="tabs" aria-label="Listas">
     <button class="tab" data-tab="enviar" aria-pressed="true">Mandados <span class="count" data-c="enviar"></span></button>
-    <button class="tab" data-tab="aguardando" aria-pressed="false">Exclusivo online <span class="count" data-c="aguardando"></span></button>
+    <button class="tab" data-tab="aguardando" aria-pressed="false">⏳ Exclusivo online <span class="count" data-c="aguardando"></span></button>
     <button class="tab" data-tab="devolver" aria-pressed="false">Certidões <span class="count" data-c="devolver"></span></button>
     <button class="tab" data-tab="arquivos" aria-pressed="false">Arquivos <span class="count" data-c="arquivos"></span></button>
   </nav>
@@ -1253,7 +1269,11 @@ function analisaAfastamento(txt) {
     var antes = n.slice(Math.max(0, m.index - 80), m.index);
     var negado = /\b(?:indefiro|indeferi\w*|indeferid\w+|nao (?:determino|defiro|ha|houve|se justifica|cabe|foi deferido|foi determinado)|sem|inexistent\w+|desnecessari\w+|revogo|revogad\w+)\b[^.;:]*$/.test(antes);
     var lei = /\b(?:ii|inciso ii)\s*[-–.):]*\s*$/.test(antes) || /\bart(?:igo)?\.?\s*22\b/.test(antes);
-    if (negado || lei) { if (lei && !negado) { duvida = true; } limpo += n.slice(ult, m.index) + ' '; ult = m.index + m[0].length; }
+    /* jurisprudência transcrita (ementa, relator, habeas corpus...) e frases de possibilidade ("o juiz poderá determinar o afastamento...") não são decisão */
+    var janela = n.slice(Math.max(0, m.index - 700), m.index + 700), antesLg = n.slice(Math.max(0, m.index - 140), m.index);
+    var cita = /\b(?:relator|julgado em|habeas corpus|agravo de instrumento|ementa)\b/.test(janela);
+    var modal = /\b(?:podera|poderao|pode|podendo|faculta|permite|possibilita|dispoe)\b[^.;:]*$/.test(antesLg);
+    if (negado || lei || cita || modal) { if ((lei || modal) && !negado && !cita) { duvida = true; } limpo += n.slice(ult, m.index) + ' '; ult = m.index + m[0].length; }
     else { imposto = true; }
   }
   limpo += n.slice(ult);
@@ -2783,6 +2803,14 @@ function diligNotasFrases(it) {
     return quando + (n.modo === 'livre' ? ': ' : ', ') + f + '.' + diligObs(n);
   }).filter(function (x) { return x; });
 }
+function desenharLinha(page, ln, prox, x, y, maxW, size, font) {
+  var w = font.widthOfTextAtSize(ln, size), pal = ln.split(' ');
+  if (prox && pal.length > 1 && ln.indexOf('  ') < 0 && ln.charAt(0) !== ' ' && w >= maxW * 0.8 && w < maxW) {
+    var wsp = font.widthOfTextAtSize(' ', size), soPal = pal.reduce(function (a, q) { return a + font.widthOfTextAtSize(q, size); }, 0), gap = (maxW - soPal) / (pal.length - 1);
+    if (gap <= wsp * 3) { var cx = x; pal.forEach(function (q) { page.drawText(q, { x: cx, y: y, size: size, font: font }); cx += font.widthOfTextAtSize(q, size) + gap; }); return; }
+  }
+  page.drawText(ln, { x: x, y: y, size: size, font: font });
+}
 function semZapTxt(it) { var o = it && it.semZapObs; return o && o.on !== false && o.nums && o.nums.length ? 'Observação: o número de telefone indicado (' + o.nums.join(', ') + ') não possui WhatsApp registrado.' : ''; }
 function diligParagrafo(notas) { return notas && notas.length ? (notas.length === 1 ? 'Registro da diligência: ' : 'Registro das diligências: ') + notas.join(' ') : ''; }
 function fmtVisita(t) {
@@ -3780,7 +3808,11 @@ function iaUsuarioAjuste(d) {
   }
   /* Impressão: primeiro as paradas da rota, na ordem dela; depois os que não têm endereço físico */
   function ordemImpressao(list) {
-    var todos = ordemRota(list);
+    var todos = ordemRota(list), refRota = (state.rotaAtiva && state.rotaAtiva.ids) || [];
+    if (refRota.length) {      /* segue a ordem em que a rota foi organizada (inclusive a manual) */
+      var posR = {}; refRota.forEach(function (id, k) { posR[id] = k; });
+      todos = todos.slice().sort(function (a, b) { return (a.id in posR ? posR[a.id] : 1e6) - (b.id in posR ? posR[b.id] : 1e6); });
+    }
     return todos.filter(function (i) { return etipo(i) === 'local'; }).concat(todos.filter(function (i) { return etipo(i) !== 'local'; }));
   }
   function msug(i) { return modeloSugerido(i, cidades()); }
@@ -4858,7 +4890,7 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="meMat">Matrícula</label><input type="text" id="meMat" value="' + esc(me.mat) + '" autocomplete="off">' +
       '<label class="f" for="meDDD">DDD da sua região (completa os telefones que vêm sem DDD)</label><input type="text" id="meDDD" inputmode="numeric" maxlength="2" placeholder="Ex.: 45" value="' + esc(state.cfg.ddd || '') + '" autocomplete="off">' +
       '<label class="dgop"><input type="checkbox" id="meEnq"' + (state.cfg.enquadrarAuto === false ? '' : ' checked') + '> Enquadrar fotos automaticamente ao juntar (recorta as bordas; dá para desfazer em cada imagem)</label>' +
-      '' + (MODO_ATALHO ? '<label class="f" for="meGoogle">Chave do Google (opcional, para conferir endereços)</label><input type="password" id="meGoogle" value="' + esc(chaveGoogle()) + '" autocomplete="off"><p class="note">Só rua, número, bairro e cidade vão ao Google, <strong>nunca o nome da parte</strong>. A chave fica só neste aparelho. No Google Cloud, ative a Geocoding API e <strong>limite o uso diário</strong>. O app também para em ' + GG_LIMITE_DIA + ' consultas por dia.</p>' : '') + '<label class="f" for="meNav">Aplicativo de navegação (ao tocar no endereço do cartão)</label><select id="meNav" class="sel"><option value="google"' + (navApp() === 'google' ? ' selected' : '') + '>Google Maps</option><option value="waze"' + (navApp() === 'waze' ? ' selected' : '') + '>Waze</option><option value="apple"' + (navApp() === 'apple' ? ' selected' : '') + '>Apple Maps</option></select><p class="note">Google Maps e Waze começam a navegação direto. O Apple Maps abre a rota pronta e pode pedir um toque em “Iniciar”. Vale um destino por vez; com o CarPlay, a rota aparece na tela do carro.</p>' +
+      '<label class="f" for="meVel">Estimativa de tempo: velocidade média (km/h)</label><input type="number" id="meVel" min="5" max="90" inputmode="decimal" value="' + ((state.cfg.est && state.cfg.est.vel) || 25) + '"><label class="f" for="meAtend">Estimativa de tempo: minutos por parada</label><input type="number" id="meAtend" min="1" max="60" inputmode="decimal" value="' + ((state.cfg.est && state.cfg.est.atend) || 6) + '"><p class="note">Usados só para estimar quanto tempo a rota leva. Compare com o tempo real do modo cumprimento e ajuste.</p>' + (MODO_ATALHO ? '<label class="f" for="meGoogle">Chave do Google (opcional, para conferir endereços)</label><input type="password" id="meGoogle" value="' + esc(chaveGoogle()) + '" autocomplete="off"><p class="note">Só rua, número, bairro e cidade vão ao Google, <strong>nunca o nome da parte</strong>. A chave fica só neste aparelho. No Google Cloud, ative a Geocoding API e <strong>limite o uso diário</strong>. O app também para em ' + GG_LIMITE_DIA + ' consultas por dia.</p>' : '') + '<label class="f" for="meNav">Aplicativo de navegação (ao tocar no endereço do cartão)</label><select id="meNav" class="sel"><option value="google"' + (navApp() === 'google' ? ' selected' : '') + '>Google Maps</option><option value="waze"' + (navApp() === 'waze' ? ' selected' : '') + '>Waze</option><option value="apple"' + (navApp() === 'apple' ? ' selected' : '') + '>Apple Maps</option></select><p class="note">Google Maps e Waze começam a navegação direto. O Apple Maps abre a rota pronta e pode pedir um toque em “Iniciar”. Vale um destino por vez; com o CarPlay, a rota aparece na tela do carro.</p>' +
       '<label class="f" for="meDil">Custas (valor padrão), em R$: vai nas certidões</label><input type="text" id="meDil" value="' + esc(me.diligencia || '108,63') + '" inputmode="decimal" autocomplete="off">' +
       '<label class="f" for="meSms">Celular que recebe a rota por SMS (quando você toca em “Enviar por SMS”)</label><input type="text" id="meSms" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuSmsTxt()) + '" autocomplete="off"><p class="note" id="meSmsNota"></p>' +
       '<label class="f" for="meZap">WhatsApp que recebe a rota (abre a conversa com o link já pronto)</label><input type="text" id="meZap" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuZapTxt()) + '" autocomplete="off"><p class="note" id="meZapNota"></p>' +
@@ -4937,6 +4969,8 @@ function iaUsuarioAjuste(d) {
         try { if (ch) { localStorage.setItem('mandados-ia-chave', ch); } else { localStorage.removeItem('mandados-ia-chave'); } } catch (e) {}
         state.cfg.iaModelo = String(document.getElementById('meModelo').value || '').trim() || null;
       }
+      var velE = Math.max(5, Math.min(90, parseFloat(String(document.getElementById('meVel').value).replace(',', '.')) || 25)), atE = Math.max(1, Math.min(60, parseFloat(String(document.getElementById('meAtend').value).replace(',', '.')) || 6));
+      state.cfg.est = (velE === 25 && atE === 6) ? null : { vel: velE, atend: atE };
       if (MODO_ATALHO && document.getElementById('meGoogle')) {
         var gk = String(document.getElementById('meGoogle').value || '').trim();
         try { if (gk) { localStorage.setItem('mandados-google-chave', gk); } else { localStorage.removeItem('mandados-google-chave'); } } catch (e) {}
@@ -5645,7 +5679,7 @@ function iaUsuarioAjuste(d) {
           iz.it.semZapObs = iz.it.semZapObs || { nums: [], on: true };
           if (iz.it.semZapObs.nums.indexOf(iz.u.n.label) === -1) { iz.it.semZapObs.nums.push(iz.u.n.label); }
           save(); seqGuarda(); render();
-          if (etipo(iz.it) === 'local') { seq.k++; seqGuarda(); toast('Sem WhatsApp registrado. Segue para o próximo; a observação vai para a certidão.'); }
+          seq.k++; seqGuarda(); toast('Sem WhatsApp registrado. Segue para o próximo.' + (etipo(iz.it) === 'local' ? ' A observação vai para a certidão.' : ''));
         }
         seqMostra(); return;   /* registra e fica nesta tela; quem avança é o botão “Próximo destinatário” */
       }
@@ -6584,14 +6618,14 @@ function iaUsuarioAjuste(d) {
     var y = H - M;
     function np() { page = doc.addPage([W, H]); y = H - M; }
     var lines = wrapText(san(texto), W - 2 * M, function (t) { return font.widthOfTextAtSize(t, size); });
-    lines.forEach(function (ln) {
+    lines.forEach(function (ln, li) {
       if (y < M + 20) { np(); }
       if (ln === 'CERTIDÃO') {
         var tw = bold.widthOfTextAtSize(ln, 15);
         page.drawText(ln, { x: (W - tw) / 2, y: y, size: 15, font: bold });
         y -= lh + 6;
       } else {
-        if (ln) { page.drawText(ln, { x: M, y: y, size: size, font: font }); }
+        if (ln) { desenharLinha(page, ln, lines[li + 1], M, y, W - 2 * M, size, font); }
         y -= lh;
       }
     });
@@ -8155,7 +8189,9 @@ function iaUsuarioAjuste(d) {
           }
           var src = docs[it.fileId];
           if (!src) { continue; }
-          var nums = (it.paginas || []).concat(incl ? (it.contrafe || []) : []).filter(function (n, i, a) { return a.indexOf(n) === i && n >= 1 && n <= src.getPageCount(); }).sort(function (a, b) { return a - b; });
+          var okP = function (n, i, a) { return a.indexOf(n) === i && n >= 1 && n <= src.getPageCount(); }, asc2 = function (a, b) { return a - b; };
+          var pagsM = (it.paginas || []).filter(okP).sort(asc2), pagsC = incl ? (it.contrafe || []).filter(function (n, i, a) { return okP(n, i, a) && pagsM.indexOf(n) === -1; }).sort(asc2) : [];
+          var nums = pagsM.concat(pagsC);      /* a contrafé vai depois do conteúdo do mandado */
           if (!nums.length) { continue; }
           var pgs = await out.copyPages(src, nums.map(function (n) { return n - 1; })), iniPag = out.getPageCount() + 1;
           pgs.forEach(function (p) { out.addPage(p); });
@@ -8386,6 +8422,8 @@ function iaUsuarioAjuste(d) {
   }
   function selRotaHtml() {
     var d = selRotaDados(), n = d.m.length, temZap = !!zapHref('x');
+    var lbx = document.getElementById('rListasBox');
+    if (lbx) { var det0 = lbx.querySelector('details'), aberto = det0 && det0.open; lbx.innerHTML = listasBoxInner(); if (aberto) { var det1 = lbx.querySelector('details'); if (det1) { det1.open = true; } } }
     var btTodos = document.querySelector('#rBody [data-rtodos]'); if (btTodos) { btTodos.textContent = n ? 'Limpar todos' : 'Selecionar todos'; }
     function dis(rot) { return '<span class="btn dis" role="button" aria-disabled="true">' + rot + '</span>'; }
     var wa = temZap ? (n ? '<a class="btn primary" style="text-decoration:none" id="rSelWa" href="' + zapHref(d.txt) + '">WhatsApp' + esc(zapRotulo()) + '</a>' : dis('WhatsApp')) : '';
@@ -8425,13 +8463,14 @@ function iaUsuarioAjuste(d) {
     return h || '<p class="note">Dica: escreva abaixo onde a rota deve começar.</p>';
   }
   function listasRota() {
-    var arr = rotaSel(), n = listaTam(), out = [];
+    var marcL = state.cfg.rotaMarcadas || {}, arr = rotaSel().filter(function (c) { return marcL[c.id]; }), n = listaTam(), out = [];
     for (var k = 0; k < arr.length; k += n) { out.push(arr.slice(k, k + n)); }
     return out;
   }
-  function listasBox() {
+  function listasBox() { return '<div id="rListasBox">' + listasBoxInner() + '</div>'; }
+  function listasBoxInner() {
     var ls = listasRota();
-    if (!ls.length) { return ''; }
+    if (!ls.length) { return '<details class="chk"><summary><strong>Listas para aplicativo de rota (Circuit…)</strong></summary><p class="note" style="margin:6px 0">Marque as paradas acima (as que vão agora) e a lista sai só com elas.</p></details>'; }
     return '<details class="chk"><summary><strong>Listas para aplicativo de rota (Circuit…)</strong></summary><p class="note" style="margin:6px 0">Até ' + listaTam() + ' endereços por lista, do mais perto do começo para o mais longe, em linha reta.</p>' +
       ls.map(function (l, k) { return '<div class="actions"><button class="btn" data-rl="' + (k + 1) + '">Copiar lista ' + (k + 1) + ' (' + l.length + (l.length === 1 ? ' endereço' : ' endereços') + ')</button><button class="btn small" data-rls="' + (k + 1) + '">Compartilhar</button></div>'; }).join('') + '</details>';
   }
@@ -8793,11 +8832,12 @@ function iaUsuarioAjuste(d) {
   function cumprBarra() {
     var el = document.getElementById('cumprBar'), on = cumprAtivo();
     document.body.classList.toggle('cumpr', on); document.documentElement.classList.toggle('cumpr', on);
-    if (!on) { el.hidden = true; el.innerHTML = ''; return; }
+    if (!on) { el.hidden = true; el.innerHTML = ''; var l0 = document.getElementById('list'); if (l0) { l0.style.paddingTop = ''; } return; }
     var ra = state.rotaAtiva, lista = cumprLista(), n = ra.ids.length, feitas = n - lista.length, pct = Math.round(feitas / n * 100);
     var id = lista.length ? lista[cumprPos(lista)] : '', num = lista.length ? ((ra.ord && ra.ord[id]) || cumprPos(lista) + 1) : n;
     el.hidden = false;
-    el.innerHTML = '<div class="cumprlogo">' + avatarHtml() + '<span>Modo cumprimento</span></div><div class="cumprcron"><span>⏱ <strong id="cumprCron">' + fmtCron(tempoDecorrido(ra)) + '</strong></span>' + (ra.est ? '<small>estimativa ' + fmtDur(ra.est * 60000) + '</small>' : '') + '<button type="button" class="btn small ghost" data-cb="reiniciar">Reiniciar cronômetro</button></div><div class="cb-row"><strong class="cb-cont">' + num + '/' + n + '</strong><span class="cb-falta">' + (lista.length ? 'faltam ' + lista.length : 'tudo atendido') + '</span><span class="cb-gap"></span><button type="button" class="btn small ghost" data-cb="sair">Sair</button></div><div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (lista.length > 1 ? '<p class="cb-dica">Deslize: esquerda = próximo, direita = anterior.</p>' : '');
+    el.innerHTML = '<div class="cumprlogo">' + avatarHtml() + '<span>Modo cumprimento</span></div><div class="cumprcron"><span>⏱ <strong id="cumprCron">' + fmtCron(tempoDecorrido(ra)) + '</strong></span>' + (ra.est ? '<small>estimativa ' + fmtDur(ra.est * 60000) + '</small>' : '') + '<button type="button" class="btn small ghost" data-cb="reiniciar">Reiniciar cronômetro</button></div><div class="cb-row"><strong class="cb-cont">' + num + '/' + n + '</strong><span class="cb-falta">' + (lista.length ? 'faltam ' + lista.length : 'tudo atendido') + '</span><span class="cb-gap"></span><button type="button" class="btn small ghost" data-cb="min">Minimizar</button><button type="button" class="btn small ghost" data-cb="sair">Sair</button></div><div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (lista.length > 1 ? '<p class="cb-dica">Deslize: esquerda = próximo, direita = anterior.</p>' : '');
+    var l1 = document.getElementById('list'); if (l1) { l1.style.paddingTop = (el.offsetHeight + 10) + 'px'; }
   }
   /* d = +1 próximo, -1 anterior; a ordem nunca muda, só o cartão que aparece */
   function cumprIr(d) {
@@ -8847,7 +8887,8 @@ function iaUsuarioAjuste(d) {
     var b = e.target.closest ? e.target.closest('[data-cb]') : null;
     if (!b || !state.rotaAtiva) { return; }
     var ra = state.rotaAtiva;
-    if (b.getAttribute('data-cb') === 'reiniciar') { ra.acum = 0; ra.seg = Date.now(); save(); render(); toast('Cronômetro reiniciado.'); return; }
+    if (b.getAttribute('data-cb') === 'min') { ra.cumpr = false; save(); render(); toast('Cumprimento minimizado. O cronômetro continua; para voltar, toque na faixa preta.'); return; }
+      if (b.getAttribute('data-cb') === 'reiniciar') { ra.acum = 0; ra.seg = Date.now(); save(); render(); toast('Cronômetro reiniciado.'); return; }
       if (b.getAttribute('data-cb') === 'sair') {
       var voltarRota = false;
       if (!cumprLista().length) { state.rotaAtiva = null; toast('Cumprimento concluído.'); }
