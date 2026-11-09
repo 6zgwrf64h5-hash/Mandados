@@ -1081,6 +1081,54 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
   .cumprbar .cb2-btns button { font-size: 9px; }
   .cumprbar .cumprlogo > span { font-size: 14px; }
 }
+
+/* v58: cabeçalho do modo cumprimento cerca de 35% maior (estatísticas em cima, botões numa linha embaixo) */
+.cumprbar .cb2 { grid-template-columns: 62px minmax(0, 1fr); grid-template-areas: "av tit" "av st" "btns btns"; column-gap: 10px; row-gap: 7px; }
+.cumprbar .cumprlogo img.avatar { height: 74px !important; max-width: 62px; }
+.cumprbar .cumprlogo > span { font-size: 20px; }
+.cumprbar .cumprcron { grid-area: st; }
+.cumprbar .cb2-st { padding: 0 7px; gap: 5px; }
+.cumprbar .cb2-st > strong { font-size: 20px !important; }
+.cumprbar .cb2-t small { font-size: 12px; }
+.cumprbar .cb2-t b { font-size: 15px; }
+.cumprbar .cb2-t .cb-cont { font-size: 19px; }
+.cumprbar .cb2-st svg { width: 19px; height: 19px; }
+.cumprbar .cb2-btns { grid-area: btns; width: auto; flex-direction: row; gap: 8px; }
+.cumprbar .cb2-btns2 { display: contents; }
+.cumprbar .cb2-btns button { min-height: 38px; font-size: 13px; padding: 0 10px; flex: 0 0 auto; }
+.cumprbar .cb2-btns button[data-cb="reiniciar"] { flex: 1 1 auto; }
+.cumprbar .cb2-btns button[data-cb="reiniciar"] svg { display: inline-block; }
+.cumprbar .cb2-btns button svg { width: 18px; height: 18px; }
+.cumprbar .cb2-btns2 button[data-cb="min"] { flex: 0 0 52px; }
+.cumprbar .cb2-btns2 button[data-cb="sair"] { flex: 0 0 96px; }
+.cumprbar .seqbar { height: 8px !important; }
+.cumprbar .cb-dica { font-size: 12px !important; }
+.cumprbar .cb-dica svg { width: 19px; height: 19px; }
+@media (max-width: 400px) {
+  .cumprbar .cb2 { grid-template-columns: 52px minmax(0, 1fr); column-gap: 8px; }
+  .cumprbar .cumprlogo img.avatar { height: 62px !important; max-width: 52px; }
+  .cumprbar .cumprlogo > span { font-size: 18px; }
+  .cumprbar .cb2-st { padding: 0 5px; }
+  .cumprbar .cb2-st > strong { font-size: 18px !important; }
+  .cumprbar .cb2-t b { font-size: 14px; }
+  .cumprbar .cb2-t .cb-cont { font-size: 17px; }
+  .cumprbar .cb2-btns button { font-size: 12px; padding: 0 6px; }
+  .cumprbar .cb2-btns2 button[data-cb="min"] { flex-basis: 44px; }
+  .cumprbar .cb2-btns2 button[data-cb="sair"] { flex-basis: 84px; }
+}
+
+/* v58: ajuste fino de altura (cabeçalho ~40% maior que o da v57, letras 35% maiores) */
+.cumprbar { padding-bottom: 5px !important; }
+.cumprbar .cb2 { row-gap: 5px; }
+.cumprbar .cumprlogo img.avatar { height: 64px !important; max-width: 54px; }
+.cumprbar .cumprlogo > span { font-size: 19px; }
+.cumprbar .cb2-st > strong { font-size: 19px !important; }
+.cumprbar .cb2-btns button { min-height: 33px; font-size: 12.5px; }
+.cumprbar .seqbar { height: 7px !important; }
+.cumprbar .cb-dica { font-size: 11px !important; margin: 0 !important; }
+.cumprbar .cb-dica svg { width: 16px; height: 16px; }
+.cumprbar { row-gap: 3px !important; }
+@media (max-width: 400px) { .cumprbar .cumprlogo img.avatar { height: 58px !important; max-width: 48px; } .cumprbar .cumprlogo > span { font-size: 17px; } .cumprbar .cb2-st > strong { font-size: 17px !important; } }
 </style>
 </head>
 <body>
@@ -8851,7 +8899,7 @@ function iaUsuarioAjuste(d) {
     return k;
   }
   function iniciarCumprimento() {
-    var m = marcadasRota(), rota = (m.length ? m : rotaSel()).filter(function (i) { return i.status === 'pendente'; });
+    var rota = rotaSel().filter(function (i) { return i.status === 'pendente'; });      /* a rota inteira, na ordem dela (as 10 marcadas servem só para enviar) */
     var extras = sortedSel().filter(function (i) { return etipo(i) !== 'local' && i.status === 'pendente'; });
     var todas = rota.concat(extras);
     if (!todas.length) { toast('Não há paradas na rota.'); return; }
