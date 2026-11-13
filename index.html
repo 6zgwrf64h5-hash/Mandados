@@ -1160,6 +1160,14 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 
 #qWrap { width: 100%; }
 #qWrap.qinlist { margin: 6px 0 12px; }
+
+/* v64: com o modo cumprimento aberto, as janelas (certificar etc.) começam abaixo do cabeçalho */
+body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !important; max-height: calc(100dvh - var(--cumprBottom, 0px) - 12px) !important; }
+
+.rbtn.neg { flex-wrap: wrap; }
+.rbtn small.rsub { flex-basis: 100%; text-align: center; font-size: 10px; font-weight: 600; opacity: .95; line-height: 1.1; }
+
+.stcard { margin: 2px 0 6px; font-size: 12px; font-weight: 600; color: #5B6486; line-height: 1.25; }
 </style>
 </head>
 <body>
@@ -1235,7 +1243,6 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
   </div>
 
   <div class="tools" id="devTools" hidden>
-    <p class="note">As certidões prontas ficam aqui, separadas por dia. Marque as que quiser (ou toque em “Selecionar o dia”) e baixe de uma vez. Sem marcar nada, as ações valem para todas.</p>
     <div class="actions">
       <button class="btn" id="btnMerge">Juntar em um PDF só</button>
       <button class="btn small ghost" id="btnClean">Tirar da lista as já baixadas</button>
@@ -1629,6 +1636,11 @@ var PAREN = {
   irmao: 'atual morador(a) e irmão(ã) do(a) referido(a)',
   filho: 'atual morador(a) e filho(a) do(a) referido(a)',
   conjuge: 'atual morador(a) e cônjuge/companheiro(a) do(a) referido(a)',
+  genro: 'atual morador(a) e genro/nora do(a) referido(a)',
+  sogro: 'atual morador(a) e sogro(a) do(a) referido(a)',
+  tio: 'atual morador(a) e tio(a) do(a) referido(a)',
+  sobrinho: 'atual morador(a) e sobrinho(a) do(a) referido(a)',
+  portaria: 'funcionário(a) da portaria do local',
   vizinho: 'vizinho(a) do local'
 };
 function parenFrase(op, outro) {
@@ -1722,6 +1734,7 @@ function ajusteLocal(texto, pedido) {
 var FRASE_ID = '\n\nCERTIFICO ainda que a identidade foi confirmada previamente.';
 function fisicaAntesTexto(o) {
   var a = atoPalavras(o.tipo), nome = o.nome || 'NOME COMPLETO';
+  if (o.notas && o.notas.length) { return 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado no mandado, e deixei de ' + a.verbo + ' o(a) Sr.(a) ' + nome + ', tendo em vista que não o(a) encontrei no local. ' + diligParagrafo(o.notas); }
   return 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado no mandado, e deixei de ' + a.verbo + ' o(a) Sr.(a) ' + nome + ', tendo em vista que não o(a) encontrei nas diligências realizadas no local.';
 }
 function buildModeloBase(key, o) {
@@ -1890,7 +1903,7 @@ function autoParagrafos(d, o) {
   o = o || {};
   var ato = d.ato || 'BUSCA E APREENSÃO', bens = (d.bens || []).filter(function (x) { return String(x || '').trim(); });
   var temVeic = (d.veiculos || []).some(function (x) { return x && ['marca', 'modelo', 'ano', 'cor', 'placa', 'chassi', 'renavam'].some(function (k) { return x[k]; }); });
-  var usaVeic = temVeic || !bens.length;
+  var usaVeic = temVeic, semBens = !temVeic && !bens.length;      /* só vira "Veículo Marca…" se o mandado trouxer dados do veículo */
   var dt = new Date(o.agora || Date.now());
   var B = '____________';
   var dia = o.diaHoje ? String(dt.getDate()) : '__';
@@ -1912,7 +1925,8 @@ function autoParagrafos(d, o) {
     return [{ t: 'Veículo Marca ' + v(x.marca) + ', Modelo ' + v(x.modelo) + ', Ano ' + v(x.ano) + ', Cor ' + v(x.cor) + ', Placa ' + v(x.placa) + ', Chassi ' + v(x.chassi) + ', Renavam ' + v(x.renavam) + ', no estado das fotos em anexo.', b: true }];
   });
   pv = pv.concat(bens.map(function (x) { return [{ t: String(x).trim(), b: true }]; }));
-  var nb = (usaVeic ? vs.length : 0) + bens.length, verboAto = ato.split(/ E |, /)[0].toLowerCase(), soAval = ato === 'AVALIAÇÃO';
+  if (semBens) { var LN = '________________________________________________________________'; for (var qb = 0; qb < 8; qb++) { pv.push([{ t: LN, b: false }]); } }
+  var nb = (usaVeic ? vs.length : 0) + bens.length + (semBens ? 2 : 0), verboAto = ato.split(/ E |, /)[0].toLowerCase(), soAval = ato === 'AVALIAÇÃO';
   var pAval = 'Avaliei ' + (nb > 1 ? 'os bens' : 'o bem') + ' em R$ ____________ (______________________________________________). ';
   var p3 = soAval ? [{ t: pAval + 'E para constar lavrei o presente auto que lido e achado, vai devidamente assinado por mim, oficial de justiça.', b: false }] : [{ t: (/AVALIA/.test(ato) ? pAval : '') + 'Após efetivada a ' + verboAto + ', deixei como depositário ' + (nb > 1 ? 'dos bens' : 'do bem') + ', Sr. ____________________________________________, que aceitou ao cargo, prometendo zelar pela sua conservação e não abrir mão, sem ordem expressa do MM. Juízo, sob as penas da lei. E para constar lavrei o presente auto que lido e achado, vai devidamente assinado por mim, oficial de justiça, e pelo(a) depositário(a).', b: false }];
   return [{ runs: p1, indent: 0 }].concat(pv.map(function (r) { return { runs: r, indent: 0 }; })).concat([{ runs: p3, indent: 36 }]);
@@ -1926,7 +1940,7 @@ function lacunasAuto(d) {
   var vs = (d.veiculos && d.veiculos.length) ? d.veiculos : [{}];
   var bensL = (d.bens || []).filter(function (x) { return String(x || '').trim(); });
   var temV = (d.veiculos || []).some(function (x) { return x && ['marca', 'modelo', 'ano', 'cor', 'placa', 'chassi', 'renavam'].some(function (k) { return x[k]; }); });
-  if (bensL.length && !temV) { vs = []; }
+  if (!temV) { vs = []; }      /* sem dados de veículo no mandado: não cobra marca, modelo, placa… (o auto sai com linhas em branco) */
   vs.forEach(function (x, i) {
     ['marca', 'modelo', 'ano', 'cor', 'placa', 'chassi', 'renavam'].forEach(function (k) { if (!x[k]) { f.push((vs.length > 1 ? 'veículo ' + (i + 1) + ': ' : '') + k); } });
   });
@@ -1962,6 +1976,21 @@ function limpaEndereco(end, tels) {
   return t.replace(/\s{2,}/g, ' ').replace(/[\s,;\-–]+$/, '').replace(/^[\s,;\-–]+/, '').trim();
 }
 /* Texto curto (1 ou 2 palavras) do que não deu certo com um número */
+function justDeMotivo(mot) { return justDaTentativa([{ motivo: mot }]); }
+function fmtDH(t) { var d = new Date(t), z = function (v) { return (v < 10 ? '0' : '') + v; }; return z(d.getDate()) + '/' + z(d.getMonth() + 1) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+/* quais números móveis do mandado já têm resultado registrado no WhatsApp (todos = nenhum falta) */
+function waEstado(it) {
+  var nums = telefonesUnicos(it.telefones).filter(function (u) { return u.n.ok && !u.n.fixo; });
+  var rs = nums.map(function (u) { var inf = infoNumero(it, u.n); return { label: u.n.label, motivo: inf.motivo }; });
+  return { nums: rs, todos: rs.length > 0 && rs.every(function (r) { return !!r.motivo; }) };
+}
+/* se cada número tem um resultado diferente, uma frase com o resultado real de cada um; se forem todos iguais, null (vale o texto único) */
+function waResultadoNumeros(it) {
+  var st = waEstado(it), j = {};
+  st.nums.forEach(function (r) { j[justDeMotivo(r.motivo)] = true; });
+  if (Object.keys(j).length <= 1) { return null; }
+  return st.nums.map(function (r) { return 'no número ' + r.label + ', ' + justZap('mudou', justDeMotivo(r.motivo)); }).join('; ');
+}
 function motivoCurto(m) {
   var x = norm(m || '');
   if (!x) { return ''; }
@@ -2020,7 +2049,7 @@ function telefonesDaParte(texto, nome) {
       var dep = /^\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{2,})(?![A-Za-zÀ-ÿ0-9])/.exec(t.slice(p + nn.length)), ant = /([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{2,})\s+$/.exec(t.slice(Math.max(0, p - 40), p));
       var contNome = function (x) { return !!x && !/^(?:cpf|cnpj|rg|ssp|oab|mp|pr|sp|cep|ddd|ltda|epp)$/.test(norm(x[1])); };
       /* o nome só vale como dono se vier logo depois de um rótulo de parte ("Parte:", "Promovido:", "nº MP") ou de "intimar/citar/da parte" */
-      var temRot = rots.some(function (r) { return r.fim <= p && p - r.fim <= 30; }) || /(?:\bda parte|\bintimar|\bcitar|\bnotificar|\bintimacao de|\bcitacao de|\bnotificacao de)\s*$/.test(N.slice(Math.max(0, p - 25), p));
+      var temRot = rots.some(function (r) { return r.fim <= p && p - r.fim <= 30; }) || /(?:\bda parte|\bintimar|\bcitar|\bnotificar|\bintimacao de|\bcitacao de|\bnotificacao de)\s*$/.test(N.slice(Math.max(0, p - 25), p)) || /\bd?[oa](?:\(a\))?\s+sr(?:\(a\)|a)?\.?\s*:?\s*$/.test(N.slice(Math.max(0, p - 20), p));
       if (temRot && !/[a-z0-9]/.test(a) && !/[a-z0-9]/.test(z) && !contNome(dep) && !contNome(ant)) { nomes.push(p + nn.length); }
       p = N.indexOf(nn, p + 1);
     }
@@ -2786,7 +2815,7 @@ function moradorVoz(fala) {
 }
 function parenVoz(fala) {
   var n = norm(fala);
-  var tab = [['mae', /\bmae\b/], ['pai', /\bpai\b/], ['irmao', /\birmao\b|\birma\b/], ['filho', /\bfilh[oa]\b/], ['conjuge', /\b(esposa|esposo|marido|companheir[oa]|conjuge)\b/], ['vizinho', /\bvizinh[oa]\b/]];
+  var tab = [['mae', /\bmae\b/], ['pai', /\bpai\b/], ['irmao', /\birmao\b|\birma\b/], ['filho', /\bfilh[oa]\b/], ['conjuge', /\b(esposa|esposo|marido|companheir[oa]|conjuge)\b/], ['genro', /\b(genro|nora)\b/], ['sogro', /\bsogr[oa]\b/], ['sobrinho', /\bsobrinh[oa]\b/], ['tio', /\bti[oa]\b/], ['portaria', /\bportari[ao]\b|\bporteir[oa]\b/], ['vizinho', /\bvizinh[oa]\b/]];
   for (var k = 0; k < tab.length; k++) { if (tab[k][1].test(n)) { return { op: tab[k][0], outro: '' }; } }
   var o = /\b(tio|tia|avo|avos|sogro|sogra|cunhad[oa]|prim[oa]|sobrinh[oa]|genro|nora|neto|neta|padrasto|madrasta)\b/.exec(n);
   if (!o) { return { op: 'atual', outro: '' }; }
@@ -4970,17 +4999,18 @@ function iaUsuarioAjuste(d) {
       if (fx.length) { h += '<details class="maisflags"><summary>+' + fx.length + (fx.length === 1 ? ' aviso' : ' avisos') + '</summary><div class="flags">' + fx.map(fh).join('') + '</div></details>'; }
     }
     h += telCandHtml(i);
+    if (i.status === 'pendente') { h += '<p class="stcard">' + esc(statusCartao(i)) + '</p>'; }
     if (i.status === 'pendente') {
       var temNum = onlinePossivel(i), loc = etipo(i) === 'local', onl = '', onb = '';
       var temNumero = telefonesUnicos(i.telefones).some(function (u) { return u.n.ok; }) || !!temDil;
-      var temOn2 = temNum && temNumero, parPrin = loc ? 'fis' : (temOn2 ? 'on' : ''), onlResp = ''; if (temOn2) { onlResp = '<div class="selhid">' + selParte('on') + '</div>'; }
+      var temOn2 = temNum && temNumero, parPrin = (loc && !(temOn2 && i.aguardaOnline && i.partes && i.partes.fis)) ? 'fis' : (temOn2 ? 'on' : ''), onlResp = '';      /* física já certificada e aguardando o WhatsApp: Negativo/Positivo levam para a parte on-line */ if (temOn2) { onlResp = '<div class="selhid">' + selParte('on') + '</div>'; }
       if (phones) { onl += '<div class="phones">' + phones + '</div>'; }
       onl += onlResp;
       var addTxt = temNumero ? 'Adicionar outro WhatsApp' : 'Inserir WhatsApp';
       var addBtn = '<button class="btn small plusbtn" data-act="teldil" aria-label="' + addTxt + '" title="' + addTxt + '"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>';
       var corWa = i.cls === 'nao_enviar' ? 'wa-stop' : (i.cls === 'conferir' ? 'wa-conf' : (temNumero ? 'wa-ok' : 'wa-sem'));
       h += '<div class="grp on ' + corWa + '"><div class="grp-h"><p class="grp-t">WhatsApp Virtual</p>' + addBtn + '</div>' + onl + '</div>';
-      if (parPrin) { h += '<div class="grp cert2"><p class="grp-t">Certificar</p><div class="resp"><button class="rbtn neg" data-act="resp" data-p="' + parPrin + '" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo</button><div class="rpos"><button class="rbtn pos" data-act="resp" data-p="' + parPrin + '" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button>' + (loc && temOn2 ? '<button class="rbtn rwa" data-act="resp" data-p="on" data-t="pos" aria-label="Positivo virtual (WhatsApp)" title="Positivo virtual (WhatsApp)"><span class="wai" aria-hidden="true"></span></button>' : '') + '</div></div></div>'; }
+      if (parPrin) { h += '<div class="grp cert2"><p class="grp-t">Certificar</p><div class="resp"><button class="rbtn neg" data-act="resp" data-p="' + parPrin + '" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo' + (i.partes && i.partes.fis && i.partes.fis.t && i.partes.fis.tipo !== 'positiva' && i.status === 'pendente' ? '<small class="rsub">física certificada em ' + fmtDH(i.partes.fis.t) + '</small>' : '') + '</button><div class="rpos"><button class="rbtn pos" data-act="resp" data-p="' + parPrin + '" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button>' + (loc && temOn2 ? '<button class="rbtn rwa" data-act="resp" data-p="on" data-t="pos" aria-label="Positivo virtual (WhatsApp)" title="Positivo virtual (WhatsApp)"><span class="wai" aria-hidden="true"></span></button>' : '') + '</div></div></div>'; }
       if (loc) {
         h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : (i.semZapObs && i.semZapObs.nums && i.semZapObs.nums.length ? '<label class="dgop semzapobs"><input type="checkbox" data-szobs="1"' + (i.semZapObs.on !== false ? ' checked' : '') + '> Constar na certidão: telefone ' + esc(i.semZapObs.nums.join(', ')) + ' sem WhatsApp</label>' : '') + '<div class="visgrp' + ((i.visitas || []).length ? ' tem' : '') + '"><button class="btn small primary wide" data-act="visita"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z"/></svg> Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª diligência física</button>' + ((i.visitas || []).length ? '<button class="notasbtn" type="button" data-act="notas" aria-label="Ver as anotações das diligências" title="Anotações das diligências">📝<sup>' + (i.visitas || []).length + '</sup></button>' : '') + '</div>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' diligências</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small certfora" data-act="certfora" aria-label="Encaminhar para Certidões (certificado por outro meio)" title="Encaminhar para Certidões">✅</button><button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
       }
@@ -5633,9 +5663,20 @@ function iaUsuarioAjuste(d) {
      Já puxa todos os verdes com WhatsApp; você marca para incluir os amarelos e vermelhos. */
   var seq = null;
   /* Todos os números da pessoa (celulares primeiro, depois fixos): cada número é uma mensagem da fila */
-  function numerosSeq(i) {
+  function numerosTodos(i) {
     var l = telefonesUnicos(i.telefones).filter(function (u) { return u.n.ok; });
     return l.filter(function (u) { return !u.n.fixo; }).concat(l.filter(function (u) { return u.n.fixo; }));
+  }
+  /* só entram na sequência os números que ainda precisam de mensagem: os que já têm resultado (sem WhatsApp, não conhece, inativo…) saem */
+  function numerosSeq(i) { return numerosTodos(i).filter(function (u) { return !infoNumero(i, u.n).motivo; }); }
+  /* a lista da sequência: os da tela + os que já têm a física certificada e aguardam o WhatsApp (ficam em outra aba, mas ainda precisam das mensagens) */
+  function idsSeq() {
+    var ids = ordemVisivel.slice(), vis = {};
+    ids.forEach(function (x) { vis[x] = 1; });
+    state.items.forEach(function (i) {
+      if (!vis[i.id] && i.status === 'pendente' && !foraDaSequencia(i) && ((fisicaFeita(i) && onlinePossivel(i)) || (etipo(i) !== 'local' && onlineInfo(i, Date.now()).n > 0))) { ids.push(i.id); }
+    });
+    return ids;
   }
   function recebeuNum(i, u) { return (i.msgs || []).some(function (m) { return m.kind !== 'analise' && normPhone(m.tel).wa === u.n.wa; }); }
   var seqModo = '';
@@ -5646,7 +5687,7 @@ function iaUsuarioAjuste(d) {
   }
   function seqOpcoes2() {
     var verdes = [];
-    ordemVisivel.forEach(function (id) { var i = byId(id); if (i && segundaMensagemPronta(i, Date.now()) && numerosSeq(i).some(function (u) { return recebeuNum(i, u); })) { verdes.push(id); } });
+    idsSeq().forEach(function (id) { var i = byId(id); if (i && segundaMensagemPronta(i, Date.now()) && numerosSeq(i).some(function (u) { return recebeuNum(i, u); })) { verdes.push(id); } });
     return { verdes: verdes, jaMsg: [], extras: [], semZap: 0 };
   }
   function entInfo(key) {
@@ -5655,13 +5696,19 @@ function iaUsuarioAjuste(d) {
     return { id: id, wa: wa, it: it, u: u };
   }
   function seqGuarda() { state.seqAtiva = seq ? { ents: seq.ents, t0: seq.t0, pul: seq.pul, modo: seqModo, atual: seq.ents[seq.k], semz: seq.semz || [] } : null; save(); }
+  /* citação criminal e qualquer mandado do 1º Juizado nunca entram na sequência de mensagens (nem como opção) */
+  function foraDaSequencia(i) {
+    var vara = norm(i.vara || ''), tp = norm(i.tipo || ''), nat = norm(i.natureza || '');
+    if (/(?:^|\D)1\s*[oº°]?\s*juizado/.test(vara)) { return true; }
+    return /cita/.test(tp) && (/crim|penal/.test(nat) || /crim|penal/.test(vara) || /crim|penal/.test(tp));
+  }
   function seqOpcoes() {
     var verdes = [], jaMsg = [], extras = [], semZap = 0;
-    ordemVisivel.forEach(function (id) {
+    idsSeq().forEach(function (id) {
       var i = byId(id);
-      if (!i || i.status !== 'pendente') { return; }
+      if (!i || i.status !== 'pendente' || foraDaSequencia(i)) { return; }
       var nums = numerosSeq(i);
-      if (!nums.length) { if (i.cls === 'enviar') { semZap++; } return; }
+      if (!nums.length) { if (i.cls === 'enviar' && !numerosTodos(i).length) { semZap++; } return; }
       var faltam = nums.filter(function (u) { return !recebeuNum(i, u); });
       if (i.cls === 'enviar') { (faltam.length ? verdes : jaMsg).push(id); }
       else if (!(i.msgs || []).some(function (m) { return m.kind !== 'analise'; })) { extras.push(id); }
@@ -5815,7 +5862,14 @@ function iaUsuarioAjuste(d) {
           iz.it.semZapObs = iz.it.semZapObs || { nums: [], on: true };
           if (iz.it.semZapObs.nums.indexOf(iz.u.n.label) === -1) { iz.it.semZapObs.nums.push(iz.u.n.label); }
           save(); seqGuarda(); render();
-          seq.k++; seqGuarda(); toast('Sem WhatsApp registrado. Segue para o próximo.' + (etipo(iz.it) === 'local' ? ' A observação vai para a certidão.' : ''));
+          var direto = null;
+          if (etipo(iz.it) !== 'local') {
+            var todosN = telefonesUnicos(iz.it.telefones).filter(function (u) { return u.n.ok && !u.n.fixo; }).map(function (u) { return u.n.label; });
+            if (todosN.length && todosN.every(function (l) { return iz.it.semZapObs.nums.indexOf(l) !== -1; })) { direto = certificarSemZap(iz.it); }
+          }
+          seq.k++; seqGuarda();
+          if (direto) { toast('Sem WhatsApp e sem endereço físico: certidão negativa salva em Certidões.', direto); }
+          else { toast('Sem WhatsApp registrado. Segue para o próximo.' + (etipo(iz.it) === 'local' ? ' A observação vai para a certidão.' : '')); }
         }
         seqMostra(); return;   /* registra e fica nesta tela; quem avança é o botão “Próximo destinatário” */
       }
@@ -6498,6 +6552,23 @@ function iaUsuarioAjuste(d) {
     document.getElementById('eaNao').onclick = closeModal;
     document.getElementById('eaSim').onclick = function () { closeModal(); state.files.slice().forEach(function (f) { apagarArquivo(f.id, false); }); toast(n + (n === 1 ? ' arquivo excluído' : ' arquivos excluídos') + ' definitivamente'); };
   }
+  /* status discreto do cartão: o que já foi feito e o que falta (física e WhatsApp) */
+  function statusCartao(i) {
+    var loc = etipo(i) === 'local', nums = telefonesUnicos(i.telefones).filter(function (u) { return u.n.ok && !u.n.fixo; }), temOn = onlinePossivel(i) && nums.length > 0, ph = i.partes || {}, partes = [], now = Date.now();
+    if (loc) {
+      var nv = (i.visitas || []).length;
+      partes.push((ph.fis || fisicaFeita(i)) ? 'Física certificada' : (nv === 0 ? 'Sem diligência física registrada' : (nv === 1 ? '1ª diligência física feita: falta a 2ª' : (nv === 2 ? '2ª diligência física feita: falta a 3ª' : nv + ' diligências físicas feitas'))));
+    }
+    if (temOn) {
+      var st = waEstado(i), oi = onlineInfo(i, now);
+      if (ph.on) { partes.push('WhatsApp certificado'); }
+      else if (st.todos) { partes.push('WhatsApp concluído'); }
+      else if (oi.n === 0) { partes.push('WhatsApp pendente: nenhuma mensagem enviada'); }
+      else if (oi.n === 1) { partes.push(segundaMensagemPronta(i, now) ? 'WhatsApp pendente: já pode mandar a 2ª mensagem' : 'WhatsApp pendente: 2ª mensagem (ainda cedo)'); }
+      else { partes.push(oi.pronto ? 'WhatsApp: prazo cumprido' : 'Aguardando prazo do WhatsApp'); }
+    }
+    return partes.length ? partes.join(' · ') : 'Nenhuma diligência física ou on-line realizada';
+  }
   function abrirExcluirCartao(it) {
     openModal('Excluir este mandado?',
       '<p><strong>' + esc(it.nome) + '</strong></p><p>Ele sai da lista.</p>' +
@@ -6520,7 +6591,7 @@ function iaUsuarioAjuste(d) {
       '<div class="seg" id="dgModo"><button type="button" class="btn small" data-m="op" aria-pressed="true">Escolher opções</button><button type="button" class="btn small" data-m="livre" aria-pressed="false">Escrever do zero</button></div>' +
       '<div id="dgOp"><p class="note" style="margin:10px 0 2px"><strong>Deixei recado</strong></p>' +
       rad('dgRecQ', 'portao', 'portão/caixa de correios', true) + rad('dgRecQ', 'pessoa', 'com contato com o(a) Sr.(a):', false) +
-      '<div id="dgPessoa" hidden><input type="text" id="dgRecNome" placeholder="Nome de quem recebeu o recado" autocomplete="off"><select id="dgRecRel" class="sel" aria-label="Quem é"><option>familiar</option><option>filho(a)</option><option>mãe</option><option>pai</option><option>amigo(a)</option><option>funcionário(a)</option><option>vizinho(a)</option></select></div>' +
+      '<div id="dgPessoa" hidden><input type="text" id="dgRecNome" placeholder="Nome de quem recebeu o recado" autocomplete="off"><select id="dgRecRel" class="sel" aria-label="Quem é"><option>familiar</option><option>filho(a)</option><option>mãe</option><option>pai</option><option>amigo(a)</option><option>funcionário(a)</option><option>funcionário(a) da portaria</option><option>genro(a)</option><option>sogro(a)</option><option>tio(a)</option><option>sobrinho(a)</option><option>vizinho(a)</option></select></div>' +
       '<label class="dgop"><input type="checkbox" id="dgSemRet" checked> Não obtive retorno</label>' +
       '<label class="f" for="dgObs">Observação extra (opcional)</label><textarea id="dgObs" rows="2" placeholder="Ex.: cachorro no pátio, casa aparentemente vazia"></textarea></div>' +
       '<div id="dgLivre" hidden><label class="f" for="dgTxt">Escreva o que aconteceu (a nota inteira)</label><textarea id="dgTxt" rows="5" placeholder="Ex.: Não encontrei ninguém no local, conversei com vizinhos e deixei recado no portão; os vizinhos afirmam que não conhecem a pessoa indicada."></textarea></div>' +
@@ -6597,7 +6668,7 @@ function iaUsuarioAjuste(d) {
       '<p><strong>' + esc(it.nome) + '</strong><br><span class="note">' + esc(it.endereco) + '</span></p>' +
       '<label class="f" for="fnTipo">O que aconteceu</label><select id="fnTipo" class="sel"><option value="mudou">Mudou-se (o morador atual informou)</option><option value="naoconhece">Não conhece (o morador atual informou)</option><option value="numero">Não achei a numeração</option><option value="outro">Outro (escrever na observação)</option></select>' +
       '<div id="fnMor"><label class="f" for="fnNome">Nome de quem informou (morador atual)</label><input type="text" id="fnNome" autocomplete="off"></div>' +
-      '<div id="fnParBox"><label class="f" for="fnPar">Quem é</label><select id="fnPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select>' +
+      '<div id="fnParBox"><label class="f" for="fnPar">Quem é</label><select id="fnPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="genro">Genro/nora</option><option value="sogro">Sogro(a)</option><option value="tio">Tio(a)</option><option value="sobrinho">Sobrinho(a)</option><option value="portaria">Funcionário(a) da portaria</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select>' +
       '<div id="fnOutBox" hidden><input type="text" id="fnOut" placeholder="Ex.: tio(a), avô(ó), sogro(a)" autocomplete="off"></div></div>' +
       '<label class="f" for="fnData">Dia da diligência</label><input type="date" id="fnData" value="' + today + '">' +
       '<label class="f" for="fnObs">Observação (opcional)</label><input type="text" id="fnObs" autocomplete="off">' +
@@ -7397,15 +7468,62 @@ function iaUsuarioAjuste(d) {
     var quais = ph.fis && ph.on ? 'a parte física e a parte on-line' : (ph.fis ? 'só a parte física (a on-line não foi feita)' : 'só a parte on-line');
     openVoz(it, { final: { texto: texto, tipo: ((ph.fis && ph.fis.tipo === 'positiva') || (ph.on && ph.on.tipo === 'positiva')) ? 'positiva' : 'negativa', quais: quais } });
   }
-  function guardarParte(it, parte, obj) {
+  /* a parte que está sendo confirmada fecha a certidão? (então a própria página traz custas e prints e o botão vira "Concluir") */
+  function completaCom(it, parte, tipo) {
+    var ph = {}; Object.keys(it.partes || {}).forEach(function (k) { ph[k] = it.partes[k]; });
+    ph[parte] = { tipo: tipo || 'negativa' };
+    return !partesFaltando(partesNec(it), ph).length;
+  }
+  function htmlCamposFinais(pref, it) {
+    return htmlCustasPainel(pref) + '<input type="hidden" id="' + pref + 'Custas" value="' + esc(custasCard(it).replace(/[^\d.,]/g, '')) + '">' +
+      '<label class="f" for="' + pref + 'Print">Prints ou fotos (opcional): comprovante do WhatsApp, foto da diligência… pode acrescentar mais de um</label><input type="file" id="' + pref + 'Print" accept="image/*" multiple>' +
+      '<div class="thumbs" id="' + pref + 'Thumbs"></div>';
+  }
+  function ligarCamposFinais(pref, aoMudarCustas, it) {
+    /* prints escolhidos nas telas anteriores (comprovante do WhatsApp, foto da diligência) chegam aqui, como chegavam na página final antiga */
+    var prints = (printsPend.id === it.id && Date.now() - (printsPend.t || 0) < 1800000) ? printsPend.imgs.slice() : [], th = document.getElementById(pref + 'Thumbs');
+    function desenha() { th.innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Anexo ' + (i + 1) + ' (toque para girar ou remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para girar ou remover.</p>' : ''); }
+    ligarCustas(pref, aoMudarCustas);
+    th.addEventListener('click', function (e) { var im = e.target.closest('img'); if (im) { abrirImagem(prints, +im.getAttribute('data-i'), desenha); } });
+    document.getElementById(pref + 'Print').addEventListener('change', async function () {
+      var files = Array.prototype.slice.call(this.files || []); this.value = '';
+      for (var k = 0; k < files.length; k++) { try { prints.push(await shrinkImage(files[k])); } catch (e) { toast('Não consegui ler uma das imagens'); } }
+      desenha();
+    });
+    if (prints.length) { desenha(); }
+    return { prints: function () { return prints; }, custas: function () { return String(document.getElementById(pref + 'Custas').value || '').replace(/[^\d.,]/g, '').trim(); } };
+  }
+  /* mandado sem endereço físico cujo(s) número(s) não têm WhatsApp: certidão negativa pelo modelo "telefone sem WhatsApp", salva direto */
+  function certificarSemZap(it) {
+    var n = new Date(), hojeS = n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate());
+    var antes = it.partes ? JSON.parse(JSON.stringify(it.partes)) : null;
+    var txt = parteOnlineTexto('neg', { tipo: it.tipo, nome: it.nome, just: 'semzap', temFisica: false, pj: ehEmpresaIt(it), data: hojeS });
+    it.partes = { on: { modelo: 'neg', texto: txt, tipo: 'negativa', dados: { data: hojeS } } };
+    concluirPartes(it, { custas: custasCard(it).replace(/[^\d.,]/g, ''), prints: [], quieto: true });
+    return function () { it.status = 'pendente'; delete it.certidao; if (antes) { it.partes = antes; } else { delete it.partes; } save(); render(); };
+  }
+  async function concluirPartes(it, fin) {
+    var ph = it.partes || {}, hojeC = (function () { var n = new Date(); return n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()); })();
+    var texto = montarCertidaoPartes(ph.fis, ph.on, { oficial: state.me && state.me.nome, diligencia: fin.custas });
+    var tipo = ((ph.fis && ph.fis.tipo === 'positiva') || (ph.on && ph.on.tipo === 'positiva')) ? 'positiva' : 'negativa', ids = [], pr = fin.prints || [];
+    for (var k = 0; k < pr.length; k++) { var pid = 'pr' + uid(); try { await idbPut(pid, pr[k].blob); ids.push(pid); } catch (e) { toast('Não consegui guardar um dos anexos neste aparelho'); } }
+    it.certidao = { tipo: tipo, canal: 'partes', modelo: 'partes', texto: texto, sig: null, data: hojeC, prints: ids, custas: parseValor(fin.custas) };
+    it.status = 'certidao'; delete sel[it.id];
+    if (printsPend.id === it.id) { printsPend = { id: '', imgs: [], t: 0 }; }
+    save(); render();
+    if (!fin.quieto) { toast('Certidão concluída e salva em Certidões.'); }
+  }
+  function guardarParte(it, parte, obj, fin) {
     it.partes = it.partes || {};
+    obj.t = obj.t || Date.now();
     it.partes[parte] = obj;
     if (parte === 'fis' && obj.tipo !== 'positiva') {
       var d = obj.dados || {};
       it.fisica = { feita: true, resultado: 'negativa', modelo: (obj.modelo === 'ia' || String(obj.modelo).indexOf('m:') === 0) ? 'outro' : obj.modelo, morador: d.morador || '', paren: d.paren || '', parenOut: d.parenOut || '', data: d.data || '', obs: '', visitas: d.visitas || [] };
     }
     save(); closeModal(); render();
-    if (completoPartes(it)) { abrirFinal(it); }
+    if (completoPartes(it)) { if (fin) { concluirPartes(it, fin); } else { abrirFinal(it); } }
+    else if (it.aguardaOnline && parte === 'fis') { toast('Física certificada. Aguardando o resultado do WhatsApp.'); }
     else { toast('Parte ' + (parte === 'fis' ? 'física' : 'on-line') + ' guardada. Falta a ' + (parte === 'fis' ? 'on-line' : 'física') + '.'); }
   }
   /* Números que tiveram tentativa, com o dia e a hora da última (para a certidão “número a número”) */
@@ -7430,43 +7548,50 @@ function iaUsuarioAjuste(d) {
     var mor = tpl ? /\{MORADOR\}/.test(tpl.texto) : fis && (val === 'mudou' || val === 'naoconhece'), par = !tpl && fis && val === 'mudou', vis = !tpl && fis && val === 'ninguem';
     var visIni = vis ? ((it.fisica && it.fisica.visitas && it.fisica.visitas.length) ? it.fisica.visitas : (it.visitas || []).map(fmtVisita)) : [];
     var outra = fis ? (it.partes || {}).on : (it.partes || {}).fis, oficial = state.me && state.me.nome ? state.me.nome : '';
-    var oiw = onlineInfo(it, Date.now()), waBox = fis && tipoParte() === 'negativa' && onlinePossivel(it) && !(it.partes || {}).on, waPadrao = oiw.n > 0 || (it.tentativas || []).length > 0;
+    var oiw = onlineInfo(it, Date.now()), waBox = fis && tipoParte() === 'negativa' && onlinePossivel(it) && !(it.partes || {}).on, stW = waEstado(it), waPadrao = stW.todos;      /* só vem marcado quando TODOS os números já têm resultado */
+    var completaAqui = waBox || completaCom(it, parte, tipoParte());      /* com a caixa do WhatsApp na página, ela sempre fecha a certidão (com ou sem a parte on-line) */
     function $(id) { return document.getElementById(id); }
     openModal((fis ? 'Parte física: ' : 'Parte on-line: ') + (tpl ? tpl.nome : rot[1].replace(/ \(.*$/, '')),
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptPj" style="width:24px;height:24px"' + (ehEmpresaIt(it) ? ' checked' : '') + '> É empresa (tira o “Sr(a).” e adapta o texto)</label>' +
-      '<p class="note">Confira o texto desta parte. Depois de dar ok, ' + (outra ? 'a certidão inteira aparece para você conferir.' : (fis ? (onlinePossivel(it) && !waBox ? 'falta só a parte on-line.' : 'a certidão inteira aparece para você conferir.') : (etipo(it) === 'local' ? 'falta só a parte física.' : 'a certidão inteira aparece para você conferir.'))) + '</p>' +
+      (completaAqui ? '<p class="note">Confira o texto, as custas e os anexos. Ao tocar em <strong>Concluir</strong>, a certidão é salva em Certidões.</p>' : '<p class="note">Confira o texto desta parte. Depois de dar ok, ' + (outra ? 'a certidão inteira aparece para você conferir.' : (fis ? (onlinePossivel(it) && !waBox ? 'falta só a parte on-line.' : 'a certidão inteira aparece para você conferir.') : (etipo(it) === 'local' ? 'falta só a parte física.' : 'a certidão inteira aparece para você conferir.'))) + '</p>') +
       (mor ? '<label class="f" for="ptMor">Nome de quem informou (morador atual)</label><input type="text" id="ptMor" value="' + esc((it.fisica && it.fisica.morador) || '') + '" autocomplete="off">' : '') +
       (!tpl && fis && val === 'naoconhece' ? '<div id="ptEmpBox"' + (ehEmpresaIt(it) ? '' : ' hidden') + '><label class="f" for="ptEmpL">Empresa que está no local</label><input type="text" id="ptEmpL" placeholder="Nome da empresa que funciona no endereço" value="' + esc((it.fisica && it.fisica.empLocal) || '') + '" autocomplete="off"><p class="note">Em “Nome de quem informou”, escreva o colaborador que disse não conhecer a empresa do mandado.</p></div>' : '') +
-      (par ? '<label class="f" for="ptPar">Quem é</label><select id="ptPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select><div id="ptOutBox" hidden><input type="text" id="ptOut" placeholder="Ex.: tio(a), avô(ó), sogro(a)" autocomplete="off"></div>' : '') +
+      (par ? '<label class="f" for="ptPar">Quem é</label><select id="ptPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="genro">Genro/nora</option><option value="sogro">Sogro(a)</option><option value="tio">Tio(a)</option><option value="sobrinho">Sobrinho(a)</option><option value="portaria">Funcionário(a) da portaria</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select><div id="ptOutBox" hidden><input type="text" id="ptOut" placeholder="Ex.: tio(a), avô(ó), sogro(a)" autocomplete="off"></div>' : '') +
       (vis ? '<label class="f" for="ptVis">Dias e horários das visitas (uma por linha)</label><textarea id="ptVis" style="min-height:90px">' + esc(visIni.join('\n')) + '</textarea>' : '') +
       ((!fis && val === 'pos') || (fis && val === 'pospres') || (tpl && /\{DATA\}/.test(tpl.texto)) ? '<label class="f" for="ptData">Dia ' + (fis ? 'da diligência' : 'do contato por WhatsApp') + '</label><input type="date" id="ptData" value="' + diaCont + '">' + (!fis && (val === 'pos' || (tpl && tpl.tipo === 'positiva')) ? '<p class="note">A frase “a identidade foi confirmada previamente” entra sempre na certidão por WhatsApp.</p>' : '') : '') +
-      (!tpl && !fis && val === 'pos' && etipo(it) === 'local' ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptFis" style="width:24px;height:24px"' + ((it.fisica && it.fisica.feita) ? ' checked' : '') + '> Antes, fui ao endereço físico e não encontrei (isso entra no começo da certidão)</label>' : '') +
+      (!tpl && !fis && val === 'pos' ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptFis" style="width:24px;height:24px"' + ((etipo(it) === 'local' || (it.fisica && it.fisica.feita)) ? ' checked' : '') + '> Houve diligência no endereço físico: fui ao local e não encontrei (isso entra no começo da certidão; desmarque se não foi lá)</label>' : '') +
       (!tpl && !fis && val === 'neg' ? '<label class="f" for="ptJus">O que aconteceu na tentativa</label><select id="ptJus" class="sel"><option value="documento">A pessoa não apresentou documento</option><option value="inativo">O telefone está inativo</option><option value="semzap">O número não tem WhatsApp</option><option value="semretorno">Sem retorno até agora</option></select>' : '') +
       (waBox ? '<div class="grp" id="ptWaBox"><label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptWa" style="width:26px;height:26px"' + (waPadrao ? ' checked' : '') + '> <span>Incluir na certidão o que aconteceu no WhatsApp</span></label>' +
         '<div id="ptWaOp"><label class="f" for="ptWaModo">Como escrever</label><select id="ptWaModo" class="sel"><option value="geral">Resumo geral</option><option value="numeros">Número a número, com dia e hora</option></select>' +
         '<label class="f" for="ptWaJus">O que aconteceu</label><select id="ptWaJus" class="sel"><option value="documento">A pessoa não apresentou documento</option><option value="inativo">O telefone está inativo</option><option value="semzap">O número não tem WhatsApp</option><option value="semretorno">Sem retorno até agora</option></select></div>' +
+        (stW.todos ? '' : '<label class="f" id="ptGenBox" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptWaGen" style="width:26px;height:26px"> <span><strong>Resultado genérico do WhatsApp:</strong> tentei a citação/intimação pelo WhatsApp, mas o destinatário não apresentou comprovante de identidade (vale para todos os telefones)</span></label>') +
         '<p class="note" id="ptWaNote"></p></div>' : '') +
       '<label class="f" for="ptTxt">Texto desta parte (pode editar)</label><textarea id="ptTxt" style="min-height:150px"></textarea>' +
       '<div class="actions"><button class="btn small ghost" id="ptRefaz">Refazer o texto com as opções</button></div>' + htmlEditarIA('pt') + htmlSalvarModelo('pt') +
       '<label class="f">Como fica a certidão até aqui</label><pre id="ptPrev" class="note" style="white-space:pre-wrap"></pre>' +
-      '<div class="actions"><button class="btn primary" id="ptOk">Dar ok</button><button class="btn" id="ptNo">Voltar</button></div>');
+      (completaAqui ? htmlCamposFinais('pt', it) : '') + '<div class="actions"><button class="btn primary" id="ptOk">' + (completaAqui ? 'Concluir' : 'Dar ok') + '</button><button class="btn" id="ptNo">Voltar</button></div>');
     if (par) { $('ptPar').value = (it.fisica && it.fisica.paren) || 'atual'; }
     if (!fis && val === 'neg') { $('ptJus').value = justDaTentativa(it.tentativas); }
     function waParte() {
       if (!waBox || !$('ptWa') || !$('ptWa').checked) { return null; }
-      var d0 = { pj: !!$('ptPj').checked, tipo: it.tipo, nome: String(it.nome || '').toUpperCase(), just: $('ptWaJus').value, temFisica: true };
-      var tx = parteOnlineTexto('neg', d0);
-      if ($('ptWaModo').value === 'numeros') {
+      var gen = !!($('ptWaGen') && $('ptWaGen').checked), porNum = (!gen && stW.todos) ? waResultadoNumeros(it) : null;
+      var d0 = { pj: !!$('ptPj').checked, tipo: it.tipo, nome: String(it.nome || '').toUpperCase(), just: gen ? 'documento' : $('ptWaJus').value, temFisica: true };
+      var tx = porNum ? ajustaAto('CERTIFICO ainda que tentei contato via whatsapp, porém ' + porNum + '.', d0) : parteOnlineTexto('neg', d0);
+      if (!porNum && $('ptWaModo').value === 'numeros') {
         var lst = waNumerosTxt(it);
         if (lst) { tx = /via whatsapp/i.test(tx) ? tx.replace(/via whatsapp/i, 'via whatsapp nos números ' + lst) : tx + ' Números: ' + lst + '.'; }
       }
       return { modelo: 'neg', texto: tx, tipo: 'negativa', dados: { just: d0.just, modo: $('ptWaModo').value } };
     }
     if (waBox) {
-      $('ptWaJus').value = justDaTentativa(it.tentativas);
+      $('ptWaJus').value = (stW.todos && stW.nums.length) ? justDeMotivo(stW.nums[0].motivo) : justDaTentativa(it.tentativas);
       $('ptWaNote').textContent = oiw.n === 0 ? 'Ainda não há tentativa registrada pelo WhatsApp. Se não houve, deixe desmarcado.' : (oiw.n === 1 ? 'Só 1 tentativa pelo WhatsApp até agora (o padrão é repetir depois de 24 h). Você pode certificar mesmo assim.' : (oiw.pronto ? 'Tentativas completas: 2 mensagens e mais de 48 h sem resposta.' : 'Faltam cerca de ' + Math.max(1, Math.ceil(oiw.faltam)) + ' h para completar as 2 tentativas + 48 h. Você pode certificar mesmo assim.'));
       $('ptWaOp').hidden = !$('ptWa').checked;
+      /* sem o resultado de todos os WhatsApp, o botão não conclui: só "Certificar física e aguardar WhatsApp" (a menos que marque o genérico ou escolha o que aconteceu) */
+      var rotuloOk = function () { $('ptOk').textContent = $('ptWa').checked ? 'Concluir' : 'Certificar física e aguardar WhatsApp'; };
+      if ($('ptWaGen')) { $('ptWaGen').addEventListener('change', function () { $('ptWa').checked = this.checked; $('ptWa').dispatchEvent(new Event('change')); $('ptWaOp').hidden = this.checked || !$('ptWa').checked; rotuloOk(); }); }
+      $('ptWa').addEventListener('change', function () { var g = !!($('ptWaGen') && $('ptWaGen').checked); $('ptWaOp').hidden = g || !$('ptWa').checked; rotuloOk(); }); rotuloOk();
     }
     function dados() {
       var d = { pj: $('ptPj').checked, tipo: it.tipo, nome: String(it.nome || '').toUpperCase(), data: '', oficial: oficial };
@@ -7476,7 +7601,7 @@ function iaUsuarioAjuste(d) {
       if (par) { d.parOp = $('ptPar').value; d.parOut = $('ptOut').value.trim(); d.paren = parenFrase(d.parOp, d.parOut); $('ptOutBox').hidden = d.parOp !== 'outro'; }
       if (vis) { d.visitas = $('ptVis').value.split('\n').map(function (x) { return x.trim(); }).filter(function (x) { return x; }); }
       if ($('ptData')) { var dv = $('ptData').value; d.data = dv ? fmtDate(dv) : ''; }
-      if (!fis && val === 'pos') { d.idConf = true; d.fisAntes = !!($('ptFis') && $('ptFis').checked); }
+      if (!fis && val === 'pos') { d.idConf = true; d.fisAntes = !!($('ptFis') && $('ptFis').checked); if (d.fisAntes) { d.notas = (it.fisica && it.fisica.notas) || diligNotasFrases(it); } }
       if (!tpl && !fis && val === 'neg') { d.just = $('ptJus').value; d.temFisica = etipo(it) === 'local'; }
       return d;
     }
@@ -7490,7 +7615,7 @@ function iaUsuarioAjuste(d) {
     function previa() {
       var mine = { modelo: val, texto: $('ptTxt').value, tipo: tipoParte() };
       var f = fis ? mine : (it.partes || {}).fis, o = fis ? (waParte() || (it.partes || {}).on) : mine;
-      $('ptPrev').textContent = montarCertidaoPartes(f, o, { oficial: oficial, diligencia: custasCard(it).replace(/[^\d.,]/g, '') });
+      $('ptPrev').textContent = montarCertidaoPartes(f, o, { oficial: oficial, diligencia: ($('ptCustas') ? $('ptCustas').value : custasCard(it)).replace(/[^\d.,]/g, '') });
     }
     ['ptMor', 'ptPar', 'ptOut', 'ptVis', 'ptData', 'ptId', 'ptJus', 'ptFis', 'ptEmpL', 'ptWa', 'ptWaModo', 'ptWaJus'].forEach(function (id) { var el = $(id); if (el) { el.addEventListener('input', function () { gerar(); }); el.addEventListener('change', function () { gerar(); }); } });
     $('ptPj').addEventListener('change', function () { it.pj = this.checked; save(); gerar(true); });
@@ -7499,12 +7624,15 @@ function iaUsuarioAjuste(d) {
     ligarEditarIA(it, 'pt', function () { return $('ptTxt').value; }, function (v) { editado = true; $('ptTxt').value = v; previa(); }, true);
     ligarSalvarModelo(it, 'pt', function () { var d = dados(); return { onde: parte, tipo: tipoParte(), texto: $('ptTxt').value, morador: mor ? d.morador : '', datas: [d.data] }; });
     $('ptNo').onclick = closeModal;
+    var finPt = completaAqui ? ligarCamposFinais('pt', function () { previa(); }, it) : null;
     $('ptOk').onclick = function () {
       var d = dados();
       if (mor && !d.morador) { toast('Escreva o nome de quem informou'); return; }
       if (tpl && marcadoresDe($('ptTxt').value).length) { toast('Ainda há trechos entre chaves no texto. Troque pelo que for certo.'); return; }
-      var wp = waParte(); if (wp) { it.partes = it.partes || {}; it.partes.on = wp; delete it.semOnline; } else if (waBox) { it.semOnline = true; }
-      guardarParte(it, parte, { modelo: val, texto: $('ptTxt').value, tipo: tipoParte(), dados: { morador: d.morador || '', empLocal: d.empLocal || '', paren: d.parOp || '', parenOut: d.parOut || '', visitas: d.visitas || [], data: hoje } });
+      var wp = waParte();
+      if (wp) { it.partes = it.partes || {}; it.partes.on = wp; delete it.semOnline; delete it.aguardaOnline; }
+      else if (waBox) { it.aguardaOnline = Date.now(); delete it.semOnline; if (finPt && finPt.prints().length) { printsPend = { id: it.id, imgs: finPt.prints().slice(), t: Date.now() }; } }
+      guardarParte(it, parte, { modelo: val, texto: $('ptTxt').value, tipo: tipoParte(), dados: { morador: d.morador || '', empLocal: d.empLocal || '', paren: d.parOp || '', parenOut: d.parOut || '', visitas: d.visitas || [], data: hoje } }, finPt ? { custas: finPt.custas(), prints: finPt.prints() } : null);
     };
     gerar(true);
   }
@@ -7512,7 +7640,7 @@ function iaUsuarioAjuste(d) {
   function abrirParteIA(it, parte, tipoPref) {
     var fis = parte === 'fis', ult = it.msgs && it.msgs.length ? it.msgs[it.msgs.length - 1] : null, diaCont = ult ? dayKey(ult.t) : '';
     var oficial = state.me && state.me.nome ? state.me.nome : '', hoje = (function () { var n = new Date(); return n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()); })();
-    var res = null, ia = iaAtiva();
+    var res = null, ia = iaAtiva(), completaI = completaCom(it, parte, tipoPref || 'negativa');
     function $(id) { return document.getElementById(id); }
     openModal('Parte ' + (fis ? 'física' : 'on-line'),
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
@@ -7521,8 +7649,9 @@ function iaUsuarioAjuste(d) {
       '<textarea id="piFala" style="min-height:110px" placeholder="' + (fis ? 'Ex.: o morador disse que ele se mudou há dois meses' : 'Ex.: mandei duas vezes e ela não respondeu') + '"></textarea>' +
       '<div class="actions"><button class="btn ' + (ia ? 'ia' : 'primary') + '" id="piGo">' + (ia ? '<span class="iabot"></span> ' : '') + 'Escrever esta parte</button></div><p class="note" id="piNote"></p>' +
       '<label class="f" for="piTxt">Texto desta parte (pode editar)</label><textarea id="piTxt" style="min-height:150px"></textarea>' + htmlEditarIA('pi') + htmlSalvarModelo('pi') +
-      '<div class="actions"><button class="btn primary" id="piOk">Dar ok</button><button class="btn" id="piNo">Voltar</button></div>');
+      (completaI ? htmlCamposFinais('pi', it) : '') + '<div class="actions"><button class="btn primary" id="piOk">' + (completaI ? 'Concluir' : 'Dar ok') + '</button><button class="btn" id="piNo">Voltar</button></div>');
     $('piNo').onclick = closeModal;
+    var finPi = completaI ? ligarCamposFinais('pi', null, it) : null;
     try { $('piFala').focus(); } catch (e) {}
     ligarEditarIA(it, 'pi', function () { return $('piTxt').value; }, function (v) { $('piTxt').value = v; }, true);
     ligarSalvarModelo(it, 'pi', function () { return { onde: parte, tipo: res ? res.tipo : (tipoPref || 'negativa'), texto: $('piTxt').value }; });
@@ -7548,7 +7677,7 @@ function iaUsuarioAjuste(d) {
     $('piOk').onclick = function () {
       if (!$('piTxt').value.trim()) { toast('Conte o que aconteceu e toque em “Escrever esta parte”'); return; }
       if (/\[INFORMAR[^\]]*\]/.test($('piTxt').value)) { toast('Ainda há trechos [INFORMAR…] no texto. Complete antes de dar ok.'); return; }
-      guardarParte(it, parte, { modelo: res ? res.modelo : 'ia', texto: $('piTxt').value, tipo: res ? res.tipo : (tipoPref || 'negativa'), dados: { data: hoje, visitas: [] } });
+      guardarParte(it, parte, { modelo: res ? res.modelo : 'ia', texto: $('piTxt').value, tipo: res ? res.tipo : (tipoPref || 'negativa'), dados: { data: hoje, visitas: [] } }, finPi ? { custas: finPi.custas(), prints: finPi.prints() } : null);
     };
   }
   function openModelo(it, key, justIni) {
@@ -7577,7 +7706,7 @@ function iaUsuarioAjuste(d) {
       (zapKind ? '<label class="f" for="mdData">Dia do contato por WhatsApp</label><input type="date" id="mdData" value="' + diaCont + '"><p class="note">A frase “a identidade foi confirmada previamente” entra sempre na certidão por WhatsApp.</p>' : '') +
       (morad ? '<label class="f" for="mdMor">Nome de quem informou (morador)</label><input type="text" id="mdMor" placeholder="Nome do morador" autocomplete="off">' : '') +
       (temVis ? '<label class="f" for="mdVis">Dias e horários das visitas (uma por linha)</label><textarea id="mdVis" style="min-height:90px">' + esc(visIni.join('\n')) + '</textarea>' : '') +
-      (temPar ? '<label class="f" for="mdPar">Quem é</label><select id="mdPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select>' +
+      (temPar ? '<label class="f" for="mdPar">Quem é</label><select id="mdPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="genro">Genro/nora</option><option value="sogro">Sogro(a)</option><option value="tio">Tio(a)</option><option value="sobrinho">Sobrinho(a)</option><option value="portaria">Funcionário(a) da portaria</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select>' +
         '<div id="mdOutBox" hidden><input type="text" id="mdOut" placeholder="Ex.: tio(a), avô(ó), sogro(a)" autocomplete="off"></div>' : '') +
       (neg ? chk('mdCel', 'Tem telefone no mandado (tentei WhatsApp)', temCel) +
         '<div id="mdJBox"><label class="f" for="mdJus">Por que o WhatsApp não resolveu</label><select id="mdJus" class="sel"><option value="documento">Não apresentou documento</option><option value="inativo">Telefone inativo</option><option value="semretorno">Sem retorno</option></select></div>' : '') +
@@ -8972,7 +9101,7 @@ function iaUsuarioAjuste(d) {
   function cumprBarra() {
     var el = document.getElementById('cumprBar'), on = cumprAtivo();
     document.body.classList.toggle('cumpr', on); document.documentElement.classList.toggle('cumpr', on);
-    if (!on) { el.hidden = true; el.innerHTML = ''; var l0 = document.getElementById('list'); if (l0) { l0.style.paddingTop = ''; } return; }
+    if (!on) { el.hidden = true; el.innerHTML = ''; var l0 = document.getElementById('list'); if (l0) { l0.style.paddingTop = ''; } document.body.classList.remove('cumprOn'); return; }
     var ra = state.rotaAtiva, lista = cumprLista(), n = ra.ids.length, feitas = n - lista.length, pct = Math.round(feitas / n * 100);
     var id = lista.length ? lista[cumprPos(lista)] : '', num = lista.length ? ((ra.ord && ra.ord[id]) || cumprPos(lista) + 1) : n;
     el.hidden = false;
@@ -8983,6 +9112,7 @@ function iaUsuarioAjuste(d) {
       '<div class="cb2-btns"><button type="button" data-cb="reiniciar"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.6M20 4v5h-5"/></svg> Reiniciar cronômetro</button><div class="cb2-btns2"><button type="button" data-cb="min" aria-label="Minimizar" title="Minimizar"><span class="cb2-traco"></span></button><button type="button" data-cb="sair"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></svg> Sair</button></div></div></div>' +
       '<div class="seqbar"><div style="width:' + pct + '%"></div></div>' + (lista.length > 1 ? '<p class="cb-dica"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h5M5 4L2 7l3 3M21 7h-5M19 4l3 3-3 3"/><path d="M12 21v-9a1.5 1.5 0 013 0v4l2 .5a2 2 0 011.5 2V21z"/></svg> Deslize: esquerda = próximo, direita = anterior.</p>' : '');
     var l1 = document.getElementById('list'); if (l1) { l1.style.paddingTop = (Math.round(el.getBoundingClientRect().bottom) + 10) + 'px'; }
+    document.documentElement.style.setProperty('--cumprBottom', Math.round(el.getBoundingClientRect().bottom) + 'px'); document.body.classList.add('cumprOn');
   }
   /* d = +1 próximo, -1 anterior; a ordem nunca muda, só o cartão que aparece */
   function cumprIr(d) {
