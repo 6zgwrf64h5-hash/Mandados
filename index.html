@@ -1168,6 +1168,10 @@ body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !
 .rbtn small.rsub { flex-basis: 100%; text-align: center; font-size: 10px; font-weight: 600; opacity: .95; line-height: 1.1; }
 
 .stcard { margin: 2px 0 6px; font-size: 12px; font-weight: 600; color: #5B6486; line-height: 1.25; }
+
+.prontobal { display: inline-block; margin: 0 0 8px; padding: 4px 10px; border-radius: 12px; background: #E6F6EA; color: #136B2F; font-size: 12px; font-weight: 700; line-height: 1.25; }
+
+.rdist { display: block; color: #5B6486; font-size: 11px; font-weight: 600; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -1223,7 +1227,7 @@ body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !
 
   <nav class="tabs" id="tabs" aria-label="Listas">
     <button class="tab" data-tab="enviar" aria-pressed="true">Mandados <span class="count" data-c="enviar"></span></button>
-    <button class="tab" data-tab="aguardando" aria-pressed="false">⏳ Exclusivo online <span class="count" data-c="aguardando"></span></button>
+    <button class="tab" data-tab="aguardando" aria-pressed="false">✅ Prontos para certificar <span class="count" data-c="aguardando"></span></button>
     <button class="tab" data-tab="devolver" aria-pressed="false">Certidões <span class="count" data-c="devolver"></span></button>
     <button class="tab" data-tab="arquivos" aria-pressed="false">Arquivos <span class="count" data-c="arquivos"></span></button>
   </nav>
@@ -1245,6 +1249,7 @@ body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !
   <div class="tools" id="devTools" hidden>
     <div class="actions">
       <button class="btn" id="btnMerge">Juntar em um PDF só</button>
+      <button class="btn" id="btnZipNovas">Baixar não compartilhadas</button>
       <button class="btn small ghost" id="btnClean">Tirar da lista as já baixadas</button>
     </div>
   </div>
@@ -2461,11 +2466,20 @@ function aguardandoOnline(it, agora, cidades) {
   if (fisicaFeita(it)) { return onlinePossivel(it); }
   return fisicaDispensada(it, cidades) && onlineInfo(it, agora).n > 0;
 }
-function prontoCertificar(it, agora, cidades) {
-  if (it.status !== 'pendente') { return false; }
-  if (fisicaFeita(it) && !onlinePossivel(it)) { return true; }
-  return (fisicaFeita(it) || fisicaDispensada(it, cidades)) && onlineInfo(it, agora).pronto;
+/* Prontos para certificar: devolve o MOTIVO (texto) ou '' se ainda não está pronto */
+function motivoPronto(it, agora, cidades) {
+  if (it.status !== 'pendente') { return ''; }
+  var loc = enderecoTipo(it, cidades) === 'local', oi = onlineInfo(it, agora), st = waEstado(it);
+  var temOn = onlinePossivel(it) && st.nums.length > 0, fisOk = !loc || fisicaFeita(it);
+  if (loc && fisicaFeita(it) && !onlinePossivel(it)) { return 'física certificada e não há WhatsApp para tentar'; }
+  if (temOn && fisOk && st.todos) { return 'todos os WhatsApp já têm resultado' + (loc ? ' e a física está certificada' : ''); }
+  if (temOn && fisOk && oi.n >= 2 && oi.horas >= 24) { return 'duas mensagens enviadas e já passaram 24 h da última' + (loc ? '; física certificada' : ''); }
+  var dias = (agora - (it.added || agora)) / 86400000, df = audDiasAte(it, agora), longe = df !== null && df > 7, nv = (it.visitas || []).length;
+  if (!longe && nv >= 2 && dias >= 15) { return nv + ' diligências físicas e mais de 15 dias no app'; }
+  if (!longe && dias >= 30) { return 'mais de 30 dias no app'; }
+  return '';
 }
+function prontoCertificar(it, agora, cidades) { return !!motivoPronto(it, agora, cidades); }
 function rotuloFis(f) {
   var m = { mudou: 'mudou-se', naoconhece: 'não conhece', numero: 'numeração não encontrada', ninguem: 'não encontrei ninguém', outro: 'outro' };
   return m[f && f.modelo] || 'negativa';
@@ -2690,7 +2704,7 @@ function chaveDoEndereco(endereco) {
 
 /* Rota pelo vizinho mais próximo: a 1ª é a escolhida (ou a mais perto de "inicio"), a 2ª é a mais perto da 1ª,
    a 3ª a mais perto da 2ª, e assim por diante. Quem não tem localização no mapa vai para o fim. */
-function ordenarVizinho(list, inicio, primeiroId) {
+function ordenarVizinho(list, inicio, primeiroId, ultimoId) {
   if (inicio) { definirRefLado(inicio); }
   var porId = {};
   list.forEach(function (x) { porId[x.id] = x; });
@@ -2704,6 +2718,8 @@ function ordenarVizinho(list, inicio, primeiroId) {
     var k = -1; resto.forEach(function (x, n) { if (x.id === primeiroId) { k = n; } });
     if (k >= 0) { var f = resto.splice(k, 1)[0]; out.push(f); atual = pontoDe(f); }
   }
+  var ult = null;
+  if (ultimoId != null) { var ku = -1; resto.forEach(function (x, n) { if (x.id === ultimoId) { ku = n; } }); if (ku >= 0) { ult = resto.splice(ku, 1)[0]; } }
   while (resto.length) {
     var bi = 0, bd = Infinity;
     for (var n = 0; n < resto.length; n++) {
@@ -2712,35 +2728,36 @@ function ordenarVizinho(list, inicio, primeiroId) {
     }
     var nx = resto.splice(bi, 1)[0]; out.push(nx); atual = pontoDe(nx);
   }
-  out = refinarCaminho(out, inicio || null, Math.min(1, out.length));
+  if (ult) { out.push(ult); }
+  out = refinarCaminho(out, inicio || null, Math.min(1, out.length), !!ult);
   return out.concat(sem).map(function (x) { return porId[x.id] || x; });
 }
 /* Refina a ordem: depois do "vizinho mais próximo" (guloso), troca trechos (2-opt) e muda paradas de lugar (Or-opt) enquanto o caminho encurtar.
    O ponto de partida e a 1ª parada ficam fixos. Guarda o último resultado para não recalcular a cada tela. */
 var _refCache = {};
 var GANHO_MIN = 0.25;   /* km: só troca a ordem se ganhar pelo menos isto (evita sair da vizinhança e voltar por quase nada) */
-function refinarCaminho(lista, inicio, fixos) {
-  var n = lista.length;
+function refinarCaminho(lista, inicio, fixos, fimFixo) {
+  var n = lista.length, fF = fimFixo ? 1 : 0;
   if (n < 4) { return lista; }
   var P = lista.map(function (x) { return pontoDe(x); });
-  var chave = lista.map(function (x) { return x.id; }).join(',') + '|' + (inicio ? inicio[0].toFixed(5) + ',' + inicio[1].toFixed(5) : '') + '|' + fixos + '|' + P.map(function (q) { return q[0].toFixed(5) + q[1].toFixed(5); }).join(';');
+  var chave = lista.map(function (x) { return x.id; }).join(',') + '|' + (inicio ? inicio[0].toFixed(5) + ',' + inicio[1].toFixed(5) : '') + '|' + fixos + '|' + (fimFixo ? 'F' : '') + '|' + P.map(function (q) { return q[0].toFixed(5) + q[1].toFixed(5); }).join(';');
   if (_refCache[chave]) { return _refCache[chave].map(function (i) { return lista[i]; }); }
   var ord = lista.map(function (_, i) { return i; });
   function comp(o) { var t = 0, a = inicio || null, k; for (k = 0; k < o.length; k++) { if (a) { t += distKm(a, P[o[k]]); } a = P[o[k]]; } return t; }
   var melhor = comp(ord), voltas = 0, mexeu = true, i, j, k2, seg, rv, cand, c, resto, s0, v, achou;
   while (mexeu && voltas++ < 40) {
     mexeu = false;
-    for (i = fixos; i < n - 1; i++) {
-      for (j = i + 1; j < n; j++) {
+    for (i = fixos; i < n - 1 - fF; i++) {
+      for (j = i + 1; j < n - fF; j++) {
         cand = ord.slice(0, i).concat(ord.slice(i, j + 1).reverse(), ord.slice(j + 1)); c = comp(cand);
         if (c < melhor - GANHO_MIN) { ord = cand; melhor = c; mexeu = true; }
       }
     }
     achou = false;
     for (seg = 1; seg <= 3 && !achou; seg++) {
-      for (i = fixos; i + seg <= n && !achou; i++) {
+      for (i = fixos; i + seg <= n - fF && !achou; i++) {
         s0 = ord.slice(i, i + seg); resto = ord.slice(0, i).concat(ord.slice(i + seg));
-        for (k2 = fixos; k2 <= resto.length && !achou; k2++) {
+        for (k2 = fixos; k2 <= resto.length - fF && !achou; k2++) {
           if (k2 === i) { continue; }
           for (rv = 0; rv < 2 && !achou; rv++) {
             v = rv ? s0.slice().reverse() : s0;
@@ -3827,7 +3844,7 @@ function iaUsuarioAjuste(d) {
   function msgAnalise(nome) { var me = state.me || {}; return montarMensagem(state.cfg.msgAnalise || 'Documentos em análise.', nome, me.nome, me.mat); }
   function ucfg() { return { dias: parseInt(state.cfg.urgDias, 10) || 3, aud: state.cfg.urgAud, afast: state.cfg.urgAfast, saude: state.cfg.urgSaude, first: state.cfg.urgFirst }; }
   function urg(i) { return urgencias(i, Date.now(), ucfg()); }
-  function prioIt(i) { return prioDe(Object.assign({}, i, { prio: undefined }), Date.now(), ucfg()); }
+  function prioIt(i) { return null; }      /* audiência, liminar e afastamento não influenciam mais a rota */
   function centroide(pts) { return [pts.reduce(function (a, q) { return a + q[0]; }, 0) / pts.length, pts.reduce(function (a, q) { return a + q[1]; }, 0) / pts.length]; }
   function aprenderBairros(lista) {
     var mudou = false;
@@ -3918,6 +3935,9 @@ function iaUsuarioAjuste(d) {
     definirDicas({ bairros: state.cfg.bairroPts, ceps: state.cfg.cepPts, cepBairro: state.cfg.cepBairro });
     aprenderBairros(state.items);
     var o = state.origin ? pontosRua(state.origin, codigosRuas()) : null;
+    var fimIt = null;
+    if (state.cfg.fimId && state.cfg.fimId !== state.cfg.inicioId) { list.forEach(function (i) { if (i.id === state.cfg.fimId) { fimIt = i; } }); }
+    if (fimIt) { list = list.filter(function (x) { return x !== fimIt; }); }
     var iniId = state.cfg.inicioId, iniIt = null, auto;
     if (iniId) { list.forEach(function (i) { if (i.id === iniId) { iniIt = i; } }); }
     var pIni = iniIt ? pontoEfetivo(iniIt) : null, gpsPt = !iniIt && saidaGpsOn() ? gpsFresco() : null;
@@ -3930,7 +3950,8 @@ function iaUsuarioAjuste(d) {
         if (kIni > 0) { auto = auto.slice(); auto.unshift(auto.splice(kIni, 1)[0]); }
       }
     }
-    return aplicarManual(auto, state.cfg.rotaManual);
+    var resF = aplicarManual(auto, state.cfg.rotaManual);
+    return fimIt ? resF.filter(function (x) { return x.id !== fimIt.id; }).concat([fimIt]) : resF;
   }
   function nomeDoBairro(k) {
     var ach = state.items.filter(function (i) { return chaveBairro(i.bairro || '') === k && i.bairro; })[0];
@@ -3946,6 +3967,30 @@ function iaUsuarioAjuste(d) {
     if (L.length > 40) { L.splice(0, L.length - 40); }
     save(); render();
     toast('Rota salva (' + arr.length + ' paradas). A página já aprendeu com ' + L.length + (L.length === 1 ? ' rota.' : ' rotas.') + (L.length < 2 ? ' Salve mais uma para ela começar a comparar.' : ''));
+  }
+  /* reorganiza pelo caminho mais curto, respeitando a PRIMEIRA e a ÚLTIMA parada escolhidas (a última é opcional) */
+  function otimizarRota() {
+    var arr = rotaSel();
+    if (arr.length < 3) { toast('A rota precisa de pelo menos 3 paradas para otimizar.'); return false; }
+    var iniIt = arr.filter(function (i) { return i.id === state.cfg.inicioId; })[0] || null, fimIt = arr.filter(function (i) { return i.id === state.cfg.fimId && (!iniIt || i.id !== iniIt.id); })[0] || null;
+    ordemRota(arr);
+    var o = state.origin ? pontosRua(state.origin, codigosRuas()) : null, pIni = iniIt ? pontoEfetivo(iniIt) : ((saidaGpsOn() && gpsFresco()) || (o ? o[0] : pontoIni()));
+    var res = ordenarVizinho(arr, pIni, iniIt ? iniIt.id : null, fimIt ? fimIt.id : null);
+    salvarManual(res.map(function (i) { return i.id; }));
+    toast('Rota otimizada' + (iniIt ? ' a partir de ' + iniIt.nome : '') + (fimIt ? ', terminando em ' + fimIt.nome : '') + '.');
+    return true;
+  }
+  async function verMandadoRota(it) {
+    await viewMandado(it);
+    var d = document.createElement('div'); d.className = 'actions';
+    d.innerHTML = '<button class="btn primary" id="rtVolta">Voltar à rota</button>';
+    document.getElementById('mbody').appendChild(d);
+    document.getElementById('rtVolta').onclick = function () { document.getElementById('btnRoute').onclick(); };
+  }
+  function resumoPrimUlt() {
+    var arr = rotaSel(), a = arr.filter(function (i) { return i.id === state.cfg.inicioId; })[0], z = arr.filter(function (i) { return i.id === state.cfg.fimId; })[0];
+    if (!a && !z) { return '<p class="note">Escolha o <strong>primeiro</strong> mandado (e, se quiser, o <strong>último</strong>) em “Começar aqui” e “Terminar aqui”, e toque em <strong>Otimizar</strong> para a rota mais curta.</p>'; }
+    return '<p class="note">' + (a ? '<strong>Primeiro:</strong> ' + esc(a.nome) : '') + (a && z ? ' · ' : '') + (z ? '<strong>Último:</strong> ' + esc(z.nome) : '') + '. Toque em <strong>Otimizar</strong> para refazer pelo caminho mais curto.</p>';
   }
   function salvarManual(ids) {
     var pend = {};
@@ -4488,7 +4533,7 @@ function iaUsuarioAjuste(d) {
     var al = audLista(pend, Date.now());
     return { total: it.length, pend: pend.length, cert: cert.length, pos: pos.length, neg: neg.length, zap: zap.length,
       hoje: hoje.length, hojePos: hoje.filter(function (i) { return i.certidao.tipo === 'positiva'; }).length, hojeNeg: hoje.filter(function (i) { return i.certidao.tipo === 'negativa'; }).length,
-      aguard: it.filter(function (i) { return inTab(i, 'aguardando'); }).length, prontos: it.filter(pronto).length, repetir: it.filter(precisaRepetir).length,
+      aguard: it.filter(function (i) { return i.status === 'pendente' && aguard(i); }).length, prontos: it.filter(pronto).length, repetir: it.filter(precisaRepetir).length,
       perdidas: al.perdidas.length, msgsHoje: msgsHoje };
   }
   function abrirPainel() {
@@ -4509,7 +4554,7 @@ function iaUsuarioAjuste(d) {
       '<div class="pgrid">' + card(tot, 'Certidões feitas', '', '') + card(E.z, 'Intimados por WhatsApp', 'zap', '') + card(E.p + ' <small>' + pp + '%</small>', 'Positivas (cumpridos)', 'ok', '') + card(E.n + ' <small>' + pn + '%</small>', 'Negativas', 'neg', '') + card(fmtReais(E.cu), 'Custas das certidões', 'val', '') + card(fmtReais(E.tr), 'Indenização de transporte', 'val', '') + card(E.r, 'Mandados recebidos', '', '') + card(E.m, 'Mensagens abertas', '', '') + '</div>' + temposHtml() +
       (tot ? '<div class="pbar" role="img" aria-label="Positivas ' + pp + '%, negativas ' + pn + '%"><div class="pb-p" style="width:' + (E.p / tot * 100) + '%"></div><div class="pb-n" style="width:' + (E.n / tot * 100) + '%"></div></div><p class="note pleg"><span class="pk ok"></span>Positivas ' + E.p + ' <span class="pk neg"></span>Negativas ' + E.n + (E.o ? ' <span class="pk"></span>Outro meio ' + E.o : '') + '</p>' : '<p class="note">Nenhuma certidão neste período.</p>') +
       '<p class="note" style="margin:12px 0 4px"><strong>Agora</strong> · ' + d.cert + ' de ' + d.total + (d.total === 1 ? ' mandado' : ' mandados') + ' com certidão (' + pct + '%)</p><div class="seqbar"><div style="width:' + pct + '%"></div></div>' +
-      '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.aguard, 'Exclusivo online', '', 'aguardando') + card(d.prontos, 'Prontos para certificar', '', 'enviar') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + card(d.pos + d.neg, 'Certidões na lista', '', 'devolver') + '</div>' +
+      '<div class="pgrid">' + card(d.pend, 'Faltam', 'pend', 'enviar') + card(d.aguard, 'Aguardando a on-line', '', 'enviar') + card(d.prontos, 'Prontos para certificar', '', 'aguardando') + card(d.repetir, 'Para repetir a mensagem', '', 'enviar') + card(d.perdidas, 'Perderam a data da audiência', d.perdidas ? 'neg' : '', '') + card(d.pos + d.neg, 'Certidões na lista', '', 'devolver') + '</div>' +
       (totAudP ? '<div class="actions pnaud"><button class="btn" type="button" data-hjlista="1">Ver todas as audiências (' + totAudP + ')</button></div>' : '') +
       '<p class="note">Último backup em arquivo: ' + (state.ultimoBackup ? (function (dd) { return dd === 0 ? 'hoje' : 'há ' + dd + (dd === 1 ? ' dia' : ' dias'); })(Math.floor((Date.now() - state.ultimoBackup) / 86400000)) : 'ainda não há') + '.</p>' +
       (retomar ? '<p class="note" style="margin:10px 0 4px"><strong>Retomar de onde parei</strong></p><div class="actions">' + retomar + '</div>' : '<p class="note">Nada em andamento: nenhuma fila nem rota aberta.</p>') +
@@ -4665,8 +4710,8 @@ function iaUsuarioAjuste(d) {
   }
   function inTab(i, t) {
     if (t === 'devolver') { return i.status === 'certidao'; }
-    if (t === 'enviar') { return i.status === 'pendente' && !aguard(i); }
-    if (t === 'aguardando') { return i.status === 'pendente' && aguard(i); }
+    if (t === 'enviar') { return i.status === 'pendente' && !pronto(i); }
+    if (t === 'aguardando') { return i.status === 'pendente' && pronto(i); }      /* a aba "aguardando" agora é a dos PRONTOS PARA CERTIFICAR */
     return i.status === 'pendente' && i.cls === t;
   }
   var repOnly = false;
@@ -4760,6 +4805,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('tools').hidden = tab === 'arquivos';
     document.getElementById('selTools').hidden = tab === 'devolver' || tab === 'arquivos';
     document.getElementById('devTools').hidden = tab !== 'devolver';
+    document.getElementById('btnZipNovas').textContent = 'Baixar não compartilhadas (' + certsNovas().length + ')';
 
     var html = '';
     if (tab === 'arquivos') {
@@ -4781,6 +4827,7 @@ function iaUsuarioAjuste(d) {
         if (y < x) { return -1; }
         if (y > x) { return 1; }
         if (agrupaRem) { var ra = remOrd[remKey[a.id]] || 0, rb = remOrd[remKey[b.id]] || 0; if (ra !== rb) { return rb - ra; } }
+        if (tab === 'devolver') { return ((b.certidao && b.certidao.t) || 0) - ((a.certidao && a.certidao.t) || 0); }
         if (tab !== 'enviar') { return 0; }
         var pa = posRota[a.id], pb = posRota[b.id];
         if (pa || pb) { return pa && pb ? pa - pb : (pa ? -1 : 1); }
@@ -4799,21 +4846,10 @@ function iaUsuarioAjuste(d) {
           enviar: 'Nenhum mandado para enviar. Toque em “Adicionar PDF” para ler o seu lote.',
           conferir: 'Nada para conferir. Aqui ficam os mandados que a leitura não conseguiu classificar sozinha.',
           nao_enviar: 'Nada aqui. Aqui ficam os mandados do 1º Juizado, citações criminais, penhoras, prisões e afastamento do lar.',
-          aguardando: 'Nada aguardando resposta on-line. Aqui ficam os mandados em que a diligência física já foi feita e falta a on-line, e os só eletrônicos depois da 1ª mensagem.',
+          aguardando: 'Nenhum mandado pronto para certificar ainda. Entram aqui: duas mensagens e 24 h, WhatsApp concluído, duas diligências físicas há mais de 15 dias, ou mais de 30 dias no app.',
           devolver: 'Nenhuma certidão pronta ainda. Quando você salvar uma certidão, o mandado vem para cá.'
         };
         html = '<p class="empty">' + msg[tab] + '</p>';
-      }
-      if (tab === 'aguardando' && list.length) {
-        var cat = function (i) { return pronto(i) ? 0 : (precisaRepetir(i) ? 1 : 2); };
-        var nomes = ['Prontos para certificar', 'Repetir a mensagem (passou de 24 h)', 'Aguardando resposta'];
-        [0, 1, 2].forEach(function (c) {
-          var g = list.filter(function (i) { return cat(i) === c; });
-          if (!g.length) { return; }
-          html += '<div class="dayrow"><h2 class="day">' + esc(nomes[c]) + ' (' + g.length + ')</h2></div>';
-          g.forEach(function (i) { html += card(i, ++cardN); });
-        });
-        list = [];
       }
       var lastDay = null, lastRem = null;
       list.forEach(function (i) {
@@ -4999,7 +5035,10 @@ function iaUsuarioAjuste(d) {
       if (fx.length) { h += '<details class="maisflags"><summary>+' + fx.length + (fx.length === 1 ? ' aviso' : ' avisos') + '</summary><div class="flags">' + fx.map(fh).join('') + '</div></details>'; }
     }
     h += telCandHtml(i);
-    if (i.status === 'pendente') { h += '<p class="stcard">' + esc(statusCartao(i)) + '</p>'; }
+    if (i.status === 'pendente') {
+      h += '<p class="stcard">' + esc(statusCartao(i)) + '</p>';
+      var mpr = motivoPronto(i, Date.now(), cidades()); if (mpr) { h += '<p class="prontobal">✅ Pronto para certificar: ' + esc(mpr) + '</p>'; }
+    }
     if (i.status === 'pendente') {
       var temNum = onlinePossivel(i), loc = etipo(i) === 'local', onl = '', onb = '';
       var temNumero = telefonesUnicos(i.telefones).some(function (u) { return u.n.ok; }) || !!temDil;
@@ -5023,7 +5062,8 @@ function iaUsuarioAjuste(d) {
       if (iaAtiva()) { h += '<div class="iafim">' + iaBtnHtml(parPrin || 'on') + '</div>'; }
     } else {
       h += '<p class="badge ' + i.certidao.tipo + '">Certidão ' + i.certidao.tipo + ' pronta' + (i.certidao.canal === 'wa' ? ' (WhatsApp)' : (i.certidao.canal === 'fisica' ? (i.certidao.origem === 'print' ? ' (feita por print)' : ' (feita à mão)') : (i.certidao.canal === 'externo' ? ' (feita fora da página, sem PDF)' : ''))) + (i.certidao.prints && i.certidao.prints.length ? ', ' + i.certidao.prints.length + (i.certidao.canal === 'fisica' && i.certidao.origem !== 'print' ? (i.certidao.prints.length === 1 ? ' foto' : ' fotos') : (i.certidao.prints.length === 1 ? ' print' : ' prints')) : '') + (i.baixada ? ', já baixada' : '') + '</p>';
-      h += '<div class="actions">' + (fileOk(i) ? '<button class="btn small eyelbl" data-act="ver">Mandado</button>' : '') + '<button class="btn small eyelbl" data-act="viewcert">Certidão</button>' + (externo(i) ? '' : '<button class="btn small primary" data-act="baixar">Baixar PDF</button><button class="btn small" data-act="compart">Compartilhar</button>') + '<button class="btn small ghost" data-act="naocert">Mandado não certificado</button><button class="btn small ghost" data-act="purge">Excluir definitivamente</button></div>';
+      if (i.certidao && i.certidao.t) { var dtc = new Date(i.certidao.t); h += '<p class="stcard">Certificada às ' + pad(dtc.getHours()) + ':' + pad(dtc.getMinutes()) + (externo(i) ? '' : (i.baixada ? ' · já compartilhada ou baixada' : ' · ainda não compartilhada')) + '</p>'; }
+    h += '<div class="actions">' + (fileOk(i) ? '<button class="btn small eyelbl" data-act="ver">Mandado</button>' : '') + '<button class="btn small eyelbl" data-act="viewcert">Certidão</button>' + (externo(i) ? '' : '<button class="btn small primary" data-act="baixar">Baixar PDF</button><button class="btn small" data-act="compart">Compartilhar</button>') + '<button class="btn small ghost" data-act="naocert">Mandado não certificado</button><button class="btn small ghost" data-act="purge">Excluir definitivamente</button></div>';
     }
     h += '</div></article>';
     return h;
@@ -5066,7 +5106,7 @@ function iaUsuarioAjuste(d) {
       '<div class="actions"><button class="btn small" id="meMsgVer">Ver como fica</button><button class="btn small ghost" id="meMsgPad">Voltar ao texto padrão</button></div>' +
       '<pre id="meMsgPrev" class="note" style="white-space:pre-wrap" hidden></pre>' +
       '<label class="f" for="meAn">Texto do botão “Documentos em análise”</label><input type="text" id="meAn" value="' + esc(state.cfg.msgAnalise || 'Documentos em análise.') + '" autocomplete="off">' +
-      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="mePrio">Prioridades da rota</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
+      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
       '<p class="note">Toque em Salvar antes de abrir essas telas.</p>' +
       '<div class="actions"><button class="btn primary" id="meSave">Salvar</button></div>' +
       painelAtalho() + painelBackup());
@@ -5110,7 +5150,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('meModelos').onclick = function () { abrirModelos(); };
     document.getElementById('meIAbtn').onclick = function () { abrirIA(); };
     document.getElementById('meCusBtn').onclick = function () { abrirValores(); };
-    document.getElementById('mePrio').onclick = function () { abrirPrio(); };
+    (document.getElementById('mePrio') || {}).onclick = function () { abrirPrio(); };
     document.getElementById('meRota').onclick = function () { abrirMinhaRota(); };
     document.getElementById('meMsgVer').onclick = function () {
       var pv = document.getElementById('meMsgPrev');
@@ -5821,7 +5861,7 @@ function iaUsuarioAjuste(d) {
     var s2 = seq, resta = s2.ents.length - s2.k;
     state.seqAtiva = null; save();
     document.getElementById('mbody').innerHTML = '<p><strong>' + (parou ? 'Parei aqui.' : 'Fila concluída.') + '</strong> ' + s2.feitos + (s2.feitos === 1 ? ' mensagem aberta' : ' mensagens abertas') + ', ' + s2.pulados + (s2.pulados === 1 ? ' pulada' : ' puladas') + (parou && resta > 0 ? ', ' + resta + (resta === 1 ? ' ficou' : ' ficaram') + ' para depois' : '') + '.</p>' +
-      '<p class="note">Quem recebeu mensagem e não tem endereço físico passa para “Exclusivo online”. Os outros continuam na lista, com a contagem de tentativas.</p>' +
+      '<p class="note">Quem recebeu mensagem continua em Mandados, com o status no cartão. Quando cumprir as regras, vai para “Prontos para certificar”.</p>' +
       '<div class="actions"><button class="btn primary" id="sqFim">Fechar</button></div>';
     var certSz = [];
     (s2.semz || []).forEach(function (k) { var id = k.slice(0, k.indexOf('|')), i = byId(id); if (i && i.status === 'pendente' && certSz.indexOf(id) === -1 && numerosSeq(i).length && numerosSeq(i).every(function (u) { return (i.semZap || []).indexOf(u.n.wa) !== -1; })) { certSz.push(id); } });
@@ -6101,7 +6141,7 @@ function iaUsuarioAjuste(d) {
     function asc(a, b) { return a - b; }
     var mp = (it.paginas || []).filter(valid).sort(asc);
     var cf = (it.contrafe || []).filter(valid).filter(function (n) { return mp.indexOf(n) === -1; }).sort(asc);
-    var nums = mp.concat(inc ? cf : []).sort(asc);
+    var nums = mp.concat(inc ? cf : []);      /* frente do mandado primeiro, contrafé por último */
     var procs = {}, nomeOk = false, figs = '';
     var base = String(it.processo || '').replace(/\D/g, '');
     for (var k = 0; k < nums.length; k++) {
@@ -6433,7 +6473,7 @@ function iaUsuarioAjuste(d) {
   /* Depois da física: se dá para tentar on-line, aguarda; senão, certifica já */
   function posFisica(it) {
     save();
-    if (onlinePossivel(it)) { tab = 'aguardando'; render(); toast('Diligência física registrada. O mandado está em Exclusivo online.'); }
+    if (onlinePossivel(it)) { tab = 'enviar'; render(); toast('Diligência física registrada. O mandado continua em Mandados, aguardando o WhatsApp.'); }
     else { render(); toast('Sem número para a on-line: vamos certificar agora.'); openCert(it); }
   }
   var GG_LIMITE_DIA = 150, ggAndamento = false;
@@ -6664,7 +6704,7 @@ function iaUsuarioAjuste(d) {
   function abrirFisNeg(it) {
     var now = new Date(), today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
     openModal('Diligência física',
-      '<p class="note">Registre o que aconteceu no endereço. O mandado vai para a aba <strong>Exclusivo online</strong>, e a certidão final já vem com estes dados.</p>' +
+      '<p class="note">Registre o que aconteceu no endereço. O mandado continua em <strong>Mandados</strong> aguardando o WhatsApp, e a certidão final já vem com estes dados.</p>' +
       '<p><strong>' + esc(it.nome) + '</strong><br><span class="note">' + esc(it.endereco) + '</span></p>' +
       '<label class="f" for="fnTipo">O que aconteceu</label><select id="fnTipo" class="sel"><option value="mudou">Mudou-se (o morador atual informou)</option><option value="naoconhece">Não conhece (o morador atual informou)</option><option value="numero">Não achei a numeração</option><option value="outro">Outro (escrever na observação)</option></select>' +
       '<div id="fnMor"><label class="f" for="fnNome">Nome de quem informou (morador atual)</label><input type="text" id="fnNome" autocomplete="off"></div>' +
@@ -6710,7 +6750,7 @@ function iaUsuarioAjuste(d) {
     $('exNeg').onclick = function () { setRes('negativa'); };
     $('exNo').onclick = closeModal;
     $('exSave').onclick = function () {
-      it.certidao = { tipo: res || 'externo', canal: 'externo', externo: true, texto: '', sig: null, data: $('exData').value || today, prints: [], custas: parseValor($('exCustas').value) };
+      it.certidao = { t: Date.now(), tipo: res || 'externo', canal: 'externo', externo: true, texto: '', sig: null, data: $('exData').value || today, prints: [], custas: parseValor($('exCustas').value) };
       it.status = 'certidao'; delete sel[it.id]; save();
       closeModal(); render();
       toast('Guardado em Certidões, sem PDF.');
@@ -6725,7 +6765,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('cfNao').onclick = closeModal;
     document.getElementById('cfSim').onclick = function () {
       var now = new Date(), today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-      it.certidao = { tipo: 'externo', canal: 'externo', externo: true, texto: '', sig: null, data: today, prints: [], custas: parseValor(custasCard(it)) };
+      it.certidao = { t: Date.now(), tipo: 'externo', canal: 'externo', externo: true, texto: '', sig: null, data: today, prints: [], custas: parseValor(custasCard(it)) };
       it.status = 'certidao'; delete sel[it.id]; save(); closeModal(); render();
       toast('Encaminhado para Certidões (outro meio).', function () { it.status = 'pendente'; it.certidao = null; save(); render(); });
     };
@@ -6740,7 +6780,7 @@ function iaUsuarioAjuste(d) {
       return '<li>' + esc(u.n.ok ? u.n.label : u.raw) + (u.n.ok ? ' <a class="wa" data-k="' + k + '" href="' + link + '">Abrir o WhatsApp com a mensagem padrão</a>' : ' (não reconhecido)') + ' <button class="btn small ghost" data-rm="' + k + '">Apagar</button></li>';
     }).join('');
     openModal('WhatsApp novo',
-      '<p class="note">Digite o número que você conseguiu. Ele passa a valer como os números do mandado, mesmo que o mandado esteja em vermelho ou amarelo: botão do WhatsApp, copiar mensagem, “já mandei”, contagem das 24 h e das 48 h e aba Exclusivo online. O 9 e o DDD 45 são incluídos sozinhos.</p>' +
+      '<p class="note">Digite o número que você conseguiu. Ele passa a valer como os números do mandado, mesmo que o mandado esteja em vermelho ou amarelo: botão do WhatsApp, copiar mensagem, “já mandei”, contagem das 24 h e das 48 h e aba Prontos para certificar. O 9 e o DDD 45 são incluídos sozinhos.</p>' +
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
       '<p class="note">' + (it.vara ? 'Vara: ' + esc(it.vara) + '<br>' : '') + (resumoAto(it) ? 'O que fazer: ' + esc(resumoAto(it)) : '') + '</p>' +
       '<label class="f" for="tdNum">Número</label><input type="text" id="tdNum" inputmode="tel" placeholder="(45) 99999-9999" autocomplete="off">' +
@@ -6936,7 +6976,23 @@ function iaUsuarioAjuste(d) {
     return true;
   }
   window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.autoEnquadrar = autoEnquadrar; window.__mandadosTeste.caixaDoPapel = caixaDoPapel;
-  function shrinkImage(file, maxSide, qual) {
+  /* anexo (foto, print ou PDF): imagem vira 1 item; PDF vira 1 item por página (até 12), para entrar na certidão como os prints */
+async function lerAnexos(file, maxSide, qual) {
+  if (!(file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')))) { return [await shrinkImage(file, maxSide, qual)]; }
+  if (!(await ensureLib('pdfjs'))) { throw new Error('pdfjs'); }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var doc = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise, out = [], total = Math.min(doc.numPages, 12);
+  for (var n = 1; n <= total; n++) {
+    var pg = await doc.getPage(n), v0 = pg.getViewport({ scale: 1 }), sc = Math.min(2, (maxSide || 1500) / Math.max(v0.width, v0.height)), vp = pg.getViewport({ scale: sc });
+    var c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    var cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
+    await pg.render({ canvasContext: cx, viewport: vp }).promise;
+    var blob = await new Promise(function (res) { c.toBlob(res, 'image/jpeg', qual || 0.85); });
+    out.push({ blob: blob, url: c.toDataURL('image/jpeg', 0.5) });
+  }
+  return out;
+}
+function shrinkImage(file, maxSide, qual) {
     return new Promise(function (res, rej) {
       var fr = new FileReader();
       fr.onerror = function () { rej(new Error('leitura')); };
@@ -7008,7 +7064,7 @@ function iaUsuarioAjuste(d) {
       '<div class="row2"><div><label class="f" for="cData">Data</label><input type="date" id="cData" value="' + today + '"></div>' +
       '<div><label class="f" for="cHora">Hora</label><input type="time" id="cHora" value="' + hhmm + '"></div></div>' +
       '<label class="f" for="cObs">O que ocorreu</label><textarea id="cObs" placeholder="Ex.: que confirmou a identidade e recebeu a cópia do mandado."></textarea>' +
-      '<label class="f" for="cPrint">Prints da conversa (opcional)</label><input type="file" id="cPrint" accept="image/*" multiple>' +
+      '<label class="f" for="cPrint">Prints da conversa (opcional)</label><input type="file" id="cPrint" accept="image/*,application/pdf" multiple>' +
       '<div class="thumbs" id="cThumbs"></div>' +
       '<label class="f" for="cOut">Texto da certidão</label><textarea id="cOut" style="min-height:240px"></textarea>' +
       '<label class="f">Assinatura de quem recebeu (opcional, para entrega pessoal)</label><canvas class="sig" id="sig" aria-label="Espaço para assinar com o dedo"></canvas>' +
@@ -7059,7 +7115,7 @@ function iaUsuarioAjuste(d) {
       var files = Array.prototype.slice.call(this.files || []);
       this.value = '';
       for (var k = 0; k < files.length; k++) {
-        try { prints.push(await shrinkImage(files[k])); }
+        try { (await lerAnexos(files[k])).forEach(function (x) { prints.push(x); }); }
         catch (e) { toast('Não consegui ler um dos prints'); }
       }
       drawThumbs();
@@ -7080,7 +7136,7 @@ function iaUsuarioAjuste(d) {
         var pid = 'pr' + uid();
         try { await idbPut(pid, prints[k].blob); ids.push(pid); } catch (e) { toast('Não consegui guardar um dos prints neste aparelho'); }
       }
-      it.certidao = { tipo: tipo === 'wa' ? 'positiva' : tipo, canal: tipo === 'wa' ? 'wa' : 'pessoal', texto: document.getElementById('cOut').value, sig: pad1.data(), data: document.getElementById('cData').value, prints: ids };
+      it.certidao = { t: Date.now(), tipo: tipo === 'wa' ? 'positiva' : tipo, canal: tipo === 'wa' ? 'wa' : 'pessoal', texto: document.getElementById('cOut').value, sig: pad1.data(), data: document.getElementById('cData').value, prints: ids };
       it.status = 'certidao'; delete sel[it.id]; save();
       var blobs = prints.map(function (p) { return p.blob; });
       closeModal(); render();
@@ -7162,7 +7218,7 @@ function iaUsuarioAjuste(d) {
       '<div id="vzMudBox" hidden><label class="f" for="vzMud">Pedir uma troca (ditado ou texto)</label>' +
       '<textarea id="vzMud" style="min-height:80px" placeholder="Ex.: troque “morador” por “vizinho”; acrescente que o imóvel é bem de família; deixe mais curto"></textarea>' +
       '<div class="actions"><button class="btn small ' + (iaAtiva() ? 'ia' : 'primary') + '" id="vzAjusta">' + (iaAtiva() ? '<span class="iabot"></span> ' : '') + 'Ajustar o texto</button><button class="btn small ghost" id="vzDesfaz" hidden>Voltar à versão anterior</button></div></div>' +
-      '<label class="f" for="vzPrint">Prints ou fotos (opcional): comprovante do WhatsApp, foto da diligência… pode acrescentar mais de um</label><input type="file" id="vzPrint" accept="image/*" multiple>' +
+      '<label class="f" for="vzPrint">Prints ou fotos (opcional): comprovante do WhatsApp, foto da diligência… pode acrescentar mais de um</label><input type="file" id="vzPrint" accept="image/*,application/pdf" multiple>' +
       '<div class="thumbs" id="vzThumbs"></div>' +
       '<input type="hidden" id="vzCustas" value="' + esc(dilIni) + '">' +
       '<label class="f" id="vzFisBox" style="display:flex;gap:10px;align-items:center" hidden><input type="checkbox" id="vzFis" style="width:26px;height:26px" checked> <span>Houve diligência presencial no endereço (desmarque se não foi lá: a parte física some do texto)</span></label>' +
@@ -7236,7 +7292,7 @@ function iaUsuarioAjuste(d) {
     $('vzPrint').addEventListener('change', async function () {
       var files = Array.prototype.slice.call(this.files || []);
       this.value = '';
-      for (var k = 0; k < files.length; k++) { try { prints.push(await shrinkImage(files[k])); } catch (e) { toast('Não consegui ler uma das imagens'); } }
+      for (var k = 0; k < files.length; k++) { try { (await lerAnexos(files[k])).forEach(function (x) { prints.push(x); }); } catch (e) { toast('Não consegui ler uma das imagens'); } }
       drawThumbs();
     });
     $('vzCopy').onclick = function () { copyText($('vzOut').value).then(function (ok) { toast(ok ? 'Certidão copiada' : 'Não foi possível copiar'); }); };
@@ -7254,7 +7310,7 @@ function iaUsuarioAjuste(d) {
         var pid = 'pr' + uid();
         try { await idbPut(pid, prints[k].blob); ids.push(pid); } catch (e) { toast('Não consegui guardar um dos anexos neste aparelho'); }
       }
-      it.certidao = { tipo: tipoCert, canal: opt && opt.final ? 'partes' : 'voz', modelo: opt && opt.final ? 'partes' : 'voz', texto: $('vzOut').value, sig: null, data: today, prints: ids, custas: parseValor($('vzCustas').value) };
+      it.certidao = { t: Date.now(), tipo: tipoCert, canal: opt && opt.final ? 'partes' : 'voz', modelo: opt && opt.final ? 'partes' : 'voz', texto: $('vzOut').value, sig: null, data: today, prints: ids, custas: parseValor($('vzCustas').value) };
       it.status = 'certidao'; delete sel[it.id]; save();
       var blobs = prints.map(function (p) { return p.blob; });
       closeModal(); render();
@@ -7476,7 +7532,7 @@ function iaUsuarioAjuste(d) {
   }
   function htmlCamposFinais(pref, it) {
     return htmlCustasPainel(pref) + '<input type="hidden" id="' + pref + 'Custas" value="' + esc(custasCard(it).replace(/[^\d.,]/g, '')) + '">' +
-      '<label class="f" for="' + pref + 'Print">Prints ou fotos (opcional): comprovante do WhatsApp, foto da diligência… pode acrescentar mais de um</label><input type="file" id="' + pref + 'Print" accept="image/*" multiple>' +
+      '<label class="f" for="' + pref + 'Print">Prints ou fotos (opcional): comprovante do WhatsApp, foto da diligência… pode acrescentar mais de um</label><input type="file" id="' + pref + 'Print" accept="image/*,application/pdf" multiple>' +
       '<div class="thumbs" id="' + pref + 'Thumbs"></div>';
   }
   function ligarCamposFinais(pref, aoMudarCustas, it) {
@@ -7487,7 +7543,7 @@ function iaUsuarioAjuste(d) {
     th.addEventListener('click', function (e) { var im = e.target.closest('img'); if (im) { abrirImagem(prints, +im.getAttribute('data-i'), desenha); } });
     document.getElementById(pref + 'Print').addEventListener('change', async function () {
       var files = Array.prototype.slice.call(this.files || []); this.value = '';
-      for (var k = 0; k < files.length; k++) { try { prints.push(await shrinkImage(files[k])); } catch (e) { toast('Não consegui ler uma das imagens'); } }
+      for (var k = 0; k < files.length; k++) { try { (await lerAnexos(files[k])).forEach(function (x) { prints.push(x); }); } catch (e) { toast('Não consegui ler uma das imagens'); } }
       desenha();
     });
     if (prints.length) { desenha(); }
@@ -7507,7 +7563,7 @@ function iaUsuarioAjuste(d) {
     var texto = montarCertidaoPartes(ph.fis, ph.on, { oficial: state.me && state.me.nome, diligencia: fin.custas });
     var tipo = ((ph.fis && ph.fis.tipo === 'positiva') || (ph.on && ph.on.tipo === 'positiva')) ? 'positiva' : 'negativa', ids = [], pr = fin.prints || [];
     for (var k = 0; k < pr.length; k++) { var pid = 'pr' + uid(); try { await idbPut(pid, pr[k].blob); ids.push(pid); } catch (e) { toast('Não consegui guardar um dos anexos neste aparelho'); } }
-    it.certidao = { tipo: tipo, canal: 'partes', modelo: 'partes', texto: texto, sig: null, data: hojeC, prints: ids, custas: parseValor(fin.custas) };
+    it.certidao = { t: Date.now(), tipo: tipo, canal: 'partes', modelo: 'partes', texto: texto, sig: null, data: hojeC, prints: ids, custas: parseValor(fin.custas) };
     it.status = 'certidao'; delete sel[it.id];
     if (printsPend.id === it.id) { printsPend = { id: '', imgs: [], t: 0 }; }
     save(); render();
@@ -7710,7 +7766,7 @@ function iaUsuarioAjuste(d) {
         '<div id="mdOutBox" hidden><input type="text" id="mdOut" placeholder="Ex.: tio(a), avô(ó), sogro(a)" autocomplete="off"></div>' : '') +
       (neg ? chk('mdCel', 'Tem telefone no mandado (tentei WhatsApp)', temCel) +
         '<div id="mdJBox"><label class="f" for="mdJus">Por que o WhatsApp não resolveu</label><select id="mdJus" class="sel"><option value="documento">Não apresentou documento</option><option value="inativo">Telefone inativo</option><option value="semretorno">Sem retorno</option></select></div>' : '') +
-      '<label class="f" for="mdPrint">' + (zapKind ? 'Print da conversa (o texto diz que está em anexo)' : 'Print do contato (opcional)') + '</label><input type="file" id="mdPrint" accept="image/*" multiple>' +
+      '<label class="f" for="mdPrint">' + (zapKind ? 'Print da conversa (o texto diz que está em anexo)' : 'Print do contato (opcional)') + '</label><input type="file" id="mdPrint" accept="image/*,application/pdf" multiple>' +
       '<div class="thumbs" id="mdThumbs"></div>' +
       '<input type="hidden" id="mdCustas" value="' + esc(dilIni) + '">' +
       (isentoIt(it) ? '<p class="note">Este mandado não tem custas (juizado, ou escrito “gratuito”), por isso as custas vêm em branco. O transporte continua valendo.</p>' : '') +
@@ -7756,7 +7812,7 @@ function iaUsuarioAjuste(d) {
       var files = Array.prototype.slice.call(this.files || []);
       this.value = '';
       for (var k = 0; k < files.length; k++) {
-        try { prints.push(await shrinkImage(files[k])); } catch (e) { toast('Não consegui ler um dos prints'); }
+        try { (await lerAnexos(files[k])).forEach(function (x) { prints.push(x); }); } catch (e) { toast('Não consegui ler um dos prints'); }
       }
       drawThumbs();
     });
@@ -7781,7 +7837,7 @@ function iaUsuarioAjuste(d) {
         var pid = 'pr' + uid();
         try { await idbPut(pid, prints[k].blob); ids.push(pid); } catch (e) { toast('Não consegui guardar um dos prints neste aparelho'); }
       }
-      it.certidao = { tipo: zapKind ? 'positiva' : 'negativa', canal: zapKind ? 'wa' : 'pessoal', modelo: chave(), texto: $('mdOutTxt').value, sig: null, data: zapKind ? $('mdData').value : today, prints: ids, custas: parseValor($('mdCustas').value) };
+      it.certidao = { t: Date.now(), tipo: zapKind ? 'positiva' : 'negativa', canal: zapKind ? 'wa' : 'pessoal', modelo: chave(), texto: $('mdOutTxt').value, sig: null, data: zapKind ? $('mdData').value : today, prints: ids, custas: parseValor($('mdCustas').value) };
       it.status = 'certidao'; delete sel[it.id]; save();
       var blobs = prints.map(function (p) { return p.blob; });
       closeModal(); render();
@@ -7875,7 +7931,7 @@ function iaUsuarioAjuste(d) {
     printsPend = { id: '', imgs: [], t: 0 };
     openModal('Print do WhatsApp',
       '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha o print da conversa (o comprovante). Depois escolha a certidão positiva ou negativa: o print já vai anexado (pode acrescentar mais de um).</p>' +
-      '<div class="actions"><button class="btn primary" id="wpGal">Escolher os prints (galeria)</button></div><input type="file" id="wpIn" accept="image/*" multiple hidden>' +
+      '<div class="actions"><button class="btn primary" id="wpGal">Escolher os prints (galeria)</button></div><input type="file" id="wpIn" accept="image/*,application/pdf" multiple hidden>' +
       '<div class="thumbs" id="wpThumbs"></div>' +
       '<div class="actions" style="display:grid;grid-template-columns:1fr"><button class="btn primary" id="wpGo">Continuar: certidão positiva</button><button class="btn" id="wpNeg">Continuar: certidão negativa (comprovante da tentativa)</button><button class="btn ghost" id="wpNo">Voltar</button></div>');
     function $(id) { return document.getElementById(id); }
@@ -7884,7 +7940,7 @@ function iaUsuarioAjuste(d) {
     $('wpThumbs').addEventListener('click', function (e) { var im = e.target.closest ? e.target.closest('img') : null; if (!im) { return; } abrirImagem(imgs, +im.getAttribute('data-i'), draw); });
     $('wpIn').addEventListener('change', async function () {
       var fl = Array.prototype.slice.call(this.files || []); this.value = '';
-      for (var k = 0; k < fl.length; k++) { try { imgs.push(await shrinkImage(fl[k])); } catch (e) { toast('Não consegui ler uma das imagens'); } }
+      for (var k = 0; k < fl.length; k++) { try { (await lerAnexos(fl[k])).forEach(function (x) { imgs.push(x); }); } catch (e) { toast('Não consegui ler uma das imagens'); } }
       draw();
     });
     $('wpGo').onclick = function () {
@@ -7912,7 +7968,7 @@ function iaUsuarioAjuste(d) {
       inp.value = '';
       if (!f) { return; }
       toast('Lendo a foto…');
-      try { var pf = await shrinkImage(f); abrirPerguntaFoto(it, (acum || []).concat([pf])); }
+      try { var pf = await lerAnexos(f); abrirPerguntaFoto(it, (acum || []).concat(pf)); }
       catch (e) { toast('Não consegui ler a foto'); }
     };
     inp.click();
@@ -7965,7 +8021,7 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="fiData">Dia da diligência</label><input type="date" id="fiData" value="' + today + '">' +
       '<label class="f">' + (prt ? 'Prints (um por página, na ordem)' : 'Fotos (uma por página, na ordem)') + '</label>' +
       '<div class="actions">' + (prt ? '<button class="btn primary" id="fiGal">Escolher os prints (galeria)</button><button class="btn" id="fiCam" hidden>Tirar foto</button>' : '<button class="btn primary" id="fiCam">Tirar foto</button><button class="btn" id="fiGal">Escolher da galeria</button>') + '</div>' +
-      '<input type="file" id="fiCamIn" accept="image/*" capture="environment" hidden><input type="file" id="fiGalIn" accept="image/*" multiple hidden>' +
+      '<input type="file" id="fiCamIn" accept="image/*" capture="environment" hidden><input type="file" id="fiGalIn" accept="image/*,application/pdf" multiple hidden>' +
       '<div class="thumbs" id="fiThumbs"></div><p class="note" id="fiNote"></p>' +
       '<div class="actions"><button class="btn primary" id="fiSave">Salvar e baixar PDF</button><button class="btn" id="fiSaveOnly">Só salvar</button></div>');
     function $(id) { return document.getElementById(id); }
@@ -7997,7 +8053,7 @@ function iaUsuarioAjuste(d) {
     }
     async function addFiles(files) {
       for (var k = 0; k < files.length; k++) {
-        try { prints.push(await shrinkImage(files[k], 2200, 0.85)); } catch (e) { toast('Não consegui ler uma das fotos'); }
+        try { (await lerAnexos(files[k], 2200, 0.85)).forEach(function (x) { prints.push(x); }); } catch (e) { toast('Não consegui ler uma das fotos'); }
       }
       drawThumbs();
       if (!it && !lido && prints.length) { lido = true; await reconhecer(); }
@@ -8038,7 +8094,7 @@ function iaUsuarioAjuste(d) {
         }
       }
       if (novo) { state.items.push(alvoIt); }
-      alvoIt.certidao = { tipo: res, canal: 'fisica', origem: prt ? 'print' : 'foto', fisica: true, modelo: 'fisica', texto: '', sig: null, data: $('fiData').value || today, prints: ids };
+      alvoIt.certidao = { t: Date.now(), tipo: res, canal: 'fisica', origem: prt ? 'print' : 'foto', fisica: true, modelo: 'fisica', texto: '', sig: null, data: $('fiData').value || today, prints: ids };
       alvoIt.status = 'certidao'; delete sel[alvoIt.id]; save();
       var blobs = prints.map(function (x) { return x.blob; });
       closeModal(); render();
@@ -8126,8 +8182,9 @@ function iaUsuarioAjuste(d) {
     var base = (String(it.nome || '').trim() || 'Certidão').replace(/[\x2f\x5c:*?"<>|]/g, '-').replace(/\s+/g, ' ');
     var tp = tipoOpt || (it.certidao && it.certidao.tipo) || '';
     if (tp !== 'positiva' && tp !== 'negativa') { return base; }
-    /* só online (nenhum endereço físico): "NOME positivo online". Com endereço físico (mesmo que o cumprimento tenha sido online): "NOME positivo" */
-    return base + ' ' + (tp === 'positiva' ? 'positivo' : 'negativo') + (etipo(it) === 'eletronico' ? ' online' : '');
+    /* sigla do resultado e depois o nome: "P. Nome" / "N. Nome" (com endereço físico, mesmo que o cumprimento tenha sido on-line) e "Whats P Nome" / "Whats N Nome" (só WhatsApp, sem endereço físico) */
+    var so = etipo(it) === 'eletronico';
+    return (so ? 'Whats ' + (tp === 'positiva' ? 'P' : 'N') : (tp === 'positiva' ? 'P.' : 'N.')) + ' ' + base;
   }
   window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.certName = certName;
   async function baixarUma(it) {
@@ -8209,6 +8266,12 @@ function iaUsuarioAjuste(d) {
   document.getElementById('btnZip').onclick = function () { baixarZip(certsAlvo()); };
   document.getElementById('btnShareAll').onclick = function () { compartilharCerts(certsAlvo()); };
   document.getElementById('btnMerge').onclick = function () { juntarCerts(certsAlvo()); };
+  function certsNovas() { return state.items.filter(function (i) { return i.status === 'certidao' && !i.baixada && !externo(i); }); }
+  document.getElementById('btnZipNovas').onclick = function () {
+    var l = certsNovas();
+    if (!l.length) { toast('Todas as certidões já foram compartilhadas ou baixadas.'); return; }
+    baixarZip(l, 'não compartilhadas ' + stampHoje());
+  };
   document.getElementById('btnClean').onclick = function () {
     var feitas = state.items.filter(function (i) { return i.status === 'certidao' && i.baixada; });
     if (!feitas.length) { toast('Nenhuma certidão baixada ainda'); return; }
@@ -8564,6 +8627,7 @@ function iaUsuarioAjuste(d) {
     return fora.length ? '<p class="note"><strong>Ficaram de fora da rota ' + fora.length + (fora.length === 1 ? ' mandado' : ' mandados') + '</strong> por não terem endereço físico em ' + cidadesTxt() + ' (só cumprimento eletrônico ou outra comarca): ' + esc(fora.map(function (i) { return i.nome; }).join(', ')) + '.</p>' : '';
   }
   function prioNota() {
+    return '';
     var arr = rotaSel();
     var ini = arr.filter(function (i) { return prioIt(i) === 'inicio'; }), fim = arr.filter(function (i) { return prioIt(i) === 'fim'; });
     var tem = arr.some(function (i) { return urg(i).length; });
@@ -8592,7 +8656,7 @@ function iaUsuarioAjuste(d) {
     var perto = pertoDaCasa(arr, fimEf(), zonasAtivas() ? raioCasa() : 0);
     var modo = modoRota(), bg = modo === 'bairro' ? agruparBairros(arr) : null, num = 0;
     var bgx = bg || agruparBairros(arr);
-    out += '<div class="actions rtodos"><button class="btn small" data-rtodos="1">' + (marcadasRota().length ? 'Limpar todos' : 'Selecionar todos') + '</button><button class="btn small ghost" data-rmin="1">Minimizar</button></div>';
+    out += '<div class="actions rtodos"><button class="btn small" data-rtodos="1">' + (marcadasRota().length ? 'Limpar todos' : 'Selecionar todos') + '</button><button class="btn small" data-rotimiza="1">Otimizar</button><button class="btn small ghost" data-rmin="1">Minimizar</button></div>' + resumoPrimUlt();
     var susp = arr.filter(function (c) { return !pontoOverride(c) && (!ruaNoMapa(c) || (bgx.longe && bgx.longe[c.id])); });
     if (susp.length) { out += '<div class="suspbox">⚠ <strong>' + susp.length + (susp.length === 1 ? ' parada com ponto duvidoso' : ' paradas com ponto duvidoso') + '</strong> (rua não achada ou longe do resto do bairro): ' + esc(susp.map(function (c) { return c.nome; }).join(', ')) + '. Toque em <em>ver no mapa</em> para conferir ou em <em>Corrigir</em> antes de sair.</div>'; }
     if (MODO_ATALHO) {
@@ -8602,6 +8666,7 @@ function iaUsuarioAjuste(d) {
     rotaLinks = []; rotaLinksB = []; rotaBlocos = [];
     function chaveBlk(x) { return perto[x.id] ? 'C' : (bg ? (bg.chave[x.id] || '-') : (zmap[x.id] != null ? zmap[x.id] : -1)); }
     var blocos = quebrarBlocos(arr, tamRota(), function () { return 0; });
+    var ptAntD = null;
     blocos.forEach(function (chunk, bi) {
       var n = bi + 1, url = mapsUrl(prev, chunk), urlB = mapsUrlB(prevB, chunk);
       rotaLinks.push(url); rotaLinksB.push(urlB); rotaBlocos.push(chunk);
@@ -8610,16 +8675,17 @@ function iaUsuarioAjuste(d) {
       out += (bi === 0 ? '<div class="chunk"><ol start="1">' : '');
       chunk.forEach(function (c) {
         num++;
+        var ptC = pontoEfetivo(c), dAnt = (ptAntD && ptC) ? distKm(ptAntD, ptC) : null; if (ptC) { ptAntD = ptC; }
         var se = enderecoSimples(c.endereco), zi = zmap[c.id];
         var chip = perto[c.id] ? '<span class="flag">Perto de casa</span> ' : (!bg && zi != null && zs ? '<span class="flag">' + (zlivre[c.id] ? 'Perto da zona ' + (zi + 1) : 'Zona ' + (zi + 1) + ': ' + esc(zs[zi][0])) + '</span> ' : '');
         var txt = chip + '<strong>' + esc(c.nome) + '</strong> - ' + esc(c.endRota || se.texto) + (c.bairro ? ', ' + esc(c.bairro) : '') +
           (c.endRota ? ' <span class="flag">' + (RE_COORD.test(c.endRota) ? 'ponto da rua (coordenadas)' : 'endereço corrigido') + '</span>' : (!se.numero ? ' <span class="flag">sem número: só a rua</span>' : '')) +
           (!ruaNoMapa(c) ? ' <span class="flag stop">rua não encontrada no mapa: confira</span>' : '') +
-          (bgx.longe && bgx.longe[c.id] && !pontoOverride(c) ? ' <span class="flag stop">ponto longe do resto do bairro: confira a rua</span>' : '') + pontoUsadoHtml(c, bgx);
+          (bgx.longe && bgx.longe[c.id] && !pontoOverride(c) ? ' <span class="flag stop">ponto longe do resto do bairro: confira a rua</span>' : '') + pontoUsadoHtml(c, bgx) + (dAnt != null ? ' <small class="rdist">' + (dAnt < 1 ? Math.round(dAnt * 1000) + ' m' : dAnt.toFixed(1).replace('.', ',') + ' km') + ' do ponto anterior (em linha reta)</small>' : '');
         if (modoReord) { out += '<li data-id="' + esc(c.id) + '" class="reord"><div class="prow" data-drag><span class="drag">≡</span><div class="pc">' + txt + '</div></div></li>'; }
         else {
           out += '<li data-id="' + esc(c.id) + '"><div class="prow"><div class="pc"><label class="rsel"><input type="checkbox" data-rsel="' + esc(c.id) + '"' + ((state.cfg.rotaMarcadas || {})[c.id] ? ' checked' : '') + ' aria-label="Marcar ' + esc(c.nome) + ' para uma rota só com as paradas marcadas"></label>' + txt +
-            '<div class="acoes">' + posBar(c, num, arr.length) + '<a class="btn small ghost" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(textoParada(c)) + '">Testar no Maps</a><button class="btn small ghost" data-fix="' + esc(c.id) + '">Corrigir</button><button class="btn small ghost" data-rm="' + esc(c.id) + '">Tirar da rota</button></div></div></div></li>';
+            '<div class="acoes">' + posBar(c, num, arr.length) + '<a class="btn small ghost" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(textoParada(c)) + '">Testar no Maps</a><button class="btn small ghost" data-rfirst="' + esc(c.id) + '">' + (state.cfg.inicioId === c.id ? '✓ Primeiro' : 'Começar aqui') + '</button><button class="btn small ghost" data-rlast="' + esc(c.id) + '">' + (state.cfg.fimId === c.id ? '✓ Último' : 'Terminar aqui') + '</button>' + (fileOk(c) ? '<button class="btn small sqeye" data-rver="' + esc(c.id) + '" aria-label="Ver o mandado"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>Mandado</span></button>' : '') + '<button class="btn small ghost" data-fix="' + esc(c.id) + '">Corrigir</button><button class="btn small ghost" data-rm="' + esc(c.id) + '">Tirar da rota</button></div></div></div></li>';
         }
       });
       if (bi === blocos.length - 1) { out += '</ol></div>'; }
@@ -8727,17 +8793,22 @@ function iaUsuarioAjuste(d) {
     if (zonas && f) { h += pontoFim() ? '<p class="note">E <strong>termina</strong> perto de <strong>' + esc(f) + '</strong>: os mandados até ' + String(raioCasa()).replace('.', ',') + ' km de lá ficam por último.</p>' : '<p class="note"><strong>Não achei “' + esc(f) + '” no mapa</strong> para terminar a rota. Escreva <strong>uma rua da sua região, com o número</strong> (por exemplo, a sua rua).</p>'; }
     return h || '<p class="note">Dica: escreva abaixo onde a rota deve começar.</p>';
   }
-  function listasRota() {
-    var marcL = state.cfg.rotaMarcadas || {}, arr = rotaSel().filter(function (c) { return marcL[c.id]; }), n = listaTam(), out = [];
-    for (var k = 0; k < arr.length; k += n) { out.push(arr.slice(k, k + n)); }
-    return out;
-  }
+  function listasRota() { var arr = rotaSel(); return arr.length ? [arr] : []; }
+  /* a lista completa, uma parada por linha, com uma linha separadora a cada 10 (a rota tem no máximo 10 por vez, mas o Circuit recebe tudo) */
+  function textoLista(arr) { var out = []; arr.forEach(function (c, k) { if (k > 0 && k % 10 === 0) { out.push('----------'); } out.push(textoParada(c)); }); return out.join('\n'); }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.textoListaRota = function () { var l = listasRota(); return l.length ? textoLista(l[0]) : ''; };
   function listasBox() { return '<div id="rListasBox">' + listasBoxInner() + '</div>'; }
   function listasBoxInner() {
-    var ls = listasRota();
-    if (!ls.length) { return '<details class="chk"><summary><strong>Listas para aplicativo de rota (Circuit…)</strong></summary><p class="note" style="margin:6px 0">Marque as paradas acima (as que vão agora) e a lista sai só com elas.</p></details>'; }
-    return '<details class="chk"><summary><strong>Listas para aplicativo de rota (Circuit…)</strong></summary><p class="note" style="margin:6px 0">Até ' + listaTam() + ' endereços por lista, do mais perto do começo para o mais longe, em linha reta.</p>' +
-      ls.map(function (l, k) { return '<div class="actions"><button class="btn" data-rl="' + (k + 1) + '">Copiar lista ' + (k + 1) + ' (' + l.length + (l.length === 1 ? ' endereço' : ' endereços') + ')</button><button class="btn small" data-rls="' + (k + 1) + '">Compartilhar</button></div>'; }).join('') + '</details>';
+    var ls = listasRota(), tit = '<details class="chk"><summary><strong>Lista para aplicativo de rota (Circuit…) e mapas</strong></summary>';
+    if (!ls.length) { return tit + '<p class="note" style="margin:6px 0">Selecione os mandados na tela inicial para gerar a lista.</p></details>'; }
+    var l = ls[0], origin = saidaGpsOn() ? '' : String(state.origin || '').trim(), links = '';
+    for (var k = 0; k < l.length; k += 10) {
+      var ch = l.slice(k, k + 10), de = k > 0 ? textoParada(l[k - 1]) : origin;
+      links += '<a class="btn small" style="text-decoration:none" target="_blank" rel="noopener" data-rmapa="' + (k / 10 + 1) + '" href="' + esc(mapsUrl(de, ch)) + '">Abrir no mapa: ' + (k + 1) + ' a ' + (k + ch.length) + '</a> ';
+    }
+    return tit + '<p class="note" style="margin:6px 0">A lista completa (' + l.length + (l.length === 1 ? ' endereço' : ' endereços') + '), na ordem da rota, com uma linha de traços a cada 10.</p>' +
+      '<div class="actions"><button class="btn" data-rl="1">Copiar a lista completa (' + l.length + ')</button><button class="btn small" data-rls="1">Compartilhar</button></div>' +
+      '<p class="note" style="margin:8px 0 4px">Ou abra no mapa, de 10 em 10 endereços:</p><div class="actions">' + links + '</div></details>';
   }
   function semZonaNota() {
     var zs = zonasAtivas();
@@ -9344,7 +9415,20 @@ function iaUsuarioAjuste(d) {
       if (pai) { if (y < 100) { pai.scrollTop -= 16; } else if (y > window.innerHeight - 100) { pai.scrollTop += 16; } }
     }
     var pressTimer = null, pressX = 0, pressY = 0, pressLi = null, pressId = null, ultimoArraste = 0, ordemAntes = '';
-    var ghost = null, gOff = null, gX0 = 0, dragId = null, scrollId = null, scrollY = 0;
+    var ghost = null, gOff = null, gX0 = 0, dragId = null, scrollId = null, scrollY = 0, lastX = 0, lastY = 0, autoTimer = null;
+    /* rolagem automática por relógio: com o dedo perto da borda a lista continua rolando mesmo com o dedo parado */
+    function iniciarAuto() {
+      if (autoTimer) { return; }
+      autoTimer = setInterval(function () {
+        if (!arr0) { clearInterval(autoTimer); autoTimer = null; return; }
+        if (scrollId !== null) { return; }
+        var pai = paiRolavel(arr0);
+        if (!pai) { return; }
+        var bx = pai.getBoundingClientRect();
+        if (lastY < Math.max(100, bx.top + 70)) { pai.scrollTop -= 14; } else if (lastY > window.innerHeight - 100) { pai.scrollTop += 14; } else { return; }
+        moverArraste(lastX, lastY, true); moverGhost(lastX, lastY);
+      }, 16);
+    }
     /* a parada "levanta" e acompanha o dedo solta pela tela; no lugar dela fica um espaço tracejado */
     function criarGhost(li, x, y) {
       var r = li.getBoundingClientRect(), g = li.cloneNode(true);
@@ -9360,6 +9444,7 @@ function iaUsuarioAjuste(d) {
       cancelarPress();
       if (!arr0) { return; }
       var li = arr0, g = ghost;
+      if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
       arr0 = null; dragId = null; scrollId = null; ghost = null; ultimoArraste = Date.now();
       function fim() {
         li.classList.remove('arrastando'); if (g && g.parentNode) { g.parentNode.removeChild(g); }
@@ -9388,7 +9473,7 @@ function iaUsuarioAjuste(d) {
       pressX = t0.clientX; pressY = t0.clientY; pressLi = li; pressId = t0.identifier;
       pressTimer = setTimeout(function () {
         pressTimer = null;
-        if (pressLi && iniciarArraste(pressLi)) { ordemAntes = ordemDom(); dragId = pressId; gX0 = pressX; criarGhost(pressLi, pressX, pressY); if (navigator.vibrate) { try { navigator.vibrate(12); } catch (x) {} } }
+        if (pressLi && iniciarArraste(pressLi)) { ordemAntes = ordemDom(); dragId = pressId; gX0 = pressX; criarGhost(pressLi, pressX, pressY); lastX = pressX; lastY = pressY; iniciarAuto(); if (navigator.vibrate) { try { navigator.vibrate(12); } catch (x) {} } }
       }, 380);
     }, passivo);
     $('rBody').addEventListener('touchmove', function (e) {
@@ -9399,7 +9484,7 @@ function iaUsuarioAjuste(d) {
       for (q = 0; q < ts.length; q++) { if (dragId !== null && ts[q].identifier === dragId) { tD = ts[q]; } else if (scrollId !== null && ts[q].identifier === scrollId) { tS = ts[q]; } }
       if (!tD && dragId === null) { tD = ts[0] || null; }
       if (tS) { var pai = paiRolavel(arr0); if (pai) { pai.scrollTop += scrollY - tS.clientY; } scrollY = tS.clientY; }
-      if (tD) { moverGhost(tD.clientX, tD.clientY); moverArraste(tD.clientX, tD.clientY, scrollId !== null); }
+      if (tD) { lastX = tD.clientX; lastY = tD.clientY; moverGhost(lastX, lastY); moverArraste(lastX, lastY, true); }
     }, passivo);
     function fimToque(e) {
       var ch = e.changedTouches || [], q, soltouDrag = false;
@@ -9440,6 +9525,11 @@ function iaUsuarioAjuste(d) {
       var rpt = e.target.closest('[data-rprint]'), mv = e.target.closest('[data-up],[data-down]'), rsv = e.target.closest('[data-rsalva]');
       var rini = e.target.closest('[data-rinicia]');
       if (rini) { iniciarRota(); return; }
+      var bRF = e.target.closest('[data-rfirst]'), bRL = e.target.closest('[data-rlast]'), bRV = e.target.closest('[data-rver]'), bRO = e.target.closest('[data-rotimiza]');
+      if (bRF) { var idF = bRF.getAttribute('data-rfirst'); state.cfg.inicioId = state.cfg.inicioId === idF ? null : idF; if (state.cfg.fimId === idF) { state.cfg.fimId = null; } state.cfg.saidaGps = false; state.cfg.rotaManual = null; state.origin = ''; save(); refaz(); return; }
+      if (bRL) { var idL = bRL.getAttribute('data-rlast'); state.cfg.fimId = state.cfg.fimId === idL ? null : idL; if (state.cfg.inicioId === idL) { state.cfg.inicioId = null; } state.cfg.rotaManual = null; save(); refaz(); return; }
+      if (bRV) { var itR = byId(bRV.getAttribute('data-rver')); if (itR) { verMandadoRota(itR); } return; }
+      if (bRO) { if (otimizarRota()) { refaz(); } return; }
       if (e.target.closest('[data-rmin]')) { rotaMin = true; closeModal(); render(); toast('Rota minimizada. Toque na faixa preta para voltar.'); return; }
       if (e.target.closest('[data-rnext]')) { proximas10(); return; }
       if (e.target.closest('[data-rtodos]')) {
@@ -9488,9 +9578,9 @@ function iaUsuarioAjuste(d) {
       if (pos) { var itp = state.items.filter(function (x) { return x.id === pos.getAttribute('data-pos'); })[0]; if (itp) { abrirPosicao(itp); } }
       else if (rmo) { modoReord = true; refaz(); }
       else if (rpr) { modoReord = false; refaz(); }
-      else if (rl) { var kl = +rl.getAttribute('data-rl') - 1; copyText((listasRota()[kl] || []).map(textoParada).join('\n')).then(function (ok) { toast(ok ? 'Lista ' + (kl + 1) + ' copiada' : 'Não foi possível copiar'); }); }
+      else if (rl) { var kl = +rl.getAttribute('data-rl') - 1; copyText(textoLista(listasRota()[kl] || [])).then(function (ok) { toast(ok ? 'Lista completa copiada' : 'Não foi possível copiar'); }); }
       else if (rls) {
-        var ks = +rls.getAttribute('data-rls') - 1, tl = (listasRota()[ks] || []).map(textoParada).join('\n');
+        var ks = +rls.getAttribute('data-rls') - 1, tl = textoLista(listasRota()[ks] || []);
         if (navigator.share) { navigator.share({ title: 'Lista ' + (ks + 1) + ' da rota', text: tl }).catch(function () {}); }
         else { copyText(tl).then(function (ok) { toast(ok ? 'Lista copiada' : 'Não foi possível copiar'); }); }
       }
