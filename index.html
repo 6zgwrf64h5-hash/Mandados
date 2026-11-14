@@ -7541,17 +7541,17 @@ window.__iniciarApp = function () {
 
   /* Certificada em outro meio: guarda em Certidões sem gerar PDF */
   function abrirExterno(it) {
-    var now = new Date(), today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()), res = '';
+    var now = new Date(), today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()), res = 'positiva';
     var ini = custasCard(it);
     openModal('Certificada em outro meio',
       '<p class="note">Use quando você certificou em outro lugar (por exemplo, direto no Projudi ou à mão). A página guarda o mandado em Certidões <strong>sem gerar PDF</strong>, e ele entra nos totais de transporte e de custas.</p>' +
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
-      '<label class="f">Resultado (opcional)</label><div class="seg"><button class="btn" id="exPos" aria-pressed="false">Positiva</button><button class="btn" id="exNeg" aria-pressed="false">Negativa</button></div>' +
+      '<label class="f">Resultado (já vem como positiva; toque em Negativa se for o caso)</label><div class="seg"><button class="btn" id="exPos" aria-pressed="true">Positiva</button><button class="btn" id="exNeg" aria-pressed="false">Negativa</button></div>' +
       '<label class="f" for="exData">Dia da certidão</label><input type="date" id="exData" value="' + today + '">' +
       '<label class="f" for="exCustas">Custas, em R$ (para o cálculo; em branco vale zero)</label><input type="text" id="exCustas" inputmode="decimal" value="' + esc(ini) + '" autocomplete="off">' +
       '<div class="actions"><button class="btn primary" id="exSave">Guardar em Certidões</button><button class="btn" id="exNo">Cancelar</button></div>');
     function $(id) { return document.getElementById(id); }
-    function setRes(r) { res = res === r ? '' : r; $('exPos').setAttribute('aria-pressed', res === 'positiva'); $('exNeg').setAttribute('aria-pressed', res === 'negativa'); }
+    function setRes(r) { res = r; $('exPos').setAttribute('aria-pressed', res === 'positiva'); $('exNeg').setAttribute('aria-pressed', res === 'negativa'); }
     $('exPos').onclick = function () { setRes('positiva'); };
     $('exNeg').onclick = function () { setRes('negativa'); };
     $('exNo').onclick = closeModal;
@@ -7566,12 +7566,17 @@ window.__iniciarApp = function () {
   function abrirCertFora(it) {
     openModal('Encaminhar para Certidões',
       '<p><strong>' + esc(it.nome) + '</strong></p>' +
-      '<p>Deseja encaminhar este mandado para <strong>Certidões</strong> como <strong>certificado por outro meio</strong> (sem PDF)? Ele sai desta lista e entra nos totais, sem precisar dizer se foi positiva ou negativa.</p>' +
+      '<p>Deseja encaminhar este mandado para <strong>Certidões</strong> como <strong>certificado por outro meio</strong> (sem PDF)? Ele sai desta lista e entra nos totais. Já vem como <strong>positiva</strong>; troque se foi negativa.</p>' +
+      '<div class="seg"><button class="btn" id="cfPos" aria-pressed="true">Positiva</button><button class="btn" id="cfNeg" aria-pressed="false">Negativa</button></div>' +
       '<div class="actions"><button class="btn primary" id="cfSim">Sim, encaminhar</button><button class="btn ghost" id="cfNao">Cancelar</button></div>');
+    var rsc = 'positiva';
+    function setCf(r) { rsc = r; document.getElementById('cfPos').setAttribute('aria-pressed', r === 'positiva'); document.getElementById('cfNeg').setAttribute('aria-pressed', r === 'negativa'); }
+    document.getElementById('cfPos').onclick = function () { setCf('positiva'); };
+    document.getElementById('cfNeg').onclick = function () { setCf('negativa'); };
     document.getElementById('cfNao').onclick = closeModal;
     document.getElementById('cfSim').onclick = function () {
       var now = new Date(), today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-      it.certidao = { t: Date.now(), tipo: 'externo', canal: 'externo', externo: true, texto: '', sig: null, data: today, prints: [], custas: parseValor(custasCard(it)) };
+      it.certidao = { t: Date.now(), tipo: rsc, canal: 'externo', externo: true, texto: '', sig: null, data: today, prints: [], custas: parseValor(custasCard(it)) };
       it.status = 'certidao'; delete sel[it.id]; save(); closeModal(); render();
       toast('Encaminhado para Certidões (outro meio).', function () { it.status = 'pendente'; it.certidao = null; save(); render(); });
     };
@@ -8922,7 +8927,7 @@ function shrinkImage(file, maxSide, qual) {
   function openFisica(it, modo, inicial) {
     var prt = modo === 'print', now = new Date();
     var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-    var prints = inicial ? inicial.slice() : [], res = '', lido = false, salvando = false;
+    var prints = inicial ? inicial.slice() : [], res = 'positiva', lido = false, salvando = false;
     var pend = state.items.filter(function (x) { return x.status === 'pendente'; }).sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); });
     var alvo = it
       ? '<p><strong>' + esc(it.nome) + '</strong><br><span class="note">Processo ' + esc(it.processo) + '</span></p>'
@@ -8933,7 +8938,7 @@ function shrinkImage(file, maxSide, qual) {
         '<label class="f" for="fiProc">Número do processo</label><input type="text" id="fiProc" autocomplete="off"></div>';
     openModal(prt ? 'Certidão física (print)' : 'Certidão física',
       (prt ? '<p class="note">Escolha os prints da certidão (ou do resultado da diligência), na ordem. A página junta tudo num PDF, como se fossem fotos, e guarda como certidão já cumprida, em Certidões.</p>' : '<p class="note">Fotografe o mandado com o resultado da diligência escrito à mão. A página monta um PDF só com as fotos e guarda como certidão já cumprida, em Certidões.</p>') + alvo +
-      '<label class="f">Resultado da diligência</label><div class="seg"><button class="btn" id="fiPos" aria-pressed="false">Positiva</button><button class="btn" id="fiNeg" aria-pressed="false">Negativa</button></div>' +
+      '<label class="f">Resultado da diligência</label><div class="seg"><button class="btn" id="fiPos" aria-pressed="true">Positiva</button><button class="btn" id="fiNeg" aria-pressed="false">Negativa</button></div>' +
       '<label class="f" for="fiData">Dia da diligência</label><input type="date" id="fiData" value="' + today + '">' +
       '<label class="f">' + (prt ? 'Prints (um por página, na ordem)' : 'Fotos (uma por página, na ordem)') + '</label>' +
       '<div class="actions">' + (prt ? '<button class="btn primary" id="fiGal">Escolher os prints (galeria)</button><button class="btn" id="fiCam" hidden>Tirar foto</button>' : '<button class="btn primary" id="fiCam">Tirar foto</button><button class="btn" id="fiGal">Escolher da galeria</button>') + '</div>' +
@@ -9027,7 +9032,14 @@ function shrinkImage(file, maxSide, qual) {
   function viewCertTexto(it) {
     if (externo(it)) {
       openModal('Certidão de ' + it.nome,
-        '<p class="note">Certificada fora da página: aqui só fica o registro, sem PDF.</p><p>Dia: <strong>' + esc(fmtDate(it.certidao.data)) + '</strong><br>Resultado: <strong>' + esc(it.certidao.tipo === 'externo' ? 'não informado' : it.certidao.tipo) + '</strong><br>Custas: <strong>' + fmtReais(custasDe(it)) + '</strong><br>Transporte: <strong>' + fmtReais(transpDe(it)) + '</strong></p>');
+        '<p class="note">Certificada fora da página: aqui só fica o registro, sem PDF.</p><p>Dia: <strong>' + esc(fmtDate(it.certidao.data)) + '</strong><br>Resultado: <strong>' + esc(it.certidao.tipo === 'externo' ? 'não informado' : it.certidao.tipo) + '</strong><br>Custas: <strong>' + fmtReais(custasDe(it)) + '</strong><br>Transporte: <strong>' + fmtReais(transpDe(it)) + '</strong></p>' +
+        '<label class="f">Mudar o resultado</label><div class="seg"><button class="btn" id="vxPos" aria-pressed="' + (it.certidao.tipo === 'positiva') + '">Positiva</button><button class="btn" id="vxNeg" aria-pressed="' + (it.certidao.tipo === 'negativa') + '">Negativa</button></div>');
+      ['Pos', 'Neg'].forEach(function (k) {
+        document.getElementById('vx' + k).onclick = function () {
+          it.certidao.tipo = k === 'Pos' ? 'positiva' : 'negativa'; save(); render();
+          toast('Resultado: ' + it.certidao.tipo + '.'); viewCertTexto(it);
+        };
+      });
       return;
     }
     if (it.certidao && it.certidao.fisica) {
