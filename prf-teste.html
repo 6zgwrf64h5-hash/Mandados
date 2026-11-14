@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teste do Face ID (PRF)</title>
+<style>
+  :root { --bg:#F3F5F8; --ink:#131A2B; --muted:#586177; --card:#fff; --line:#D9DEE8; --ok:#15803D; --bad:#B91C1C; --warn:#B45309; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0F1420; --ink:#EEF1F7; --muted:#9AA4B8; --card:#18202F; --line:#2B3547; --ok:#4ADE80; --bad:#F87171; --warn:#FBBF24; } }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--ink); font:17px/1.45 -apple-system, system-ui, sans-serif; }
+  main { max-width:560px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 6px; }
+  p { margin:8px 0; }
+  .note { color:var(--muted); font-size:15px; }
+  button { width:100%; font:inherit; font-weight:700; padding:14px; margin:8px 0; border:0; border-radius:12px; background:#1D4ED8; color:#fff; }
+  button.ghost { background:transparent; color:var(--ink); border:2px solid var(--line); }
+  button:disabled { opacity:.5; }
+  .row { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin:8px 0; }
+  .ok { color:var(--ok); font-weight:700; } .bad { color:var(--bad); font-weight:700; } .warn { color:var(--warn); font-weight:700; }
+  pre { white-space:pre-wrap; word-break:break-word; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px; font-size:13px; }
+  #veredito { font-size:19px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Teste do Face ID para criptografia</h1>
+  <p class="note">Este teste só verifica se o seu iPhone consegue gerar uma <strong>chave de criptografia</strong> a partir do Face ID (extensão PRF). Nada é enviado para fora: tudo roda aqui no aparelho. Ele cria uma chave de teste no seu chaveiro (passkey) chamada "Mandados teste"; pode apagá-la depois em Ajustes, Senhas.</p>
+  <p class="note">Abra esta página no <strong>Safari</strong>, toque em "Rodar o teste" e confirme o Face ID quando o iPhone pedir (duas ou três vezes).</p>
+  <button id="go">Rodar o teste</button>
+  <div id="saida"></div>
+  <p id="veredito"></p>
+  <button id="copia" class="ghost" hidden>Copiar o relatório</button>
+  <pre id="rel" hidden></pre>
+</main>
+<script>
+(function () {
+  var rel = { quando: new Date().toISOString(), ua: navigator.userAgent, host: location.hostname, passos: [] };
+  function $(id) { return document.getElementById(id); }
+  function linha(cls, txt) { var d = document.createElement('div'); d.className = 'row'; d.innerHTML = '<span class="' + cls + '">' + (cls === 'ok' ? '✔ ' : cls === 'bad' ? '✘ ' : '• ') + '</span>' + txt; $('saida').appendChild(d); rel.passos.push((cls === 'ok' ? 'OK: ' : cls === 'bad' ? 'FALHA: ' : 'INFO: ') + txt.replace(/<[^>]+>/g, '')); }
+  function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+  function rand(n) { return crypto.getRandomValues(new Uint8Array(n)); }
+  function sal(txt) { return new TextEncoder().encode(txt); }
+  async function rodar() {
+    $('go').disabled = true; $('saida').innerHTML = ''; $('veredito').textContent = ''; rel.passos = [];
+    var prfOk = false, estavel = false, diferente = false;
+    try {
+      if (!window.PublicKeyCredential) { linha('bad', 'Este navegador não tem WebAuthn (passkeys).'); return fim(false); }
+      linha('ok', 'WebAuthn existe neste navegador.');
+      if (!window.isSecureContext) { linha('bad', 'A página não está em endereço seguro (https). Abra pelo endereço https do GitHub Pages.'); return fim(false); }
+      var uv = false; try { uv = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); } catch (e) { uv = false; }
+      linha(uv ? 'ok' : 'bad', uv ? 'O aparelho tem verificação biométrica (Face ID / Touch ID).' : 'Não encontrei Face ID / Touch ID ativo.');
+      if (!uv) { return fim(false); }
+      if (PublicKeyCredential.getClientCapabilities) {
+        try { var cap = await PublicKeyCredential.getClientCapabilities(); rel.capacidades = cap; linha(cap['extension:prf'] ? 'ok' : 'warn', 'O navegador diz que ' + (cap['extension:prf'] ? 'suporta' : 'NÃO anuncia suporte a') + ' a extensão PRF.'); } catch (e) { linha('info', 'Não consegui ler as capacidades do navegador.'); }
+      } else { linha('info', 'Este navegador não informa as capacidades; vou testar na prática.'); }
+      linha('info', 'Criando a chave de teste. Confirme o Face ID.');
+      var salt1 = sal('mandados-teste-1'), salt2 = sal('mandados-teste-2');
+      var cred = await navigator.credentials.create({ publicKey: {
+        challenge: rand(32), rp: { name: 'Mandados teste', id: location.hostname }, user: { id: rand(16), name: 'teste-prf', displayName: 'Mandados teste' },
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'required' },
+        extensions: { prf: { eval: { first: salt1 } } }, timeout: 60000, attestation: 'none' } });
+      var ext = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+      rel.extCriar = { prf: ext.prf ? { enabled: ext.prf.enabled, temResultado: !!(ext.prf.results && ext.prf.results.first) } : null };
+      linha('ok', 'Chave de teste criada.');
+      if (!ext.prf) { linha('bad', 'A extensão PRF não veio na resposta: este aparelho/navegador não suporta PRF.'); return fim(false); }
+      linha(ext.prf.enabled ? 'ok' : 'bad', 'PRF ' + (ext.prf.enabled ? 'habilitado' : 'NÃO habilitado') + ' nesta chave.');
+      if (!ext.prf.enabled) { return fim(false); }
+      async function pedir(salt) {
+        var r = await navigator.credentials.get({ publicKey: { challenge: rand(32), rpId: location.hostname, allowCredentials: [{ type: 'public-key', id: cred.rawId }], userVerification: 'required', timeout: 60000,
+          extensions: { prf: { eval: { first: salt } } } } });
+        var e = r.getClientExtensionResults ? r.getClientExtensionResults() : {};
+        return e.prf && e.prf.results && e.prf.results.first ? hex(e.prf.results.first) : null;
+      }
+      linha('info', 'Pedindo a chave pela 1ª vez. Confirme o Face ID.');
+      var a = await pedir(salt1);
+      linha(a ? 'ok' : 'bad', a ? 'O Face ID devolveu uma chave de 32 bytes (início: ' + a.slice(0, 8) + '…).' : 'O Face ID não devolveu chave nenhuma.');
+      if (!a) { return fim(false); }
+      linha('info', 'Pedindo de novo com o mesmo "sal". Confirme o Face ID.');
+      var b = await pedir(salt1);
+      estavel = !!b && a === b;
+      linha(estavel ? 'ok' : 'bad', estavel ? 'A chave é a mesma nas duas vezes (estável).' : 'A chave mudou entre as duas vezes: não serve para criptografar.');
+      linha('info', 'Pedindo com outro "sal". Confirme o Face ID.');
+      var c = await pedir(salt2);
+      diferente = !!c && c !== a;
+      linha(diferente ? 'ok' : 'bad', diferente ? 'Outro sal gera outra chave (como deve ser).' : 'Outro sal gerou a mesma chave: comportamento inesperado.');
+      prfOk = estavel && diferente;
+      fim(prfOk);
+    } catch (e) {
+      linha('bad', 'Erro: ' + (e && e.name ? e.name : '') + ' ' + (e && e.message ? e.message : e));
+      fim(false);
+    }
+  }
+  function fim(ok) {
+    $('veredito').innerHTML = ok ? '<span class="ok">RESULTADO: o seu iPhone SUPORTA chave de criptografia pelo Face ID.</span>' : '<span class="bad">RESULTADO: NÃO deu para gerar chave pelo Face ID neste teste.</span> <span class="note">Veja os passos acima; mande o relatório.</span>';
+    rel.resultado = ok ? 'PRF FUNCIONA' : 'PRF NAO FUNCIONOU';
+    $('rel').textContent = JSON.stringify(rel, null, 2); $('rel').hidden = false; $('copia').hidden = false; $('go').disabled = false;
+    return ok;
+  }
+  $('go').onclick = rodar;
+  $('copia').onclick = function () { try { navigator.clipboard.writeText($('rel').textContent); $('copia').textContent = 'Copiado'; } catch (e) { $('copia').textContent = 'Selecione e copie o texto abaixo'; } };
+})();
+</script>
+</body>
+</html>
