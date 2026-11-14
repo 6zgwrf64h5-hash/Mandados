@@ -12,6 +12,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
+
+
+
 <style>
 :root {
   box-sizing: border-box;
@@ -816,6 +819,15 @@ body.cumpr #dock { display: none !important; }
 #imgView { background: rgba(6, 9, 24, 0.97); }
 #imgView .iv-box img { width: 100%; height: 56vh; object-fit: contain; background: #0B1020; }
 #imgView .iv-bt .btn.ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.7); box-shadow: none; }
+#imgView .iv-crop { position: relative; display: inline-block; max-width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; border-radius: 6px; line-height: 0; }
+#imgView .iv-box .iv-crop img { width: auto; height: auto; max-width: 100%; max-height: 54vh; object-fit: fill; border-radius: 0; display: block; pointer-events: none; }
+#imgView .ivc-fr { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.55); box-sizing: border-box; }
+#imgView .ivc-h { position: absolute; background: #3B82F6; border: 2px solid #fff; border-radius: 6px; touch-action: none; }
+#imgView .ivc-h::after { content: ''; position: absolute; inset: -16px; }
+#imgView .ivc-h[data-h="t"], #imgView .ivc-h[data-h="b"] { left: 50%; width: 44px; height: 10px; margin-left: -22px; }
+#imgView .ivc-h[data-h="t"] { top: -6px; } #imgView .ivc-h[data-h="b"] { bottom: -6px; }
+#imgView .ivc-h[data-h="l"], #imgView .ivc-h[data-h="r"] { top: 50%; height: 44px; width: 10px; margin-top: -22px; }
+#imgView .ivc-h[data-h="l"] { left: -6px; } #imgView .ivc-h[data-h="r"] { right: -6px; }
 #imgView .iv-bt .btn.ghost[data-iv="del"] { color: #FFB4B4; border-color: #FF8A8A; }
 
 #imgView { background: rgb(6, 9, 24); }
@@ -1172,6 +1184,16 @@ body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !
 .prontobal { display: inline-block; margin: 0 0 8px; padding: 4px 10px; border-radius: 12px; background: #E6F6EA; color: #136B2F; font-size: 12px; font-weight: 700; line-height: 1.25; }
 
 .rdist { display: block; color: #5B6486; font-size: 11px; font-weight: 600; margin-top: 2px; }
+
+.avisoX { border-radius: 16px; padding: 10px 14px; margin: 8px 0; }
+.avisoX ul { margin: 6px 0 0 18px; padding: 0; }
+.avisoRoxo { border: 2px solid #7C3AED; background: #F3EBFF; color: #3B0764; }
+.avisoRoxo.pisca { animation: avPiscaRoxo 1.2s ease-in-out infinite; }
+@keyframes avPiscaRoxo { 0%, 100% { background: #F3EBFF; box-shadow: 0 0 0 0 rgba(124,58,237,0); } 50% { background: #DCC8FF; box-shadow: 0 0 0 7px rgba(124,58,237,.38); } }
+.avisoJuri { border: 2px solid #EA580C; background: #FFF4EC; color: #7C2D12; }
+.avisoJuri.pisca { animation: avPiscaJuri 1.2s ease-in-out infinite; }
+@keyframes avPiscaJuri { 0%, 100% { background: #FFF4EC; box-shadow: 0 0 0 0 rgba(234,88,12,0); } 50% { background: #FFD9BD; box-shadow: 0 0 0 7px rgba(234,88,12,.38); } }
+.jrlist { list-style: none; margin: 0 0 8px; padding: 0; } .jrlist li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(120,130,170,.25); }
 </style>
 </head>
 <body>
@@ -1240,7 +1262,7 @@ body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !
     <div class="actions" id="selTools">
       <button class="btn small" id="btnAll" hidden>Selecionar todos</button>
       <button class="btn small primary" id="btnRoute" hidden>Gerar rota</button>
-      <button class="btn small primary" id="btnSeq"><span class="wai" aria-hidden="true"></span> Citações/intimações em sequência</button>
+      <button class="btn small primary" id="btnSeq"><span class="wai" aria-hidden="true"></span> Modo cumprimento por WhatsApp</button>
       <button class="btn small" id="btnSeq2"><span class="wai" aria-hidden="true"></span> 2ª mensagem em sequência</button>
       <button class="btn small ghost" id="btnDelAll">Excluir tudo</button>
     </div>
@@ -2090,6 +2112,9 @@ function telDoDestinatario(it, tel) {
   if (!it || !w) { return false; }
   return telefonesUnicos((it.telefones || []).concat(it.telDilig || [])).some(function (u) { return u.n.ok && u.n.wa === w; });
 }
+/* mandado de condução (testemunha ou parte que deve ser conduzida à audiência): "Contrafé de Condução", "a condução da pessoa…", "condução coercitiva", "art. 218 do CPP" */
+function detectarConducao(txt) { var n = norm(txt || ''); return /contrafe de conducao|\ba conducao da pessoa|conducao coercitiva|art\.? 218 do cpp/.test(n); }
+function ehConducao(i) { return !!i && (i.conducao === true || /\bconducao\b/.test(norm((i.tipo || '') + ' ' + (i.resumo || '') + ' ' + (i.aviso || '')))); }
 function classificarLocal(l, txt, regras) {
   var n = norm(txt || '');
   var vara = l.vara || '';
@@ -2282,7 +2307,43 @@ function pontosRua(endereco, cids) {
     });
     if (hits.length === 1) { return D.m[hits[0].k]; }
   }
+  /* aproximado: sigla do nome do meio (R. = Roberto), prefixo e erro de 1 letra */
+  var melhor = null, empate = false;
+  for (var c = 0; c < cids.length; c++) {
+    var E = idx[cids[c]]; if (!E) { continue; }
+    E.k.forEach(function (e) {
+      var sc = pontuaRua(qt, e.t);
+      if (sc <= 0) { return; }
+      if (!melhor || sc > melhor.sc) { melhor = { sc: sc, k: e.k, E: E }; empate = false; }
+      else if (sc === melhor.sc && e.k !== melhor.k) { empate = true; }
+    });
+  }
+  if (melhor && !empate) { _ruaAprox[k] = melhor.k; return melhor.E.m[melhor.k]; }
   return null;
+}
+var _ruaAprox = {}; /* v73 */
+if (typeof window !== 'undefined') { window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.pontosRua = pontosRua; }
+function lev1(a, b) {
+  if (a === b) { return true; }
+  if (Math.abs(a.length - b.length) > 1 || a.length < 5) { return false; }
+  var i = 0; while (i < a.length && i < b.length && a[i] === b[i]) { i++; }
+  if (a.length === b.length) { return a.slice(i + 1) === b.slice(i + 1); }
+  var l = a.length > b.length ? a : b, s = a.length > b.length ? b : a;
+  return l.slice(i + 1) === s.slice(i);
+}
+function pontuaRua(q, t) {
+  if (Math.abs(q.length - t.length) > 2 || q.length < 2) { return 0; }
+  var usado = {}, pts = 0;
+  for (var a = 0; a < q.length; a++) {
+    var w = q[a], ok = -1;
+    for (var b = 0; b < t.length && ok < 0; b++) { if (!usado[b] && t[b] === w) { ok = b; pts += 3; } }
+    for (b = 0; b < t.length && ok < 0; b++) { if (!usado[b] && w.length === 1 && t[b].charAt(0) === w) { ok = b; pts += 1; } }
+    for (b = 0; b < t.length && ok < 0; b++) { if (!usado[b] && w.length >= 3 && (t[b].indexOf(w) === 0 || w.indexOf(t[b]) === 0 && t[b].length >= 3)) { ok = b; pts += 2; } }
+    for (b = 0; b < t.length && ok < 0; b++) { if (!usado[b] && lev1(w, t[b])) { ok = b; pts += 2; } }
+    if (ok < 0) { return 0; }
+    usado[ok] = 1;
+  }
+  return pts >= 5 ? pts : 0;
 }
 function distKm(a, b) {
   var x = (b[1] - a[1]) * Math.cos((a[0] + b[0]) * Math.PI / 360) * 111.32, y = (b[0] - a[0]) * 110.57;
@@ -2864,9 +2925,19 @@ function paraBem(t, verbo) {
   if (!v) { return t; }
   return String(t).replace(new RegExp('(deixei de ' + v + ') o\\(a\\) Sr(?:\\(a\\)|\\.\\(a\\)|\\.)?\\.? ', 'gi'), '$1 o bem indicado do(a) Sr(a). ');
 }
+var _numProx = '';
+function comNumProx(t, nums) {
+  nums = String(nums == null ? _numProx : nums).trim();
+  t = String(t || '');
+  if (!nums || /n[uú]meros pr[oó]ximos/i.test(t)) { return t; }
+  var frase = 'CERTIFICO ainda que não encontrei o número indicado no mandado, tendo localizado na rua os seguintes números próximos: ' + nums + '.';
+  var m = /\n\n(Ante o exposto|O referido é verdade)/.exec(t);
+  return m ? t.slice(0, m.index) + '\n\n' + frase + t.slice(m.index) : t + (t ? '\n\n' : '') + frase;
+}
 function ajustaAto(t, o) {
   var a = atoPalavras(o && o.tipo), pj = o && o.pj != null ? !!o.pj : ehEmpresa(o && o.nome);
   if (a.bem) { t = paraBem(t, a.verbo); }
+  t = comNumProx(t);
   return pj ? paraEmpresa(t, (o && o.nome) || 'NOME COMPLETO') : t;
 }
 function separarDil(texto) {
@@ -3433,6 +3504,7 @@ function montarCertidaoPartes(fis, on, o) {
   o = o || {};
   var positiva = !!((fis && fis.tipo === 'positiva') || (on && on.tipo === 'positiva'));
   var corpo = [fis && fis.texto, on && on.texto].filter(function (x) { return x && String(x).trim(); }).map(function (x) { return String(x).trim(); }).join('\n\n');
+  corpo = comNumProx(corpo);
   var fecho = 'O referido é verdade. Dou fé.\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (o.oficial ? o.oficial + '\n' : '') + 'Oficial de Justiça';
   var plural = !!(fis && (fis.modelo === 'mudou' || fis.modelo === 'naoconhece'));
   var dil = o.diligencia ? '\n\nDiligência' + (plural ? 's' : '') + ' a receber: R$ ' + o.diligencia : '';
@@ -4064,7 +4136,7 @@ function iaUsuarioAjuste(d) {
   function loadScript(src) {
     return new Promise(function (res, rej) {
       var el = document.createElement('script');
-      el.src = src; el.async = true; el.crossOrigin = 'anonymous';
+      el.crossOrigin = 'anonymous'; el.src = src; el.async = true;
       el.onload = function () { res(); };
       el.onerror = function () { rej(new Error(src)); };
       document.head.appendChild(el);
@@ -4798,7 +4870,7 @@ function iaUsuarioAjuste(d) {
       ? (syncProg || 'Cópia segura na sua conta: ligada' + (syncAt ? ' (última às ' + syncAt + ')' : '') + (syncErr ? '. ' + syncErr : '') + (arquivosSemCopia() ? '. ' + arquivosSemCopia() + (arquivosSemCopia() === 1 ? ' PDF ainda não foi salvo' : ' PDFs ainda não foram salvos') + ' na conta: não saia ainda.' : (pendNuvem && !syncErr ? '. Salvando as últimas mudanças: não saia ainda.' : '')))
       : (state.items.length && !state.sample ? (nuvemOk && !podeSalvar ? 'Não consegui conferir a sua conta, então não estou salvando para não sobrescrever a cópia. Toque em “Salvar tudo” para tentar de novo.' : 'Cópia segura desligada: toque em “Salvar tudo” para a lista, os PDFs e os ajustes não sumirem.') : '');
     setPadroes(state.cfg && state.cfg.padroes); setDDD(state.cfg && state.cfg.ddd);
-    renderHoje(); renderRotaBanner();
+    renderHoje(); renderAvisosExtra(); renderRotaBanner();
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-tab') === tab);
     });
@@ -5077,6 +5149,7 @@ function iaUsuarioAjuste(d) {
   }
   var liveDocs = [];
   function closeModal() {
+    _numProx = '';
     if (seq) { seq = null; if (state.seqAtiva) { state.seqAtiva = null; save(); } }
     if (runCtl) { runCtl.abort(); }
     liveDocs.forEach(function (d) { try { d.destroy(); } catch (e) {} });
@@ -5106,7 +5179,7 @@ function iaUsuarioAjuste(d) {
       '<div class="actions"><button class="btn small" id="meMsgVer">Ver como fica</button><button class="btn small ghost" id="meMsgPad">Voltar ao texto padrão</button></div>' +
       '<pre id="meMsgPrev" class="note" style="white-space:pre-wrap" hidden></pre>' +
       '<label class="f" for="meAn">Texto do botão “Documentos em análise”</label><input type="text" id="meAn" value="' + esc(state.cfg.msgAnalise || 'Documentos em análise.') + '" autocomplete="off">' +
-      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
+      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="meJuri">Dias de júri</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
       '<p class="note">Toque em Salvar antes de abrir essas telas.</p>' +
       '<div class="actions"><button class="btn primary" id="meSave">Salvar</button></div>' +
       painelAtalho() + painelBackup());
@@ -5144,6 +5217,7 @@ function iaUsuarioAjuste(d) {
     function setSyncSt(t) { var e = document.getElementById('syncSt'); if (e) { e.textContent = t; } }
     document.getElementById('meRegras').onclick = function () { abrirRegras(); };
     document.getElementById('meComarca').onclick = function () { abrirComarca(); };
+    (document.getElementById('meJuri') || {}).onclick = abrirJuris;
     document.getElementById('meAgenda').onclick = function () { abrirAgenda(); };
     document.getElementById('mePessoas').onclick = function () { abrirBancoPessoas(); };
     document.getElementById('meValores').onclick = function () { abrirValores(); };
@@ -5352,7 +5426,9 @@ function iaUsuarioAjuste(d) {
     return sep.corpo + '\n\n' + (rot ? rot[1] : 'Diligência a receber:') + ' R$ ' + v;
   }
   function htmlCustasPainel(pref) {
-    return '<div class="grp custasbox"><div><strong>Custas</strong> <span id="' + pref + 'CusTxt"></span></div><button class="btn small" type="button" id="' + pref + 'CusBtn">Editar custas</button></div>';
+    _numProx = '';
+    return '<div class="grp"><label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="' + pref + 'NpOn" style="width:24px;height:24px"> Não encontrei o número. Números próximos encontrados:</label><input type="text" id="' + pref + 'NpTxt" placeholder="Ex.: 120 e 134" autocomplete="off" hidden></div>' +
+      '<div class="grp custasbox"><div><strong>Custas</strong> <span id="' + pref + 'CusTxt"></span></div><button class="btn small" type="button" id="' + pref + 'CusBtn">Editar custas</button></div>';
   }
   function abrirJanelaCustas(atual, aoUsar) {
     var ov = document.getElementById('cusView');
@@ -5377,6 +5453,13 @@ function iaUsuarioAjuste(d) {
     var campo = document.getElementById(pref + 'Custas'), txt = document.getElementById(pref + 'CusTxt'), btn = document.getElementById(pref + 'CusBtn');
     function pinta() { var v = String(campo.value || '').trim(); txt.textContent = v ? 'R$ ' + v : 'sem custas nesta certidão'; }
     pinta();
+    var npOn = document.getElementById(pref + 'NpOn'), npTx = document.getElementById(pref + 'NpTxt');
+    function npAtual() {
+      _numProx = npOn && npOn.checked ? String(npTx.value || '').trim() : '';
+      if (npTx) { npTx.hidden = !(npOn && npOn.checked); }
+      if (aposMudar) { aposMudar(campo.value); }
+    }
+    if (npOn) { npOn.addEventListener('change', npAtual); npTx.addEventListener('input', npAtual); }
     btn.onclick = function () { abrirJanelaCustas(campo.value, function (v) { campo.value = v; pinta(); if (aposMudar) { aposMudar(v); } }); };
   }
   function abrirValores() {
@@ -5790,7 +5873,7 @@ function iaUsuarioAjuste(d) {
     var contaE = function () { return Object.keys(marc).filter(function (k) { return marc[k]; }).reduce(function (a, k) { return a + entradasDe(k).length; }, 0); };
     var frase = seqModo ? 'Entraram os mandados que receberam a 1ª mensagem no dia anterior (ou antes). A 2ª mensagem libera a partir do meio-dia. Cada número de telefone vai numa mensagem. Toque para tirar algum.' : (O.verdes.length ? 'Já entraram todos os verdes que ainda não receberam mensagem, cada número de telefone numa mensagem. Toque para tirar algum.' : 'Nenhum verde está esperando a primeira mensagem.') +
       (O.jaMsg.length ? ' Quem já recebeu aparece abaixo, para repetir.' : '') + (O.extras.length ? ' Amarelos e vermelhos aparecem no fim, para incluir se quiser.' : '') + (O.semZap ? ' Ficaram de fora ' + O.semZap + ' sem telefone.' : '');
-    openModal(seqModo ? '2ª mensagem em sequência' : 'Citações/intimações em sequência',
+    openModal(seqModo ? '2ª mensagem em sequência' : 'Modo cumprimento por WhatsApp',
       '<p><strong id="sqN"></strong></p>' +
       '<p class="note">' + frase + '</p>' +
       '<div class="actions"><button class="btn primary" id="sqIni"></button><button class="btn" id="sqFecha">Cancelar</button></div>' +
@@ -5854,7 +5937,7 @@ function iaUsuarioAjuste(d) {
     var d = document.createElement('div'); d.className = 'actions';
     d.innerHTML = '<button class="btn primary" id="sqVolta">Voltar à sequência</button>';
     document.getElementById('mbody').appendChild(d);
-    document.getElementById('sqVolta').onclick = function () { openModal(seqModo ? '2ª mensagem em sequência' : 'Citações/intimações em sequência', ''); seqMostra(); };
+    document.getElementById('sqVolta').onclick = function () { openModal(seqModo ? '2ª mensagem em sequência' : 'Modo cumprimento por WhatsApp', ''); seqMostra(); };
   }
   function seqFim(parou) {
     if (!seq) { return; }
@@ -5947,7 +6030,7 @@ function iaUsuarioAjuste(d) {
     seqModo = sa.modo === 'segunda' ? 'segunda' : '';
     seq = { ents: rest, k: Math.max(0, rest.indexOf(atual)), feitos: feitos, pulados: pul.length, reg: {}, t0: sa.t0, pul: pul, semz: semz.filter(function (x) { return rest.indexOf(x) >= 0; }) };
     if (atual && rest.indexOf(atual) >= 0) { var infA = entInfo(atual); if (infA.it && (infA.it.msgs || []).some(function (m) { return m.kind !== 'analise' && m.t >= sa.t0 && normPhone(m.tel).wa === infA.wa; })) { seq.reg[atual] = true; } }
-    openModal(seqModo ? '2ª mensagem em sequência' : 'Citações/intimações em sequência', '');
+    openModal(seqModo ? '2ª mensagem em sequência' : 'Modo cumprimento por WhatsApp', '');
     seqMostra();
     toast('Continuando a fila de onde parou.');
   }
@@ -6375,13 +6458,14 @@ function iaUsuarioAjuste(d) {
       mm.telCandidatos = tpd.duvidosos.filter(function (d) { return mergePhones(mm.telefones, [d]).length > mm.telefones.length; });
       mm.paginas = x.pags.map(function (i) { return pages[i].n; });
       mm.paginas_contrafe = [pages[x.cf].n];
-      mm.texto = txtM;
+      mm.texto = txtM; mm.conducao = detectarConducao(txtM);
       if (!m) {
         var cl = classificarLocal(l, txtM, regras());
         mm.classificacao = cl.base; mm.motivo = cl.baseMotivo; mm.natureza = cl.natureza; mm.tipo = mm.tipo || cl.tipo;
       }
       if (l.urgente && !/urgente/i.test(mm.aviso || '')) { mm.aviso = (mm.aviso ? mm.aviso + ' | ' : '') + l.urgente; }
       var it = toItem(mm, fileId);
+      if (mm.conducao) { it.conducao = true; }
       if (mm.telCandidatos && mm.telCandidatos.length) { it.telCandidatos = mm.telCandidatos; }
       var sc2 = safeClass(Object.assign({}, mm, { tipo: (mm.tipo || '') + ' ' + (l.tipo || '') }), regras());
       it.cls = sc2.cls; it.motivo = sc2.motivo;
@@ -6975,7 +7059,7 @@ function iaUsuarioAjuste(d) {
     p.blob = blob; p.url = c2.toDataURL('image/jpeg', 0.5);
     return true;
   }
-  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.autoEnquadrar = autoEnquadrar; window.__mandadosTeste.caixaDoPapel = caixaDoPapel;
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.abrirImagem = abrirImagem; window.__mandadosTeste.autoEnquadrar = autoEnquadrar; window.__mandadosTeste.caixaDoPapel = caixaDoPapel;
   /* anexo (foto, print ou PDF): imagem vira 1 item; PDF vira 1 item por página (até 12), para entrar na certidão como os prints */
 async function lerAnexos(file, maxSide, qual) {
   if (!(file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')))) { return [await shrinkImage(file, maxSide, qual)]; }
@@ -7755,7 +7839,7 @@ function shrinkImage(file, maxSide, qual) {
     var temFis = key === 'zap' && etipo(it) === 'local';
     function chk(id, txt, on) { return '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="' + id + '" style="width:24px;height:24px"' + (on ? ' checked' : '') + '> ' + txt + '</label>'; }
     openModal(m.t,
-      '<div class="actions"><button class="btn small ghost" id="mdBack">Escolher outro modelo</button></div>' +
+      '<div class="actions"><button class="btn small ghost" id="mdBack">Escolher outro modelo</button>' + (fileOk(it) ? '<button class="btn small" id="mdVer" aria-label="Ver o mandado">👁 Ver mandado</button>' : '') + '</div>' +
       '<label class="f" for="mdNome">Nome da pessoa</label><input type="text" id="mdNome" value="' + esc(it.nome) + '" autocomplete="off">' +
       chk('mdPj', 'É empresa (tira o “Sr(a).” e adapta o texto)', ehEmpresaIt(it)) +
       (zapKind && ult ? '<p class="note"><strong>Mensagem enviada em ' + pad(new Date(ult.t).getDate()) + '/' + pad(new Date(ult.t).getMonth() + 1) + ' às ' + pad(new Date(ult.t).getHours()) + ':' + pad(new Date(ult.t).getMinutes()) + '.</strong> Anexe abaixo o print da conversa: é o comprovante.</p>' : '') +
@@ -7804,6 +7888,13 @@ function shrinkImage(file, maxSide, qual) {
     ligarEditarIA(it, 'md', function () { return $('mdOutTxt').value; }, function (v) { $('mdOutTxt').value = v; dirty = true; }, false);
     ligarSalvarModelo(it, 'md', function () { return { onde: 'inteira', tipo: zapKind ? 'positiva' : 'negativa', texto: separarDil($('mdOutTxt').value).corpo }; });
     $('mdBack').onclick = function () { openCert(it); };
+    if ($('mdVer')) { $('mdVer').onclick = async function () {
+      await viewMandado(it);
+      var dv = document.createElement('div'); dv.className = 'actions';
+      dv.innerHTML = '<button class="btn primary" id="mdVolta">Voltar à certidão</button>';
+      document.getElementById('mbody').appendChild(dv);
+      document.getElementById('mdVolta').onclick = function () { openModelo(it, key, justIni); };
+    }; }
     function drawThumbs() {
       $('mdThumbs').innerHTML = prints.map(function (p, i) { return '<img data-i="' + i + '" alt="Print ' + (i + 1) + ' (toque para girar ou remover)" src="' + p.url + '">'; }).join('') + (prints.length ? '<p class="note" style="width:100%">Toque numa miniatura para girar ou remover. Para acrescentar mais, use o botão acima de novo.</p>' : '');
     }
@@ -7881,20 +7972,74 @@ function shrinkImage(file, maxSide, qual) {
   function abrirImagem(arr, i, redraw) {
     var ov = document.getElementById('imgView');
     if (!ov) { ov = document.createElement('div'); ov.id = 'imgView'; document.body.appendChild(ov); }
+    var cropSt = null;
+    function pintaCrop() {
+      var p = arr[i];
+      ov.innerHTML = '<div class="iv-box"><div class="iv-crop" id="ivCrop"><img src="' + p.url + '" alt="Imagem a recortar" draggable="false"><div class="ivc-fr" id="ivcFr"><span class="ivc-h" data-h="t"></span><span class="ivc-h" data-h="b"></span><span class="ivc-h" data-h="l"></span><span class="ivc-h" data-h="r"></span></div></div>' +
+        '<p class="iv-cnt">Arraste cada lado para deixar só a parte que importa.</p>' +
+        '<div class="iv-bt"><button type="button" class="btn ghost" data-iv="cropno">Cancelar</button><button type="button" class="btn primary" data-iv="cropok">Aplicar corte</button></div></div>';
+      moveCrop();
+    }
+    function moveCrop() {
+      var fr = document.getElementById('ivcFr'); if (!fr || !cropSt) { return; }
+      fr.style.left = (cropSt.l * 100) + '%'; fr.style.top = (cropSt.t * 100) + '%';
+      fr.style.right = ((1 - cropSt.r) * 100) + '%'; fr.style.bottom = ((1 - cropSt.b) * 100) + '%';
+    }
+    var arrasta = null;
+    ov.onpointerdown = function (e) {
+      var h = e.target.closest ? e.target.closest('[data-h]') : null;
+      if (!h || !cropSt) { return; }
+      arrasta = h.getAttribute('data-h');
+      try { h.setPointerCapture(e.pointerId); } catch (x) {}
+      e.preventDefault();
+    };
+    ov.onpointermove = function (e) {
+      if (!arrasta || !cropSt) { return; }
+      var box = document.getElementById('ivCrop'); if (!box) { return; }
+      var r = box.getBoundingClientRect(), g = 0.1;
+      var fx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), fy = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      if (arrasta === 'l') { cropSt.l = Math.min(fx, cropSt.r - g); }
+      else if (arrasta === 'r') { cropSt.r = Math.max(fx, cropSt.l + g); }
+      else if (arrasta === 't') { cropSt.t = Math.min(fy, cropSt.b - g); }
+      else if (arrasta === 'b') { cropSt.b = Math.max(fy, cropSt.t + g); }
+      moveCrop(); e.preventDefault();
+    };
+    ov.onpointerup = ov.onpointercancel = function () { arrasta = null; };
+    async function aplicaCrop() {
+      var p = arr[i], img = await carregarImg(p.blob), W = img.naturalWidth, H = img.naturalHeight;
+      var sx = Math.round(cropSt.l * W), sy = Math.round(cropSt.t * H), sw = Math.max(8, Math.round((cropSt.r - cropSt.l) * W)), sh = Math.max(8, Math.round((cropSt.b - cropSt.t) * H));
+      var c = document.createElement('canvas'); c.width = sw; c.height = sh; var cx = c.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, sw, sh); cx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      var blob = await new Promise(function (res) { c.toBlob(res, 'image/jpeg', 0.85); });
+      if (!blob) { return false; }
+      p.orig = p.orig || { blob: p.blob, url: p.url };
+      p.blob = blob; p.url = c.toDataURL('image/jpeg', 0.5);
+      return true;
+    }
     function pinta() {
       var p = arr[i];
       if (!p) { ov.hidden = true; ov.innerHTML = ''; return; }
       ov.hidden = false;
+      if (cropSt) { pintaCrop(); return; }
       ov.innerHTML = '<div class="iv-box"><img src="' + p.url + '" alt="Imagem ' + (i + 1) + '"><p class="iv-cnt">Imagem ' + (i + 1) + ' de ' + arr.length + '</p>' +
         '<div class="iv-bt"><button type="button" class="btn" data-iv="rotl" aria-label="Girar para a esquerda">↺ Girar</button><button type="button" class="btn" data-iv="rot" aria-label="Girar para a direita">Girar ↻</button></div>' +
-        '<div class="iv-bt">' + (p.orig ? '<button type="button" class="btn" data-iv="enqundo">Desfazer enquadramento</button>' : '<button type="button" class="btn" data-iv="enq">Enquadrar (recortar as bordas)</button>') + '</div>' +
+        '<div class="iv-bt"><button type="button" class="btn" data-iv="crop">Recortar arrastando os lados</button>' + (p.orig ? '<button type="button" class="btn" data-iv="enqundo">Desfazer corte</button>' : '<button type="button" class="btn" data-iv="enq">Enquadrar sozinho</button>') + '</div>' +
         '<div class="iv-bt">' + (arr.length > 1 ? '<button type="button" class="btn ghost" data-iv="prev">‹ Anterior</button><button type="button" class="btn ghost" data-iv="next">Próxima ›</button>' : '') + '<button type="button" class="btn ghost" data-iv="del">Remover</button><button type="button" class="btn primary" data-iv="ok">Pronto</button></div></div>';
     }
     ov.onclick = async function (e) {
       var b = e.target.closest ? e.target.closest('[data-iv]') : null;
       if (!b) { return; }
       var a = b.getAttribute('data-iv');
-      if (a === 'rot' || a === 'rotl') {
+      if (a === 'crop') { cropSt = { l: 0.04, t: 0.04, r: 0.96, b: 0.96 }; pinta(); }
+      else if (a === 'cropno') { cropSt = null; pinta(); }
+      else if (a === 'cropok') {
+        b.disabled = true;
+        var okC = false;
+        try { okC = await aplicaCrop(); } catch (x) { okC = false; }
+        cropSt = null; toast(okC ? 'Cortado. Para voltar ao original, toque em “Desfazer corte”.' : 'Não consegui cortar a imagem.');
+        pinta(); redraw();
+      }
+      else if (a === 'rot' || a === 'rotl') {
         b.disabled = true;
         try { await girarImagem(arr[i], a === 'rot' ? 90 : -90); if (arr[i].orig) { await girarImagem(arr[i].orig, a === 'rot' ? 90 : -90); } } catch (x) { toast('Não consegui girar a imagem'); }
         pinta(); redraw();
@@ -8797,6 +8942,34 @@ function shrinkImage(file, maxSide, qual) {
   /* a lista completa, uma parada por linha, com uma linha separadora a cada 10 (a rota tem no máximo 10 por vez, mas o Circuit recebe tudo) */
   function textoLista(arr) { var out = []; arr.forEach(function (c, k) { if (k > 0 && k % 10 === 0) { out.push('----------'); } out.push(textoParada(c)); }); return out.join('\n'); }
   window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.textoListaRota = function () { var l = listasRota(); return l.length ? textoLista(l[0]) : ''; };
+  function pdfTextoLimpo(t) { return String(t || '').normalize('NFC').replace(/[^\x20-\xFF]/g, ' '); }
+  async function pdfsDaLista(arr) {
+    var res = [];
+    for (var k = 0; k < arr.length; k += 10) {
+      var ch = arr.slice(k, k + 10), doc = await PDFLib.PDFDocument.create(), fonte = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+      var pg = doc.addPage([595, 842]), y = 790;
+      ch.forEach(function (c) {
+        var tx = pdfTextoLimpo(textoParada(c)), sz = 18;
+        while (sz > 9 && fonte.widthOfTextAtSize(tx, sz) > 520) { sz -= 1; }
+        pg.drawText(tx, { x: 38, y: y, size: sz, font: fonte, color: PDFLib.rgb(0, 0, 0) });
+        y -= 44;
+      });
+      res.push({ name: 'Rota - enderecos ' + (k + 1) + ' a ' + (k + ch.length) + '.pdf', bytes: await doc.save() });
+    }
+    return res;
+  }
+  async function listaEmPdf(arr) {
+    if (!(await ensureLib('pdflib'))) { toast('Ferramenta de PDF não carregou. Confira a internet.'); return; }
+    try {
+      var pdfs = await pdfsDaLista(arr), files = [];
+      try { files = pdfs.map(function (p) { return new File([p.bytes], p.name, { type: 'application/pdf' }); }); } catch (e) { files = []; }
+      if (files.length && navigator.share && navigator.canShare && navigator.canShare({ files: files })) {
+        try { await navigator.share({ files: files, title: 'Rota' }); return; } catch (e) { if (e && e.name === 'AbortError') { return; } }
+      }
+      for (var q = 0; q < pdfs.length; q++) { await savePdf(pdfs[q].name, pdfs[q].bytes); }
+    } catch (e) { toast('Não consegui gerar o PDF da lista'); }
+  }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.pdfsDaLista = pdfsDaLista; window.__mandadosTeste.pdfLib = function () { return ensureLib('pdflib'); };
   function listasBox() { return '<div id="rListasBox">' + listasBoxInner() + '</div>'; }
   function listasBoxInner() {
     var ls = listasRota(), tit = '<details class="chk"><summary><strong>Lista para aplicativo de rota (Circuit…) e mapas</strong></summary>';
@@ -8807,7 +8980,7 @@ function shrinkImage(file, maxSide, qual) {
       links += '<a class="btn small" style="text-decoration:none" target="_blank" rel="noopener" data-rmapa="' + (k / 10 + 1) + '" href="' + esc(mapsUrl(de, ch)) + '">Abrir no mapa: ' + (k + 1) + ' a ' + (k + ch.length) + '</a> ';
     }
     return tit + '<p class="note" style="margin:6px 0">A lista completa (' + l.length + (l.length === 1 ? ' endereço' : ' endereços') + '), na ordem da rota, com uma linha de traços a cada 10.</p>' +
-      '<div class="actions"><button class="btn" data-rl="1">Copiar a lista completa (' + l.length + ')</button><button class="btn small" data-rls="1">Compartilhar</button></div>' +
+      '<div class="actions"><button class="btn primary" data-rlp="1">Lista em PDF (' + Math.ceil(l.length / 10) + (l.length > 10 ? ' arquivos, 10 em 10' : ' arquivo') + ')</button></div><p class="note" style="margin:2px 0">O Circuit só lê imagem ou PDF. Cada PDF tem no máximo 10 endereços.</p><div class="actions"><button class="btn" data-rl="1">Copiar a lista completa (' + l.length + ')</button><button class="btn small" data-rls="1">Compartilhar texto</button></div>' +
       '<p class="note" style="margin:8px 0 4px">Ou abra no mapa, de 10 em 10 endereços:</p><div class="actions">' + links + '</div></details>';
   }
   function semZonaNota() {
@@ -9052,6 +9225,54 @@ function shrinkImage(file, maxSide, qual) {
     /* pisca: audiência hoje ou que já passou sem certificar; medida protetiva com mais de 5 dias; liminar de saúde com mais de 24 horas */
     var pisca = perdidas.length > 0 || aud.some(function (x) { return x.df <= 0; }) || urgs.some(function (x) { return x.venc; });
     return { aud: aud, urgs: urgs, futuras: futuras, perdidas: perdidas, pisca: pisca };
+  }
+  /* aviso roxo: mandado de condução com audiência amanhã (fixo) ou hoje / já passou (pisca); aviso laranja: dia de júri cadastrado, amanhã e hoje (pisca) */
+  function diasCal(d) { var a = new Date(d + 'T00:00:00'), h = new Date(); h.setHours(0, 0, 0, 0); return Math.round((a - h) / 86400000); }
+  function caixaAviso(id, cls, titulo, linhas, pisca, depoisDe) {
+    var el = document.getElementById(id);
+    if (!el) { el = document.createElement('div'); el.id = id; depoisDe.insertAdjacentElement('afterend', el); }
+    el.hidden = !linhas.length;
+    el.className = 'avisoX ' + cls + (pisca && linhas.length ? ' pisca' : '');
+    el.innerHTML = linhas.length ? '<strong>' + titulo + '</strong><ul>' + linhas.join('') + '</ul>' : '';
+    return el;
+  }
+  function renderAvisosExtra() {
+    var base = document.getElementById('hoje'), agora = Date.now(), ver = tab === 'enviar' && !cumprAtivo(), lc = [], pc = false, lj = [];
+    if (ver) {
+      var perd = {}; audLista(state.items, agora).perdidas.forEach(function (x) { perd[(x.it || x).id] = true; });
+      state.items.forEach(function (i) {
+        if (i.status !== 'pendente' || !ehConducao(i)) { return; }
+        var df = audDiasAte(i, agora), a = audDe(i), hora = a && a.hora ? ' às ' + esc(a.hora) : '';
+        if (perd[i.id]) { lc.push('<li><strong>Condução</strong> · ' + esc(i.nome) + ' · <strong class="urgtxt">a audiência já passou: devolva o mandado</strong></li>'); pc = true; }
+        else if (df !== null && df <= 1) { lc.push('<li><strong>Condução</strong> · ' + esc(i.nome) + ' · ' + (df <= 0 ? 'audiência <strong>hoje</strong>' : 'audiência amanhã') + hora + '</li>'); if (df <= 0) { pc = true; } }
+      });
+      (state.cfg.juris || []).forEach(function (j) {
+        var df = diasCal(j.d);
+        if (df === 0 || df === 1) { lj.push('<li><strong>Júri ' + (df === 0 ? 'hoje' : 'amanhã') + '</strong> · ' + j.d.split('-').reverse().join('/') + (j.h ? ' às ' + esc(j.h) : '') + (j.n ? ' · ' + esc(j.n) : '') + '</li>'); }
+      });
+    }
+    var c = caixaAviso('hojeCond', 'avisoRoxo', '⚖ Mandado de condução', lc, pc, base);
+    caixaAviso('hojeJuri', 'avisoJuri', '🏛 Dia de júri', lj, true, c);
+  }
+  function abrirJuris() {
+    var L = (state.cfg.juris = state.cfg.juris || []).slice().sort(function (a, b) { return (a.d + (a.h || '')).localeCompare(b.d + (b.h || '')); });
+    openModal('Dias de júri',
+      '<p class="note">Cadastre os dias em que você participa de júri como oficial de justiça. O aviso <strong>pisca um dia antes e no dia</strong>.</p>' +
+      (L.length ? '<ul class="jrlist">' + L.map(function (j) { var k = state.cfg.juris.indexOf(state.cfg.juris.filter(function (x) { return x.d === j.d && (x.h || '') === (j.h || ''); })[0]); return '<li><span>' + j.d.split('-').reverse().join('/') + (j.h ? ' às ' + esc(j.h) : '') + (j.n ? ' · ' + esc(j.n) : '') + '</span> <button class="btn small ghost" data-jrdel="' + k + '">Apagar</button></li>'; }).join('') + '</ul>' : '<p class="note">Nenhum júri cadastrado.</p>') +
+      '<label class="f" for="jrData">Dia do júri</label><input type="date" id="jrData"><label class="f" for="jrHora">Hora (opcional)</label><input type="time" id="jrHora"><label class="f" for="jrNota">Observação (opcional)</label><input type="text" id="jrNota" placeholder="Ex.: 1º Tribunal do Júri" autocomplete="off">' +
+      '<div class="actions"><button class="btn primary" id="jrAdd">Adicionar</button><button class="btn" id="jrFim">Fechar</button></div>');
+    document.getElementById('jrFim').onclick = closeModal;
+    document.getElementById('jrAdd').onclick = function () {
+      var d = document.getElementById('jrData').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { toast('Escolha o dia do júri.'); return; }
+      state.cfg.juris.push({ d: d, h: document.getElementById('jrHora').value || '', n: document.getElementById('jrNota').value.trim() });
+      save(); render(); abrirJuris(); toast('Júri cadastrado.');
+    };
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-jrdel]') : null;
+      if (!b) { return; }
+      state.cfg.juris.splice(+b.getAttribute('data-jrdel'), 1); save(); render(); abrirJuris();
+    };
   }
   function renderHoje() {
     var el = document.getElementById('hoje');
@@ -9574,11 +9795,12 @@ function shrinkImage(file, maxSide, qual) {
         if (k >= 0) { irPara(mid, k + 1 + (mv.getAttribute('data-up') ? -1 : 1)); }
         return;
       }
-      var pos = e.target.closest('[data-pos]'), rmo = e.target.closest('[data-rmodo]'), rpr = e.target.closest('[data-rpronto]'), rl = e.target.closest('[data-rl]'), rls = e.target.closest('[data-rls]'), rce = e.target.closest('[data-rce]'), rc = e.target.closest('[data-rc]'), rs = e.target.closest('[data-rs]'), fx = e.target.closest('[data-fix]'), rb = e.target.closest('[data-rcb]'), rm = e.target.closest('[data-rm]'), ra = e.target.closest('[data-rauto]');
+      var pos = e.target.closest('[data-pos]'), rmo = e.target.closest('[data-rmodo]'), rpr = e.target.closest('[data-rpronto]'), rl = e.target.closest('[data-rl]'), rls = e.target.closest('[data-rls]'), rlp = e.target.closest('[data-rlp]'), rce = e.target.closest('[data-rce]'), rc = e.target.closest('[data-rc]'), rs = e.target.closest('[data-rs]'), fx = e.target.closest('[data-fix]'), rb = e.target.closest('[data-rcb]'), rm = e.target.closest('[data-rm]'), ra = e.target.closest('[data-rauto]');
       if (pos) { var itp = state.items.filter(function (x) { return x.id === pos.getAttribute('data-pos'); })[0]; if (itp) { abrirPosicao(itp); } }
       else if (rmo) { modoReord = true; refaz(); }
       else if (rpr) { modoReord = false; refaz(); }
       else if (rl) { var kl = +rl.getAttribute('data-rl') - 1; copyText(textoLista(listasRota()[kl] || [])).then(function (ok) { toast(ok ? 'Lista completa copiada' : 'Não foi possível copiar'); }); }
+      else if (rlp) { listaEmPdf(listasRota()[0] || []); }
       else if (rls) {
         var ks = +rls.getAttribute('data-rls') - 1, tl = textoLista(listasRota()[ks] || []);
         if (navigator.share) { navigator.share({ title: 'Lista ' + (ks + 1) + ' da rota', text: tl }).catch(function () {}); }
@@ -9620,11 +9842,12 @@ function shrinkImage(file, maxSide, qual) {
   function lerPontoMaps(t) {
     t = String(t || '');
     try { t = decodeURIComponent(t); } catch (e) {}
-    var m = /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(t) || /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/.exec(t) || /[?&](?:q|query|ll|destination|daddr)=(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/i.exec(t) || /^\s*(-?\d{1,3}\.\d+)\s*[,;\s]\s*(-?\d{1,3}\.\d+)\s*$/.exec(t);
+    var m = /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(t) || /!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/.exec(t) || /[?&](?:q|query|ll|destination|daddr)=(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/i.exec(t) || /^\s*(-?\d{1,3}\.\d+)\s*[,;\s]\s*(-?\d{1,3}\.\d+)\s*$/.exec(t) || /[?&]center=(-?\d{1,3}\.\d+)%?2?C?,?\s*(-?\d{1,3}\.\d+)/i.exec(t) || /\/(?:place|search|dir)\/(?:[^\/]*\/)?(-?\d{1,3}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/.exec(t) || /(-?\d{1,3}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/.exec(t);
     if (!m) { return null; }
     var la = parseFloat(m[1]), lo = parseFloat(m[2]);
     return la >= -34 && la <= 6 && lo >= -74 && lo <= -34 ? [la, lo] : null;
   }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.lerPontoMapsX = lerPontoMaps;
   function abrirCorrigirEnd(it) {
     var se = enderecoSimples(it.endereco);
     openModal('Corrigir o endereço da rota',
