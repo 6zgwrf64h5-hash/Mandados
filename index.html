@@ -874,6 +874,7 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .btn[hidden], button[hidden] { display: none !important; }
 
 /* ===== v33: "Por onde começar": lista rolável e enxuta das ruas do dia ===== */
+.endlink { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .inilista { max-height: 196px; overflow-y: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .inirow { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 4px 10px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; font: inherit; font-size: 14px; cursor: pointer; }
 .inirow:last-child { border-bottom: 0; }
@@ -4493,7 +4494,7 @@ window.__iniciarApp = function () {
   }
   function resumoPrimUlt() {
     var arr = rotaSel(), a = arr.filter(function (i) { return i.id === state.cfg.inicioId; })[0], z = arr.filter(function (i) { return i.id === state.cfg.fimId; })[0];
-    if (!a && !z) { return '<p class="note">Escolha o <strong>primeiro</strong> mandado (e, se quiser, o <strong>último</strong>) em “Começar aqui” e “Terminar aqui”, e toque em <strong>Otimizar</strong> para a rota mais curta.</p>'; }
+    if (!a && !z) { return '<p class="note">Escolha o <strong>primeiro</strong> mandado (e, se quiser, o <strong>último</strong>) em “Saindo de” e “Terminando em”, e toque em <strong>Otimizar</strong> para a rota mais curta.</p>'; }
     return '<p class="note">' + (a ? '<strong>Primeiro:</strong> ' + esc(a.nome) : '') + (a && z ? ' · ' : '') + (z ? '<strong>Último:</strong> ' + esc(z.nome) : '') + '. Toque em <strong>Otimizar</strong> para refazer pelo caminho mais curto.</p>';
   }
   function salvarManual(ids) {
@@ -5145,7 +5146,7 @@ window.__iniciarApp = function () {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
   /* "Por onde começar": uma lista recolhida no lugar do campo de digitar; a setinha abre as ruas do dia */
-  var rotaIniAberta = false;
+  var rotaIniAberta = false, rotaFimAberta = false;
   function iniGrupos() {
     var arr = rotaSel(), gr = [], idx = {};
     arr.forEach(function (i, n) {
@@ -5167,9 +5168,21 @@ window.__iniciarApp = function () {
         return '<button type="button" class="inirow' + (on ? ' on' : '') + (sem ? ' sem' : '') + '" role="option" aria-selected="' + on + '"' + (sem ? ' disabled' : '') + ' data-sd="ini" data-id="' + esc(x.ids[0]) + '"><span class="inin">' + x.pos + '</span><span class="inirua">' + iniRotulo(x) + '</span><span class="inibai">' + (sem ? 'sem localização' : esc(x.it.bairro || '')) + '</span>' + (on ? '<span class="inick" aria-hidden="true">✓</span>' : '') + '</button>';
       }).join('') + '</div>';
     }
+    var fim = state.cfg.fimId, marcF = null;
+    gr.forEach(function (x) { if (fim && x.ids.indexOf(fim) !== -1) { marcF = x; } });
+    var textoF = marcF ? '<span class="inin">' + marcF.pos + '</span><span class="iniselt">' + iniRotulo(marcF) + '</span>' : '<span class="iniselt vazio">Terminar em (opcional)</span>', listaF = '';
+    if (rotaFimAberta) {
+      listaF = '<div class="inilista" id="rsFim" role="listbox" aria-label="Ruas do dia">' + gr.map(function (x) {
+        var on = x.ids.indexOf(fim) !== -1, sem = !pontoEfetivo(x.it);
+        return '<button type="button" class="inirow' + (on ? ' on' : '') + (sem ? ' sem' : '') + '" role="option" aria-selected="' + on + '"' + (sem ? ' disabled' : '') + ' data-sd="fim" data-id="' + esc(x.ids[0]) + '"><span class="inin">' + x.pos + '</span><span class="inirua">' + iniRotulo(x) + '</span><span class="inibai">' + (sem ? 'sem localização' : esc(x.it.bairro || '')) + '</span>' + (on ? '<span class="inick" aria-hidden="true">✓</span>' : '') + '</button>';
+      }).join('') + '</div>';
+    }
     return '<div class="grp saidabox"><p class="grp-t">Saindo de</p>' +
       '<button type="button" class="iniselect' + (rotaIniAberta ? ' aberto' : '') + '" data-sd="abrir" aria-haspopup="listbox" aria-expanded="' + rotaIniAberta + '">' + texto + '<span class="iniseta" aria-hidden="true"></span></button>' +
       lista +
+      '<p class="grp-t" style="margin-top:12px">Terminando em</p>' +
+      '<button type="button" class="iniselect' + (rotaFimAberta ? ' aberto' : '') + '" data-sd="abrirfim" aria-haspopup="listbox" aria-expanded="' + rotaFimAberta + '">' + textoF + '<span class="iniseta" aria-hidden="true"></span></button>' +
+      listaF +
       '<div class="actions"><button class="btn small" type="button" data-sd="gps">Usar minha localização atual</button>' + (g ? '<button class="btn small ghost" type="button" data-sd="atualizar">Atualizar posição</button>' : '') + '</div>' +
       (g ? '<p class="note">' + (f ? 'Posição lida às ' + pad(f.getHours()) + ':' + pad(f.getMinutes()) + '. A rota começa pela parada mais perto de você e segue sempre para a mais próxima. A posição fica só neste aparelho.' : 'Lendo a sua posição…') + '</p>'
         : '<p class="note">' + (marc ? 'Rota refeita a partir dessa rua: cada parada é a mais perto da anterior. Para voltar ao automático, abra a lista e toque na rua marcada. Depois você ainda pode reorganizar com o dedo.' : 'Escolha a rua e a rota é refeita: a 1ª é a que você escolher, a 2ª a mais perto dela, a 3ª a mais perto da 2ª, e assim por diante.') + '</p>') +
@@ -9819,14 +9832,14 @@ function shrinkImage(file, maxSide, qual) {
         var ptC = pontoEfetivo(c), dAnt = (ptAntD && ptC) ? distKm(ptAntD, ptC) : null; if (ptC) { ptAntD = ptC; }
         var se = enderecoSimples(c.endereco), zi = zmap[c.id];
         var chip = perto[c.id] ? '<span class="flag">Perto de casa</span> ' : (!bg && zi != null && zs ? '<span class="flag">' + (zlivre[c.id] ? 'Perto da zona ' + (zi + 1) : 'Zona ' + (zi + 1) + ': ' + esc(zs[zi][0])) + '</span> ' : '');
-        var txt = chip + '<strong>' + esc(c.nome) + '</strong> - ' + esc(c.endRota || se.texto) + (c.bairro ? ', ' + esc(c.bairro) : '') +
+        var endT = esc(c.endRota || se.texto), txt = chip + '<strong>' + esc(c.nome) + '</strong> - ' + (modoReord ? endT : '<a class="endlink" href="' + esc(navUrlTexto(textoParada(c))) + '" target="_blank" rel="noopener">' + endT + '</a>') + (c.bairro ? ', ' + esc(c.bairro) : '') +
           (c.endRota ? ' <span class="flag">' + (RE_COORD.test(c.endRota) ? 'ponto da rua (coordenadas)' : 'endereço corrigido') + '</span>' : (!se.numero ? ' <span class="flag">sem número: só a rua</span>' : '')) +
           (!ruaNoMapa(c) ? ' <span class="flag stop">rua não encontrada no mapa: confira</span>' : '') +
           (bgx.longe && bgx.longe[c.id] && !pontoOverride(c) ? ' <span class="flag stop">ponto longe do resto do bairro: confira a rua</span>' : '') + pontoUsadoHtml(c, bgx) + (dAnt != null ? ' <small class="rdist">' + (dAnt < 1 ? Math.round(dAnt * 1000) + ' m' : dAnt.toFixed(1).replace('.', ',') + ' km') + ' do ponto anterior (em linha reta)</small>' : '');
         if (modoReord) { out += '<li data-id="' + esc(c.id) + '" class="reord"><div class="prow" data-drag><span class="drag">≡</span><div class="pc">' + txt + '</div></div></li>'; }
         else {
           out += '<li data-id="' + esc(c.id) + '"><div class="prow"><div class="pc"><label class="rsel"><input type="checkbox" data-rsel="' + esc(c.id) + '"' + ((state.cfg.rotaMarcadas || {})[c.id] ? ' checked' : '') + ' aria-label="Marcar ' + esc(c.nome) + ' para uma rota só com as paradas marcadas"></label>' + txt +
-            '<div class="acoes">' + posBar(c, num, arr.length) + '<a class="btn small ghost" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(textoParada(c)) + '">Testar no Maps</a><button class="btn small ghost" data-rfirst="' + esc(c.id) + '">' + (state.cfg.inicioId === c.id ? '✓ Primeiro' : 'Começar aqui') + '</button><button class="btn small ghost" data-rlast="' + esc(c.id) + '">' + (state.cfg.fimId === c.id ? '✓ Último' : 'Terminar aqui') + '</button>' + (fileOk(c) ? '<button class="btn small sqeye" data-rver="' + esc(c.id) + '" aria-label="Ver o mandado"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>Mandado</span></button>' : '') + '<button class="btn small ghost" data-fix="' + esc(c.id) + '">Corrigir</button><button class="btn small ghost" data-rm="' + esc(c.id) + '">Tirar da rota</button></div></div></div></li>';
+            '<div class="acoes">' + posBar(c, num, arr.length) + '' + (fileOk(c) ? '<button class="btn small sqeye" data-rver="' + esc(c.id) + '" aria-label="Ver o mandado"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>' : '') + '<button class="btn small ghost" data-fix="' + esc(c.id) + '">Corrigir</button><button class="btn small ghost" data-rm="' + esc(c.id) + '">Tirar da rota</button></div></div></div></li>';
         }
       });
       if (bi === blocos.length - 1) { out += '</ol></div>'; }
@@ -10697,7 +10710,7 @@ function shrinkImage(file, maxSide, qual) {
       if (dvl.length) { abrirDevidos(dvl, function () { pulaDevidos = true; try { document.getElementById('btnRoute').onclick(); } finally { pulaDevidos = false; } }); return; }
     }
     if (!sortedSel().length) { toast('Marque os cartões que vão na rota.'); return; }
-    modoReord = false; rotaIniAberta = false;
+    modoReord = false; rotaIniAberta = false; rotaFimAberta = false;
     if (!rotaSel().length) { openModal('Rota de hoje', '<p>Nenhum dos mandados marcados tem endereço físico em ' + cidadesTxt() + ', então não há rota para montar.</p>' + foraDaRota()); return; }
     openModal('Rota de hoje',
       '<div id="rBody">' + rotaCorpo() + '</div>' +
@@ -10711,7 +10724,15 @@ function shrinkImage(file, maxSide, qual) {
       var b = e.target.closest ? e.target.closest('[data-sd]') : null;
       if (!b) { return; }
       var a = b.getAttribute('data-sd');
-      if (a === 'abrir') { rotaIniAberta = !rotaIniAberta; refaz(); }
+      if (a === 'abrir') { rotaIniAberta = !rotaIniAberta; rotaFimAberta = false; refaz(); }
+      else if (a === 'abrirfim') { rotaFimAberta = !rotaFimAberta; rotaIniAberta = false; refaz(); }
+      else if (a === 'fim') {
+        var idE = b.getAttribute('data-id'), itE = byId(idE);
+        if (!itE) { return; }
+        var antesE = { fim: state.cfg.fimId || null, ini: state.cfg.inicioId || null, man: state.cfg.rotaManual || null }, voltaE = state.cfg.fimId === idE;
+        state.cfg.fimId = voltaE ? null : idE; if (!voltaE && state.cfg.inicioId === idE) { state.cfg.inicioId = null; } state.cfg.rotaManual = null; rotaFimAberta = false; save(); refaz(); render();
+        toast(voltaE ? 'Rota sem ponto final fixo.' : 'Rota terminando em: ' + itE.endereco, function () { state.cfg.fimId = antesE.fim; state.cfg.inicioId = antesE.ini; state.cfg.rotaManual = antesE.man; save(); refaz(); render(); });
+      }
       else if (a === 'gps') { state.cfg.saidaGps = true; state.cfg.inicioId = null; state.cfg.rotaManual = null; state.origin = ''; rotaIniAberta = false; save(); refaz(); pegarGps(function (pt) { if (!pt) { state.cfg.saidaGps = false; save(); } refaz(); render(); }); }
       else if (a === 'atualizar') { pegarGps(function () { refaz(); render(); }); }
       else if (a === 'ini') {
