@@ -989,8 +989,10 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 .visgrp.tem .btn[data-act="visita"] { padding-right: 50px; }
 .notasbtn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; border: 0; background: #fff; color: #1F1300; font-size: 18px; line-height: 1; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
 .notasbtn sup { font-size: 11px; font-weight: 800; margin-left: 1px; }
-.dgop { display: block; padding: 8px 4px; font-size: 16px; }
-.dgop input { margin-right: 8px; transform: scale(1.25); }
+.dgop { display: flex; align-items: center; gap: 8px; padding: 4px 4px; font-size: 15px; }
+.dgop input[type=checkbox] { margin: 0; transform: scale(1.15); flex: 0 0 auto; }
+.dgop input[type=number] { width: 52px; min-height: 34px; height: 34px; padding: 0 4px; text-align: center; font-size: 16px; }
+.dgprazos { padding-top: 6px; padding-bottom: 6px; }
 #dgRecOp { padding-left: 14px; border-left: 3px solid var(--line); margin: 2px 0 6px; }
 .dg2 { display: flex; gap: 10px; } .dg2 > div { flex: 1; }
 .dgprev { background: var(--bg, #F3F5FB); border: 1px dashed var(--line); border-radius: 10px; padding: 8px 10px; font-size: 14px; min-height: 22px; }
@@ -4200,7 +4202,7 @@ window.__iniciarApp = function () {
   }
   function localRealHtml(i) {
     var L = i.localReal;
-    if (!L) { return '<div class="actions"><button class="btn small" data-act="gravarlocal">📍 Gravar local exato (GPS)</button></div>'; }
+    if (!L) { return ''; }
     var d = new Date(L.t || 0), dd = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
     return '<p class="meta">📍 Local exato gravado em ' + dd + (L.pr ? ' (±' + L.pr + ' m)' : '') + '. A navegação e o mapa usam esse ponto; o endereço do mandado não foi alterado. <a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + L.la + ',' + L.lo + '">ver no mapa</a></p><div class="actions"><button class="btn small" data-act="gravarlocal">Regravar aqui</button><button class="btn small ghost" data-act="apagarlocal">Apagar local</button></div>';
   }
@@ -5677,6 +5679,10 @@ window.__iniciarApp = function () {
     var topIc = '';
     if (i.status === 'pendente') {
       topIc = (fileOk(i) ? '<button class="btn small primary iconbtn" data-act="share" aria-label="Compartilhar mandado" title="Compartilhar mandado"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>' : '') + (etipo(i) === 'local' ? '<button class="btn small" data-act="fisica" aria-label="Certidão física (foto)" title="Certidão física (foto)">Certidão física (foto)</button><button class="btn small" data-act="fisicaprint" aria-label="Certidão física (print ou galeria)" title="Certidão física (print ou galeria)">Certidão física (print)</button>' : (onlinePossivel(i) ? '<button class="btn small" data-act="fisicaprint" aria-label="Print do WhatsApp (galeria)" title="Print do WhatsApp (galeria)">Print do WhatsApp</button>' : ''));
+      if (etipo(i) === 'local') {
+        var gl = !!i.localReal;
+        topIc += '<button class="btn small iconbtn" data-act="gravarlocal" aria-label="' + (gl ? 'Regravar local exato (GPS)' : 'Gravar local exato (GPS)') + '" title="' + (gl ? 'Regravar local exato (GPS)' : 'Gravar local exato (GPS)') + '" style="color:' + (gl ? '#16A34A' : 'inherit') + '"><svg class="ico" viewBox="0 0 24 24" width="22" height="22" fill="' + (gl ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.6" fill="' + (gl ? '#fff' : 'none') + '"/></svg></button>';
+      }
     }
     h += '</div><div class="cside">' + pickHtml + (topIc ? '<div class="topico">' + topIc + '</div>' : '') + '</div></div>';
     if (flags.length) {
@@ -7433,8 +7439,8 @@ window.__iniciarApp = function () {
       '<div id="dgLivre" hidden><label class="f" for="dgTxt">Escreva o que aconteceu (a nota inteira)</label><textarea id="dgTxt" rows="5" placeholder="Ex.: Não encontrei ninguém no local, conversei com vizinhos e deixei recado no portão; os vizinhos afirmam que não conhecem a pessoa indicada."></textarea></div>' +
       '<div class="dg2"><div><label class="f" for="dgData">Data</label><input type="date" id="dgData" value="' + hoje + '"></div><div><label class="f" for="dgHora">Hora</label><input type="time" id="dgHora" value="' + agora + '"></div></div>' +
       '<p class="note" style="margin:8px 0 2px">Vai para a certidão <strong>só se ela continuar negativa</strong>:</p><p class="dgprev" id="dgPrev"></p>' +
-      '<div class="grp dgprazos">' + (nv === 1 ? '<label class="dgop"><input type="checkbox" id="dgProxOn"> Prazo diferente da regra geral (' + diasSegunda() + ' dias úteis): daqui <input type="number" id="dgProxDias" min="1" max="60" value="' + diasSegunda() + '" style="width:64px" aria-label="Dias úteis até a segunda diligência"> dia(s) útil(eis)</label><p class="note" style="margin:0 0 6px">Sem marcar, a segunda diligência entra na rota pela regra geral (Meus dados).</p>' : '') +
-      '<label class="dgop"><input type="checkbox" id="dgProntoOn"' + (it.prontoEm ? ' checked' : '') + '> Mandar para “Pronto para certificar” daqui <input type="number" id="dgProntoDias" min="1" max="90" value="" placeholder="dias" style="width:64px" aria-label="Dias até Pronto para certificar"> dia(s)</label></div>' +
+      '<div class="grp dgprazos">' + (nv === 1 ? '<label class="dgop"><input type="checkbox" id="dgProxOn"><span>2ª diligência em</span><input type="number" id="dgProxDias" min="1" max="60" value="' + diasSegunda() + '" aria-label="Dias úteis até a segunda diligência"><span>dias úteis</span></label>' : '') +
+      '<label class="dgop"><input type="checkbox" id="dgProntoOn"' + (it.prontoEm ? ' checked' : '') + '><span>Pronto p/ certificar em</span><input type="number" id="dgProntoDias" min="1" max="90" value="" placeholder="–" aria-label="Dias até Pronto para certificar"><span>dias</span></label>' + (nv === 1 ? '<p class="note" style="margin:2px 0 0;font-size:12px">Sem marcar, vale a regra geral (' + diasSegunda() + ' dias úteis, em Meus dados).</p>' : '') + '</div>' +
       '<div class="actions"><button class="btn primary" id="dgSalvar">Salvar diligência</button><button class="btn" id="dgCancel">Cancelar</button></div>');
     function $(id) { return document.getElementById(id); }
     function lido() {
