@@ -15,6 +15,12 @@
 
 
 
+
+
+
+
+
+
 <style>
 :root {
   box-sizing: border-box;
@@ -1251,6 +1257,7 @@ body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !
     <button class="tab" data-tab="enviar" aria-pressed="true">Mandados <span class="count" data-c="enviar"></span></button>
     <button class="tab" data-tab="aguardando" aria-pressed="false">✅ Prontos para certificar <span class="count" data-c="aguardando"></span></button>
     <button class="tab" data-tab="devolver" aria-pressed="false">Certidões <span class="count" data-c="devolver"></span></button>
+    <button class="tab" data-tab="lista" aria-pressed="false">📒 Lista telefônica <span class="count" data-c="lista"></span></button>
     <button class="tab" data-tab="arquivos" aria-pressed="false">Arquivos <span class="count" data-c="arquivos"></span></button>
   </nav>
   <p class="legend" id="legend"></p>
@@ -1623,7 +1630,14 @@ function parseContrafe(text) {
   var tels = tl ? tl.split(/\s*[\/;,]\s*/).filter(function (x) { return x.replace(/\D/g, '').length >= 8; }) : [];
   var ender = '';
   var me = /Endere[cç]o\(s\):[ \t]*([^\n]*)/i.exec(t);
-  if (me) { ender = me[1].trim(); }
+  if (me) {
+    ender = me[1].trim();
+    /* o endereço pode quebrar em duas linhas ("... - Ampére -" / "AMPÉRE/PR - CEP: ..."): junta a continuação */
+    if (!/CEP/i.test(ender)) {
+      var resto = t.slice(me.index + me[0].length), nx = /^\n[ \t]+([^\n]+)/.exec(resto);
+      if (nx && !/^(certifico|parte|processo|telefone|urgente|obs|identificador|endere)/i.test(nx[1].trim())) { ender = (ender + ' ' + nx[1].trim()).replace(/\s+/g, ' '); }
+    }
+  }
   if (/^\d{7}-\d{2}\.\d{4}/.test(ender) || /^(parte|processo|urgente|identificador|telefone)/i.test(ender)) { ender = ''; }
   var se = splitEndereco(ender);
   return {
@@ -1639,6 +1653,7 @@ function mergePhones(a, b) {
 /* ---- Modelos de certidão (textos do Oficial) ---- */
 function atoPalavras(tipo) {
   var t = norm(tipo || '');
+  if (/busca e apreens|apreensao/.test(t)) { return { subst: 'BUSCA E APREENSÃO', verbo: 'APREENDER', bem: true, ba: true }; }
   var ci = t.search(/cita|intima|notifica/), bi = t.search(/penhor|remocao|remover|avalia/);
   if (bi >= 0 && (ci < 0 || bi < ci)) {
     var vs = [], ns = [];
@@ -1802,6 +1817,9 @@ function enderecoTipo(it, cidades) {
     var ls = (cidades && cidades.length ? cidades : CIDADES_PADRAO).map(function (x) { return norm(x).trim(); }).filter(function (x) { return x; });
     return ls.some(function (x) { return c.indexOf(x) !== -1; }) ? 'local' : 'fora';
   }
+  var lc = (cidades && cidades.length ? cidades : CIDADES_PADRAO).map(function (x) { return norm(x).trim(); }).filter(function (x) { return x; });
+  if (lc.some(function (x) { return e.indexOf(x) !== -1; })) { return 'local'; }
+  if (/\b(ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to|pr)\b\s*$/.test(e) || /\b\d{5}-?\d{3}\b/.test(e)) { return 'fora'; }
   return 'local';
 }
 function modeloSugerido(it, cidades) { return enderecoTipo(it, cidades) === 'local' ? 'zapend' : 'zap'; }
@@ -2038,9 +2056,9 @@ function infoNumero(it, n) {
 }
 function parseTelefonesTexto(text) {
   var t = String(text || '').split('\n').filter(function (l) { return !/\bFone\s*:|E-mail\s*:/i.test(l); }).join(' ').replace(/\s+/g, ' ');
-  var out = [], re = /telefones?(?:\(s\))?\s*:?\s*((?:[\d()\s.\-\/;,]|\be\b|\bou\b){8,90})/gi, m;
+  var out = [], re = /telefones?(?:\(s\))?\s*:?\s*(?:(?:cadastro(?:\s+geral)?|contatos?|celulares?|fixo|whatsapp)\s*:?\s*)?((?:[\d()\s.\-\/;,]|\be\b|\bou\b){8,90})/gi, m;
   while ((m = re.exec(t))) {
-    m[1].split(/\s*(?:[\/;,]|\be\b|\bou\b)\s*/).forEach(function (tok) {
+    m[1].split(/\s*(?:[\/;,]|\be\b|\bou\b|\s-\s)\s*/).forEach(function (tok) {
       tok = tok.trim();
       if (tok.replace(/\D/g, '').length >= 8 && normPhone(tok).ok) { out.push(tok); }
     });
@@ -2076,12 +2094,12 @@ function telefonesDaParte(texto, nome) {
       var dep = /^\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{2,})(?![A-Za-zÀ-ÿ0-9])/.exec(t.slice(p + nn.length)), ant = /([A-ZÁÉÍÓÚÂÊÔÃÕÇ]{2,})\s+$/.exec(t.slice(Math.max(0, p - 40), p));
       var contNome = function (x) { return !!x && !/^(?:cpf|cnpj|rg|ssp|oab|mp|pr|sp|cep|ddd|ltda|epp)$/.test(norm(x[1])); };
       /* o nome só vale como dono se vier logo depois de um rótulo de parte ("Parte:", "Promovido:", "nº MP") ou de "intimar/citar/da parte" */
-      var temRot = rots.some(function (r) { return r.fim <= p && p - r.fim <= 30; }) || /(?:\bda parte|\bintimar|\bcitar|\bnotificar|\bintimacao de|\bcitacao de|\bnotificacao de)\s*$/.test(N.slice(Math.max(0, p - 25), p)) || /\bd?[oa](?:\(a\))?\s+sr(?:\(a\)|a)?\.?\s*:?\s*$/.test(N.slice(Math.max(0, p - 20), p));
+      var temRot = rots.some(function (r) { return r.fim <= p && p - r.fim <= 30; }) || /^\s*(?:endereco\(s\)?|telefones?(?:\(s\))?)\s*:/.test(N.slice(p + nn.length, p + nn.length + 25)) || /(?:\bda parte|\bintimar|\bcitar|\bnotificar|\bintimacao de|\bcitacao de|\bnotificacao de)\s*$/.test(N.slice(Math.max(0, p - 25), p)) || /\bd?[oa](?:\(a\))?\s+sr(?:\(a\)|a)?\.?\s*:?\s*$/.test(N.slice(Math.max(0, p - 20), p));
       if (temRot && !/[a-z0-9]/.test(a) && !/[a-z0-9]/.test(z) && !contNome(dep) && !contNome(ant)) { nomes.push(p + nn.length); }
       p = N.indexOf(nn, p + 1);
     }
   }
-  var re = /telefones?(?:\(s\))?\s*:?\s*((?:[\d()\s.\-\/;,]|\be\b|\bou\b){8,90})/gi;
+  var re = /telefones?(?:\(s\))?\s*:?\s*(?:(?:cadastro(?:\s+geral)?|contatos?|celulares?|fixo|whatsapp)\s*:?\s*)?((?:[\d()\s.\-\/;,]|\be\b|\bou\b){8,90})/gi;
   while ((m = re.exec(t))) {
     var ini = m.index, ult = -1, dono = 'incerto';
     nomes.forEach(function (e) { if (e <= ini && ini - e <= 500 && e > ult) { ult = e; } });
@@ -2096,7 +2114,7 @@ function telefonesDaParte(texto, nome) {
         dono = (meus.length && seu.indexOf(meus[0]) !== -1 && comuns >= Math.min(2, meus.length)) ? 'incerto' : 'outro';
       }
     }
-    m[1].split(/\s*(?:[\/;,]|\be\b|\bou\b)\s*/).forEach(function (tok) {
+    m[1].split(/\s*(?:[\/;,]|\be\b|\bou\b|\s-\s)\s*/).forEach(function (tok) {
       tok = tok.trim().replace(/[\s.,;]+$/, '');
       if (tok.replace(/\D/g, '').length >= 8 && normPhone(tok).ok) {
         if (dono === 'destinatario') { seg.push(tok); } else if (dono === 'incerto') { duv.push(tok); } else { fora++; }
@@ -2530,6 +2548,7 @@ function aguardandoOnline(it, agora, cidades) {
 /* Prontos para certificar: devolve o MOTIVO (texto) ou '' se ainda não está pronto */
 function motivoPronto(it, agora, cidades) {
   if (it.status !== 'pendente') { return ''; }
+  if (it.prontoEm && agora >= it.prontoEm) { return 'o prazo que você marcou chegou'; }
   var loc = enderecoTipo(it, cidades) === 'local', oi = onlineInfo(it, agora), st = waEstado(it);
   var temOn = onlinePossivel(it) && st.nums.length > 0, fisOk = !loc || fisicaFeita(it);
   if (loc && fisicaFeita(it) && !onlinePossivel(it)) { return 'física certificada e não há WhatsApp para tentar'; }
@@ -2938,6 +2957,7 @@ function ajustaAto(t, o) {
   var a = atoPalavras(o && o.tipo), pj = o && o.pj != null ? !!o.pj : ehEmpresa(o && o.nome);
   if (a.bem) { t = paraBem(t, a.verbo); }
   t = comNumProx(t);
+  t = t.replace(/\b(d?o)(?:\(a\))?\s+Sr(?:\(a\)|\(A\)|\.)*\s+(?=esp[óo]lio\b)/gi, '$1 ');
   return pj ? paraEmpresa(t, (o && o.nome) || 'NOME COMPLETO') : t;
 }
 function separarDil(texto) {
@@ -3443,6 +3463,7 @@ function moverParaPosicao(ids, id, pos) {
 
 /* ---- Certidão em duas partes: física (no endereço) e on-line (WhatsApp) ---- */
 var OPC_FISICA = [['mudou', 'Mudou-se (o morador informou)'], ['naoconhece', 'Não conhece (o morador informou)'], ['numero', 'Não achei a numeração'], ['ninguem', 'Não encontrei ninguém (com os horários das visitas)'], ['recado', 'Não encontrei ninguém, deixei recado (sem horários)'], ['pospres', 'Positiva: citei/intimei pessoalmente (foto da assinatura)']];
+var OPC_BA = [['banaoloc', 'Bem não encontrado nas diligências no local'], ['numero', 'Não achei a numeração (percorri a rua 3 vezes)'], ['baportao', 'Portão com vedação total (devolver pedindo depositário)']];
 var OPC_ONLINE = [['pos', 'Citei/intimei por WhatsApp'], ['neg', 'Tentei por WhatsApp e não deu certo']];
 /* Certidões que já existem no app: o usuário pode editar o texto (guardado em cfg.padroes) */
 var PADROES_USER = {};
@@ -3473,6 +3494,11 @@ function parteFisicaBase(key, o) {
   var a = atoPalavras(o.tipo), nome = o.nome || 'NOME COMPLETO';
   var morador = (o.morador || 'NOME DO MORADOR') + ', ' + ((key === 'mudou' && o.paren) || PAREN.atual);
   var base = 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado';
+  if (a.ba && key !== 'pospres' && key !== 'pos') {
+    if (key === 'baportao') { return 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado e DEIXEI DE APREENDER o bem descrito, tendo em vista que o imóvel possui portão com vedação total, impossibilitando a visualização da garagem e a verificação da eventual presença do veículo a partir da via pública.\nConsiderando que a efetivação da medida demanda a imediata identificação e apreensão do bem, mostra-se necessária a presença de representante da parte exequente, na qualidade de depositário, apto a acompanhar a diligência e adotar as providências cabíveis caso o veículo seja localizado no momento do cumprimento.\nDiante do exposto, devolvo o mandado para que a parte requerente informe o nome completo e o telefone de contato da pessoa que acompanhará a diligência na qualidade de depositário, viabilizando o regular cumprimento da ordem judicial, solicitando desde já que tais informações constem no corpo do mandado, sendo que disponibilizo desde já o contato 459998620273 (whatsapp mensagem) para que o depositário entre em contato.'; }
+    if (key === 'numero') { return 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado, e DEIXEI DE APREENDER o bem indicado no mandado, tendo em vista que não encontrei o referido bem, sendo que percorri a rua por três vezes e não encontrei a numeração predial indicada no mandado, ou por não existir ou por ser de difícil visualização.'; }
+    return 'CERTIFICO que, em cumprimento ao r. mandado, dirigi-me ao endereço indicado, e DEIXEI DE APREENDER o bem indicado no mandado, tendo em vista que não encontrei o referido bem nas diligências realizadas no local.';
+  }
   if (key === 'numero') { return 'CERTIFICO ainda que me dirigi ao endereço indicado, e DEIXEI DE ' + a.verbo + ' o(a) Sr. ' + nome + ', tendo em vista que percorri a rua por três vezes e não encontrei a numeração predial indicada no mandado, ou por não existir ou por ser de difícil visualização.'; }
   if (key === 'recado') { return base + ', e DEIXEI DE ' + a.verbo + ' o(a) Sr(a). ' + nome + ', tendo em vista que não encontrei ninguém nas diligências realizadas no local, tendo deixado recado para que o(a) referido(a) retornasse o contato, porém não obtive retorno.'; }
   if (key === 'pospres') {
@@ -3505,10 +3531,11 @@ function montarCertidaoPartes(fis, on, o) {
   var positiva = !!((fis && fis.tipo === 'positiva') || (on && on.tipo === 'positiva'));
   var corpo = [fis && fis.texto, on && on.texto].filter(function (x) { return x && String(x).trim(); }).map(function (x) { return String(x).trim(); }).join('\n\n');
   corpo = comNumProx(corpo);
-  var fecho = 'O referido é verdade. Dou fé.\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (o.oficial ? o.oficial + '\n' : '') + 'Oficial de Justiça';
+  var ehPortao = !!(fis && fis.modelo === 'baportao'), ehBA = !!(fis && /DEIXEI DE APREENDER/.test(String(fis.texto || '')));
+  var fecho = (ehPortao ? 'Dou fé.' : 'O referido é verdade. Dou fé.') + '\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (o.oficial ? o.oficial + '\n' : '') + 'Oficial de Justiça';
   var plural = !!(fis && (fis.modelo === 'mudou' || fis.modelo === 'naoconhece'));
   var dil = o.diligencia ? '\n\nDiligência' + (plural ? 's' : '') + ' a receber: R$ ' + o.diligencia : '';
-  var fim = positiva ? '' : '\n\nAnte o exposto devolvo ' + (fis && fis.modelo === 'numero' ? 'o r. mandado em cartório' : 'o mandado') + ' para os devidos fins.';
+  var fim = (positiva || ehPortao) ? '' : '\n\nAnte o exposto devolvo ' + (fis && fis.modelo === 'numero' && !ehBA ? 'o r. mandado em cartório' : 'o mandado') + ' para os devidos fins.';
   return 'CERTIDÃO\n\n' + corpo + fim + '\n\n' + fecho + dil;
 }
 /* ---- Modelos do oficial: o texto vira modelo trocando os dados do mandado por marcadores ---- */
@@ -3902,10 +3929,10 @@ function iaUsuarioAjuste(d) {
       save(); render(); abrirModelos(); toast('Modelo apagado');
     };
   }
-  function rotuloParte(p) { if (!p) { return ''; } if (String(p.modelo).indexOf('m:') === 0) { var mp = modeloPorId(p.modelo); return mp ? mp.nome : 'meu modelo'; } var l = (OPC_FISICA.concat(OPC_ONLINE)).filter(function (x) { return x[0] === p.modelo; })[0]; return l ? l[1].replace(/ \(.*$/, '') : 'feita por voz'; }
+  function rotuloParte(p) { if (!p) { return ''; } if (String(p.modelo).indexOf('m:') === 0) { var mp = modeloPorId(p.modelo); return mp ? mp.nome : 'meu modelo'; } var l = (OPC_FISICA.concat(OPC_BA, OPC_ONLINE)).filter(function (x) { return x[0] === p.modelo; })[0]; return l ? l[1].replace(/ \(.*$/, '') : 'feita por voz'; }
   function selParte(parte) {
     var lst = parte === 'on' ? OPC_ONLINE : OPC_FISICA, tit = parte === 'on' ? 'Certidão on-line' : 'Certidão física';
-    return '<select class="sel pt" data-sel="' + parte + '" aria-label="' + tit + '"><option value="">' + tit + ': escolher…</option>' + lst.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('') + meusOpts(parte) + '<option value="ia">Certificar por voz (eu conto o que aconteceu)</option></select>';
+    return '<select class="sel pt" data-sel="' + parte + '" aria-label="' + tit + '"><option value="">' + tit + ': escolher…</option>' + lst.map(function (o) { return '<option value="' + o[0] + '">' + esc(o[1]) + '</option>'; }).join('') + meusOpts(parte) + (iaAtiva() ? '<option value="ia">Certificar por IA (eu conto o que aconteceu)</option>' : '') + '</select>';
   }
   function custasPadrao() { return parseValor((state.me && state.me.diligencia) || '108,63'); }
   function isentoIt(i) { return custasIsento(i, state.cfg.custasIsentas, state.cfg.gratuito); }
@@ -4824,6 +4851,7 @@ function iaUsuarioAjuste(d) {
       document.querySelector('[data-c="' + t + '"]').textContent = '(' + n + ')';
     });
     document.querySelector('[data-c="arquivos"]').textContent = '(' + state.files.length + ')';
+    document.querySelector('[data-c="lista"]').textContent = '(' + listaTelTodos().length + ')';
     var p = pendAll();
     document.getElementById('summary').textContent =
       p.length + (p.length === 1 ? ' pendente' : ' pendentes') + ', ' +
@@ -4874,14 +4902,16 @@ function iaUsuarioAjuste(d) {
     Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-tab') === tab);
     });
-    document.getElementById('tools').hidden = tab === 'arquivos';
-    document.getElementById('selTools').hidden = tab === 'devolver' || tab === 'arquivos';
+    document.getElementById('tools').hidden = tab === 'arquivos' || tab === 'lista';
+    document.getElementById('selTools').hidden = tab === 'devolver' || tab === 'arquivos' || tab === 'lista';
     document.getElementById('devTools').hidden = tab !== 'devolver';
     document.getElementById('btnZipNovas').textContent = 'Baixar não compartilhadas (' + certsNovas().length + ')';
 
     var html = '';
     if (tab === 'arquivos') {
       html = filesHtml();
+    } else if (tab === 'lista') {
+      html = listaTelHtml();
     } else {
       var base = state.items.filter(function (i) { return inTab(i, tab); });
       fillDates(base);
@@ -4950,13 +4980,13 @@ function iaUsuarioAjuste(d) {
       });
     }
     if (tab === 'devolver' && list.length) { html = resumoMensal() + html; }
-    if (cumprAtivo()) { html = cumprHtml(); }
+    if (cumprAtivo() && tab !== 'lista') { html = cumprHtml(); }
     /* o campo de busca fica logo acima do primeiro cartão (embaixo do quadro de WhatsApp); sem cartões ele volta ao topo, para dar para apagar a busca */
     var qW = document.getElementById('qWrap'), qI = document.getElementById('q'), qHome = document.getElementById('qHome');
     var qFoco = document.activeElement === qI, qA = qI.selectionStart, qB = qI.selectionEnd;
     if (qW.parentNode !== qHome) { qHome.appendChild(qW); }
     document.getElementById('list').innerHTML = html;
-    if (tab !== 'arquivos' && !cumprAtivo()) { var qPrim = document.querySelector('#list article.card'); if (qPrim) { qPrim.parentNode.insertBefore(qW, qPrim); } }
+    if (tab !== 'arquivos' && tab !== 'lista' && !cumprAtivo()) { var qPrim = document.querySelector('#list article.card'); if (qPrim) { qPrim.parentNode.insertBefore(qW, qPrim); } }
     qW.classList.toggle('qinlist', qW.parentNode !== qHome);
     if (qFoco) { qI.focus(); try { qI.setSelectionRange(qA, qB); } catch (e) { /* sem seleção */ } }
     cumprBarra();
@@ -4968,7 +4998,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('selInfo').textContent = n
       ? n + (n === 1 ? ' selecionado' : ' selecionados')
       : (ce ? 'Nenhum marcado: as ações valem para todas' : 'Nenhum selecionado');
-    document.getElementById('dock').hidden = tab === 'arquivos';
+    document.getElementById('dock').hidden = tab === 'arquivos' || tab === 'lista';
     var dk = document.getElementById('dock'); if (dk.classList) { dk.classList.toggle('vazio', !ce && !n); }
     document.getElementById('btnRoute').hidden = true; /* o botão de verdade fica na linha de cada dia; este só guarda a ação */
     document.getElementById('btnPrint').hidden = ce;
@@ -5009,7 +5039,7 @@ function iaUsuarioAjuste(d) {
     if (atoPalavras(i.tipo).bem && i.status === 'pendente') { flags.push(['Ato principal: ' + atoPalavras(i.tipo).subst.toLowerCase() + '. A certidão sai como “deixei de ' + atoPalavras(i.tipo).verbo.toLowerCase() + ' o bem indicado”', false]); }
     if (i.voltouLista && i.status === 'pendente') { flags.push(['Voltou das certidões: mandado não certificado', false]); }
     if (i.agenda && i.status === 'pendente') { flags.push(['Agenda: ' + i.agenda.nome, 'ok']); }
-    if (i.jaIntimado && i.status === 'pendente') { var jd = new Date(i.jaIntimado.quando || 0); flags.push(['Já intimado por WhatsApp em ' + pad(jd.getDate()) + '/' + pad(jd.getMonth() + 1) + '/' + jd.getFullYear() + ' (proc. ' + i.jaIntimado.proc + ', ' + i.jaIntimado.tel + '). Confirme que é a mesma pessoa.', false]); }
+    if (i.status === 'pendente' && state.cfg.guardarPessoas !== false) { var lp = listaTelAchar(i); if (lp) { flags.push([lp.tels.join(' · ') + ' — lista', true]); } }
     if (posRota[i.id] && i.status === 'pendente' && posRota[i.id] !== num) { flags.push(['Rota ' + posRota[i.id], 'ok']); }
     var ad = audDe(i), af = ad ? audFlag(ad.data.split('-').reverse().join('/'), new Date()) : '';
     if (ad && i.status === 'pendente') { var hAud = horasAteAudiencia(ad, Date.now()); if (hAud !== null && hAud < -2) { af = 'Audiência já passou: devolva o mandado imediatamente'; } }
@@ -5179,7 +5209,7 @@ function iaUsuarioAjuste(d) {
       '<div class="actions"><button class="btn small" id="meMsgVer">Ver como fica</button><button class="btn small ghost" id="meMsgPad">Voltar ao texto padrão</button></div>' +
       '<pre id="meMsgPrev" class="note" style="white-space:pre-wrap" hidden></pre>' +
       '<label class="f" for="meAn">Texto do botão “Documentos em análise”</label><input type="text" id="meAn" value="' + esc(state.cfg.msgAnalise || 'Documentos em análise.') + '" autocomplete="off">' +
-      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="meJuri">Dias de júri</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Banco de pessoas</button></div>' +
+      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="meJuri">Dias de júri</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Lista telefônica</button><button class="btn" id="meRecado">Modelo do recado</button></div>' +
       '<p class="note">Toque em Salvar antes de abrir essas telas.</p>' +
       '<div class="actions"><button class="btn primary" id="meSave">Salvar</button></div>' +
       painelAtalho() + painelBackup());
@@ -5226,6 +5256,7 @@ function iaUsuarioAjuste(d) {
     document.getElementById('meCusBtn').onclick = function () { abrirValores(); };
     (document.getElementById('mePrio') || {}).onclick = function () { abrirPrio(); };
     document.getElementById('meRota').onclick = function () { abrirMinhaRota(); };
+    document.getElementById('meRecado').onclick = function () { abrirRecadoModelo(); };
     document.getElementById('meMsgVer').onclick = function () {
       var pv = document.getElementById('meMsgPrev');
       pv.textContent = montarMensagem(document.getElementById('meMsg').value, 'Maria da Silva', document.getElementById('meNome').value.trim(), document.getElementById('meMat').value.trim());
@@ -5473,6 +5504,8 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="vlIse">Não cobrar custas quando tiver</label><input type="text" id="vlIse" value="' + esc(state.cfg.custasIsentas == null ? CUSTAS_ISENTAS_PADRAO : state.cfg.custasIsentas) + '" autocomplete="off">' +
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="vlGrat" style="width:24px;height:24px"' + (state.cfg.gratuito !== false ? ' checked' : '') + '> Também não cobrar quando o mandado disser “Gratuito”</label>' +
       '<p class="note">Mandado sem custas sai sem a linha “Diligência a receber” na certidão, mas continua contando o transporte. O “Gratuito” é lido na leitura do PDF; mandados lidos antes não têm essa marca.</p>' +
+      '<label class="f" for="vlDiasSeg">Dias úteis até voltar ao mandado (segunda diligência)</label><input type="number" id="vlDiasSeg" min="1" max="60" value="' + diasSegunda() + '"><p class="note">Segunda a sexta, sem feriado. Depois desse prazo da primeira diligência, o mandado entra na pergunta ao gerar a rota. Só vale para a segunda diligência.</p>' +
+      '<label class="f" for="vlFeriados">Outros feriados ou pontos facultativos (dd/mm, separados por vírgula)</label><input type="text" id="vlFeriados" value="' + esc((state.cfg && state.cfg.feriadosExtras) || '') + '" placeholder="Ex.: 08/12, 24/12"><p class="note">Já contam: feriados nacionais, Carnaval, Sexta-feira Santa, Corpus Christi e 10/06 (aniversário de Foz).</p>' +
       '<div class="actions"><button class="btn primary" id="vlSave">Salvar</button><button class="btn ghost" id="vlPad">Voltar ao padrão</button></div>');
     $('vlPad').onclick = function () { state.cfg.transporte = null; state.cfg.custasIncluir = null; state.cfg.custasIsentas = null; state.cfg.gratuito = true; save(); render(); closeModal(); toast('Valores no padrão.'); };
     $('vlSave').onclick = function () {
@@ -5482,6 +5515,7 @@ function iaUsuarioAjuste(d) {
       state.cfg.custasIncluir = $('vlInc').value.trim();
       state.cfg.custasIsentas = $('vlIse').value.trim();
       state.cfg.gratuito = $('vlGrat').checked;
+      state.cfg.diasSegunda = Math.min(60, Math.max(1, parseInt($('vlDiasSeg').value, 10) || 3)); state.cfg.feriadosExtras = $('vlFeriados').value.trim();
       save(); render(); closeModal(); toast('Valores salvos. Os totais já usam isso.');
     };
   }
@@ -5716,7 +5750,7 @@ function iaUsuarioAjuste(d) {
       registrarEnvio(it, '', 'manual'); render();
       toast('Marcado: mensagem enviada. Lembro de repetir em 24 h.', function () { it.msgs.pop(); save(); render(); });
     } else if (act === 'unsent') { it.msgs = (it.msgs || []).slice(0, -1); save(); render(); toast('Envio desfeito'); }
-    else if (act === 'cert') { openCert(it); }
+    else if (act === 'cert') { if (pronto(it) && abrirProntoCert(it)) { return; } openCert(it); }
     else if (act === 'fisica') { tirarFoto(it); }
     else if (act === 'externo') { abrirExterno(it); }
     else if (act === 'fisicaprint') { abrirGaleria(it); }
@@ -6705,6 +6739,104 @@ function iaUsuarioAjuste(d) {
       toast('Mandado excluído da lista', function () { var x = byId(delId); if (x) { x.status = 'pendente'; save(); render(); } });
     };
   }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.c = { setItems: function (l) { state.items = l; render(); }, devidos: function () { return devidosRota().map(function (i) { return i.id; }); }, diligencia: function (id) { abrirDiligencia(byId(id)); }, sel: function (id, v) { if (v) { sel[id] = true; } else { delete sel[id]; } }, pronto: function (id) { return pronto(byId(id)); }, item: function (id) { return JSON.parse(JSON.stringify(byId(id))); }, selIds: function () { return Object.keys(sel); } };
+  function diasSegunda() { var d = parseInt(state.cfg && state.cfg.diasSegunda, 10); return d >= 1 ? d : 3; }
+  function inicioDia(ms) { var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  /* ---- dias úteis (segunda a sexta, sem feriado) ---- */
+  function feriadosAno(y) {
+    var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+    var pascoa = new Date(y, mes - 1, dia), set = {};
+    function add(dt) { set[dt.getFullYear() + '-' + dt.getMonth() + '-' + dt.getDate()] = 1; }
+    function mv(n) { var x = new Date(pascoa.getTime()); x.setDate(x.getDate() + n); add(x); }
+    [[0, 1], [3, 21], [4, 1], [8, 7], [9, 12], [10, 2], [10, 15], [10, 20], [11, 25], [5, 10]].forEach(function (x) { add(new Date(y, x[0], x[1])); });
+    mv(-48); mv(-47); mv(-2); mv(60);
+    String((state.cfg && state.cfg.feriadosExtras) || '').split(/[,;\s]+/).forEach(function (t) { var m2 = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/.exec(t); if (m2 && (!m2[3] || +m2[3] === y)) { add(new Date(y, +m2[2] - 1, +m2[1])); } });
+    return set;
+  }
+  function ehDiaUtil(dt) {
+    var w = dt.getDay();
+    if (w === 0 || w === 6) { return false; }
+    return !feriadosAno(dt.getFullYear())[dt.getFullYear() + '-' + dt.getMonth() + '-' + dt.getDate()];
+  }
+  function utilDesde(ms, ate) {
+    var d = new Date(inicioDia(ms)), fim = inicioDia(ate || Date.now()), n = 0;
+    for (var g = 0; g < 400 && d.getTime() < fim; g++) { d.setDate(d.getDate() + 1); if (ehDiaUtil(d)) { n++; } }
+    return n;
+  }
+  function addUteis(ms, n) {
+    var d = new Date(inicioDia(ms));
+    for (var g = 0; g < 800 && n > 0; g++) { d.setDate(d.getDate() + 1); if (ehDiaUtil(d)) { n--; } }
+    return d.getTime();
+  }
+  function hojeChave() { var n = new Date(); return n.getFullYear() + '-' + n.getMonth() + '-' + n.getDate(); }
+  /* quais mandados entram na pergunta ao gerar a rota:
+     'novo' = pendente, endereço da sede, sem nenhuma diligência física registrada;
+     'seg'  = já teve a 1ª diligência e passaram os dias úteis da regra (só a 2ª diligência; a 3ª não puxa) */
+  function grupoRota(i, agora) {
+    if (i.status !== 'pendente' || etipo(i) !== 'local' || sel[i.id] || pronto(i)) { return ''; }
+    var v = i.visitas || [], nv = v.length;
+    if (nv === 0) { return (!fisicaFeita(i) && i.dispensaDia !== hojeChave()) ? 'novo' : ''; }
+    if (nv === 1 && !fisicaFeita(i)) {
+      if (i.proxDilig) { return i.proxDilig.t <= agora ? 'seg' : ''; }
+      return utilDesde(v[0], agora) >= diasSegunda() ? 'seg' : '';
+    }
+    return '';
+  }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.u = { utilDesde: utilDesde, addUteis: addUteis, grupo: function (id, agora) { return grupoRota(byId(id), agora || Date.now()); }, ehDiaUtil: function (y, m, d) { return ehDiaUtil(new Date(y, m, d)); } };
+  /* mandados que a rota puxa: nunca visitados e segunda diligência no prazo */
+  function devidosRota() {
+    var agora = Date.now();
+    return state.items.filter(function (i) { return grupoRota(i, agora); });
+  }
+  function abrirDevidos(dv, seguir, marc, dias) {
+    marc = marc || {}; dias = dias || 1;
+    var agora = Date.now();
+    dv.forEach(function (i) { if (marc[i.id] === undefined) { marc[i.id] = true; } });
+    function z2(x) { return (x < 10 ? '0' : '') + x; }
+    function linha(i, g) {
+      var v = i.visitas || [], u = new Date(v[v.length - 1]);
+      var sub = g === 'seg' ? v.length + 'ª diligência em ' + z2(u.getDate()) + '/' + z2(u.getMonth() + 1) + ' · já passaram ' + utilDesde(v[0], agora) + ' dia(s) útil(eis)' : 'sem diligência física registrada';
+      return '<div class="dvrow"><label class="f" style="display:flex;gap:10px;align-items:center;flex:1"><input type="checkbox" data-dv="' + esc(i.id) + '" style="width:24px;height:24px"' + (marc[i.id] ? ' checked' : '') + '> <span><strong>' + esc(i.nome) + '</strong><br><small>' + esc(i.endereco) + ' · ' + sub + '</small></span></label><button class="btn small ghost" type="button" data-dvver="' + esc(i.id) + '" aria-label="Ver o mandado de ' + esc(i.nome) + '">👁</button></div>';
+    }
+    var gs = dv.filter(function (i) { return grupoRota(i, agora) === 'seg'; }), gn = dv.filter(function (i) { return grupoRota(i, agora) === 'novo'; });
+    if (!gs.length && !gn.length) { gn = dv; }
+    openModal('O que entra na rota',
+      '<p class="note">Estes mandados entram na rota. Desmarque os que não quer levar. <a href="#" id="dvTodos">Marcar todos</a> · <a href="#" id="dvNenhum">Desmarcar todos</a></p>' +
+      (gs.length ? '<p class="note" style="margin:8px 0 2px"><strong>Segunda diligência (' + gs.length + ')</strong> — passaram ' + diasSegunda() + ' dias úteis da primeira.</p>' + gs.map(function (i) { return linha(i, 'seg'); }).join('') : '') +
+      (gn.length ? '<p class="note" style="margin:8px 0 2px"><strong>Sem diligência física (' + gn.length + ')</strong> — ainda não certificados e sem visita registrada.</p>' + gn.map(function (i) { return linha(i, 'novo'); }).join('') : '') +
+      '<label class="f" for="dvDias">Os desmarcados da segunda diligência: perguntar de novo daqui a (dias)</label><input type="number" id="dvDias" min="1" max="60" value="' + dias + '"><p class="note">Os desmarcados sem diligência só deixam de aparecer hoje; amanhã voltam.</p>' +
+      '<div class="actions"><button class="btn primary" id="dvOk">Puxar os marcados e seguir</button><button class="btn ghost" id="dvNao">Seguir sem puxar nenhum</button></div>');
+    function ler() {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-dv]'), function (c) { marc[c.getAttribute('data-dv')] = c.checked; });
+      dias = Math.min(60, Math.max(1, parseInt(document.getElementById('dvDias').value, 10) || 1));
+    }
+    function fechar(puxa) {
+      ler();
+      dv.forEach(function (i) {
+        var g = grupoRota(i, agora);
+        if (puxa && marc[i.id]) { sel[i.id] = true; delete i.proxDilig; }
+        else if (g === 'seg') { i.proxDilig = { t: inicioDia(Date.now()) + dias * 86400000, dias: dias }; }
+        else { i.dispensaDia = hojeChave(); }
+      });
+      save(); render(); closeModal(); seguir();
+    }
+    document.getElementById('dvOk').onclick = function () { fechar(true); };
+    document.getElementById('dvNao').onclick = function () { fechar(false); };
+    document.getElementById('dvTodos').onclick = function (e) { e.preventDefault(); Array.prototype.forEach.call(document.querySelectorAll('[data-dv]'), function (c) { c.checked = true; }); };
+    document.getElementById('dvNenhum').onclick = function (e) { e.preventDefault(); Array.prototype.forEach.call(document.querySelectorAll('[data-dv]'), function (c) { c.checked = false; }); };
+    document.getElementById('mbody').addEventListener('click', async function (e) {
+      var b = e.target.closest ? e.target.closest('[data-dvver]') : null;
+      if (!b) { return; }
+      ler();
+      var it = byId(b.getAttribute('data-dvver'));
+      if (!it) { return; }
+      await viewMandado(it);
+      var d = document.createElement('div'); d.className = 'actions';
+      d.innerHTML = '<button class="btn primary" id="dvVolta">Voltar à pergunta</button>';
+      document.getElementById('mbody').appendChild(d);
+      document.getElementById('dvVolta').onclick = function () { abrirDevidos(dv, seguir, marc, dias); };
+    });
+  }
   function abrirDiligencia(it) {
     var nv = (it.visitas || []).length + 1, now = new Date();
     function z(x) { return (x < 10 ? '0' : '') + x; }
@@ -6721,6 +6853,8 @@ function iaUsuarioAjuste(d) {
       '<div id="dgLivre" hidden><label class="f" for="dgTxt">Escreva o que aconteceu (a nota inteira)</label><textarea id="dgTxt" rows="5" placeholder="Ex.: Não encontrei ninguém no local, conversei com vizinhos e deixei recado no portão; os vizinhos afirmam que não conhecem a pessoa indicada."></textarea></div>' +
       '<div class="dg2"><div><label class="f" for="dgData">Data</label><input type="date" id="dgData" value="' + hoje + '"></div><div><label class="f" for="dgHora">Hora</label><input type="time" id="dgHora" value="' + agora + '"></div></div>' +
       '<p class="note" style="margin:8px 0 2px">Vai para a certidão <strong>só se ela continuar negativa</strong>:</p><p class="dgprev" id="dgPrev"></p>' +
+      '<div class="grp dgprazos">' + (nv === 1 ? '<label class="dgop"><input type="checkbox" id="dgProxOn"> Prazo diferente da regra geral (' + diasSegunda() + ' dias úteis): daqui <input type="number" id="dgProxDias" min="1" max="60" value="' + diasSegunda() + '" style="width:64px" aria-label="Dias úteis até a segunda diligência"> dia(s) útil(eis)</label><p class="note" style="margin:0 0 6px">Sem marcar, a segunda diligência entra na rota pela regra geral (Meus dados).</p>' : '') +
+      '<label class="dgop"><input type="checkbox" id="dgProntoOn"' + (it.prontoEm ? ' checked' : '') + '> Mandar para “Pronto para certificar” daqui <input type="number" id="dgProntoDias" min="1" max="90" value="" placeholder="dias" style="width:64px" aria-label="Dias até Pronto para certificar"> dia(s)</label></div>' +
       '<div class="actions"><button class="btn primary" id="dgSalvar">Salvar diligência</button><button class="btn" id="dgCancel">Cancelar</button></div>');
     function $(id) { return document.getElementById(id); }
     function lido() {
@@ -6752,6 +6886,14 @@ function iaUsuarioAjuste(d) {
       it.visitas = it.visitas || []; it.diligNotas = it.diligNotas || [];
       while (it.visitas.indexOf(t) >= 0) { t += 1; }
       n.t = t; it.visitas.push(t); it.diligNotas.push(n); it.visitas.sort(function (a, b) { return a - b; });
+      if ($('dgProxOn')) {
+        if ($('dgProxOn').checked) { var dp = Math.min(60, Math.max(1, parseInt($('dgProxDias').value, 10) || diasSegunda())); it.proxDilig = { t: addUteis(t, dp), dias: dp, uteis: true }; }
+        else { delete it.proxDilig; }
+      } else { delete it.proxDilig; }
+      if ($('dgProntoOn') && $('dgProntoOn').checked) {
+        var dq = parseInt($('dgProntoDias').value, 10);
+        if (dq >= 1) { it.prontoEm = inicioDia(t) + Math.min(90, dq) * 86400000; } else if (!it.prontoEm) { toast('Escreva em quantos dias vai para Pronto para certificar.'); it.visitas = it.visitas.filter(function (x) { return x !== t; }); it.diligNotas = it.diligNotas.filter(function (x) { return x.t !== t; }); return; }
+      } else { delete it.prontoEm; }
       save(); closeModal();
       var qtd = it.visitas.length, dv = new Date(t);
       if (qtd >= 3) { fecharVisitas(it); }
@@ -7634,6 +7776,53 @@ function shrinkImage(file, maxSide, qual) {
     return { prints: function () { return prints; }, custas: function () { return String(document.getElementById(pref + 'Custas').value || '').replace(/[^\d.,]/g, '').trim(); } };
   }
   /* mandado sem endereço físico cujo(s) número(s) não têm WhatsApp: certidão negativa pelo modelo "telefone sem WhatsApp", salva direto */
+  /* Pronto para certificar: monta a certidão inteira com o que já está registrado e deixa só uma edição */
+  function partesAuto(it) {
+    var up = String(it.nome || '').toUpperCase(), n = new Date(), hojeS = n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()), fis = null, on = null;
+    var f = it.fisica, nVis = (it.visitas || []).length;
+    if (etipo(it) === 'local' && (f || nVis)) {
+      var key = (f && ['mudou', 'naoconhece', 'numero', 'ninguem', 'recado', 'banaoloc', 'baportao'].indexOf(f.modelo) >= 0) ? f.modelo : 'ninguem';
+      var vis = (f && f.visitas && f.visitas.length) ? f.visitas : (it.visitas || []).map(fmtVisita);
+      var tx = parteFisicaTexto(key, { pj: ehEmpresaIt(it), tipo: it.tipo, nome: up, morador: (f && f.morador) || '', paren: key === 'mudou' ? parenFrase((f && f.paren) || 'atual', (f && f.parenOut) || '') : '', visitas: vis, notas: (f && f.notas) || diligNotasFrases(it), semZapObs: semZapTxt(it) });
+      fis = { modelo: key, texto: tx, tipo: 'negativa', dados: { morador: (f && f.morador) || '', visitas: vis, data: hojeS }, t: Date.now() };
+    }
+    if (onlinePossivel(it) && waEstado(it).nums.length) {
+      var st = waEstado(it);
+      var d0 = { pj: ehEmpresaIt(it), tipo: it.tipo, nome: up, just: (st.todos && st.nums.length) ? justDeMotivo(st.nums[0].motivo) : justDaTentativa(it.tentativas), temFisica: !!fis, data: hojeS };
+      var porNum = st.todos ? waResultadoNumeros(it) : null;
+      var tw = porNum ? ajustaAto('CERTIFICO ainda que tentei contato via whatsapp, porém ' + porNum + '.', d0) : parteOnlineTexto('neg', d0);
+      on = { modelo: 'neg', texto: tw, tipo: 'negativa', dados: { just: d0.just, data: hojeS }, t: Date.now() };
+    }
+    return (fis || on) ? { fis: fis, on: on } : null;
+  }
+  function abrirProntoCert(it) {
+    var pa = partesAuto(it);
+    if (!pa) { return false; }
+    var texto = montarCertidaoPartes(pa.fis, pa.on, { oficial: state.me && state.me.nome, diligencia: custasCard(it).replace(/[^\d.,]/g, '') });
+    function $(id) { return document.getElementById(id); }
+    openModal('Certidão pronta',
+      '<p><strong>' + esc(it.nome) + '</strong></p>' +
+      '<p class="note">' + esc(motivoPronto(it, Date.now(), cidades()) ? 'Pronto para certificar: ' + motivoPronto(it, Date.now(), cidades()) + '. ' : '') + 'A certidão foi montada com o que está registrado neste mandado. Confira, edite se precisar e conclua.</p>' +
+      '<label class="f" for="pcTxt">Certidão (pode editar)</label><textarea id="pcTxt" style="min-height:320px"></textarea>' +
+      htmlCamposFinais('pc', it) +
+      '<div class="actions"><button class="btn primary" id="pcOk">Concluir</button><button class="btn ghost" id="pcOutras">Outras formas de certificar</button><button class="btn ghost" id="pcNo">Cancelar</button></div>');
+    $('pcTxt').value = texto;
+    var fin = ligarCamposFinais('pc', function (v) { $('pcTxt').value = trocarDil($('pcTxt').value, v); }, it);
+    $('pcNo').onclick = closeModal;
+    $('pcOutras').onclick = function () { abrirCertificar(it, true); };
+    $('pcOk').onclick = function () {
+      var tx = trocarDil($('pcTxt').value, fin.custas());
+      if (!tx.trim()) { toast('A certidão está vazia.'); return; }
+      it.partes = { fis: pa.fis || undefined, on: pa.on || undefined };
+      if (!pa.fis) { delete it.partes.fis; }
+      if (!pa.on) { delete it.partes.on; }
+      var cu = fin.custas(), pr = fin.prints().slice();
+      closeModal();
+      concluirPartes(it, { custas: cu, prints: pr, texto: tx });
+    };
+    return true;
+  }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.pronto = { abrir: function (id) { return abrirProntoCert(byId(id)); }, partes: function (id) { return partesAuto(byId(id)); } };
   function certificarSemZap(it) {
     var n = new Date(), hojeS = n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate());
     var antes = it.partes ? JSON.parse(JSON.stringify(it.partes)) : null;
@@ -7644,7 +7833,7 @@ function shrinkImage(file, maxSide, qual) {
   }
   async function concluirPartes(it, fin) {
     var ph = it.partes || {}, hojeC = (function () { var n = new Date(); return n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()); })();
-    var texto = montarCertidaoPartes(ph.fis, ph.on, { oficial: state.me && state.me.nome, diligencia: fin.custas });
+    var texto = fin.texto || montarCertidaoPartes(ph.fis, ph.on, { oficial: state.me && state.me.nome, diligencia: fin.custas });
     var tipo = ((ph.fis && ph.fis.tipo === 'positiva') || (ph.on && ph.on.tipo === 'positiva')) ? 'positiva' : 'negativa', ids = [], pr = fin.prints || [];
     for (var k = 0; k < pr.length; k++) { var pid = 'pr' + uid(); try { await idbPut(pid, pr[k].blob); ids.push(pid); } catch (e) { toast('Não consegui guardar um dos anexos neste aparelho'); } }
     it.certidao = { t: Date.now(), tipo: tipo, canal: 'partes', modelo: 'partes', texto: texto, sig: null, data: hojeC, prints: ids, custas: parseValor(fin.custas) };
@@ -7681,7 +7870,7 @@ function shrinkImage(file, maxSide, qual) {
     return out.length > 1 ? out.slice(0, -1).join(', ') + ' e ' + out[out.length - 1] : (out[0] || '');
   }
   function abrirParte(it, parte, val) {
-    var fis = parte === 'fis', lista = fis ? OPC_FISICA : OPC_ONLINE, tpl = String(val).indexOf('m:') === 0 ? modeloPorId(val) : null, rot = tpl ? [val, tpl.nome] : lista.filter(function (x) { return x[0] === val; })[0];
+    var fis = parte === 'fis', lista = fis ? OPC_FISICA.concat(OPC_BA) : OPC_ONLINE, tpl = String(val).indexOf('m:') === 0 ? modeloPorId(val) : null, rot = tpl ? [val, tpl.nome] : lista.filter(function (x) { return x[0] === val; })[0];
     if (!rot) { return; }
     var now = new Date(), hoje = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
     var ult = it.msgs && it.msgs.length ? it.msgs[it.msgs.length - 1] : null, diaCont = ult ? dayKey(ult.t) : hoje;
@@ -8625,6 +8814,148 @@ function shrinkImage(file, maxSide, qual) {
     };
   }
 
+  /* ---- Recado (bilhete) impresso: só no botão Imprimir, nunca no Compartilhar ---- */
+  var BRASAO_B64 = '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';
+  var RECADO_PADRAO = {
+    copias: 2,
+    cab: '**__PODER JUDICIÁRIO__**\n**__FÓRUM DE JUSTIÇA ESTADUAL__**\nAvenida Pedro Basso, nº 1001, Jardim Polo Centro, Foz do Iguaçu/PR\n**__SALA DOS OFICIAIS DE JUSTIÇA (45) 3308 – 8085__ ==das 13 as 17 horas.==**',
+    corpo: 'Comparecer no Fórum Estadual de Justiça, na **SALA DOS OFICIAIS DE JUSTIÇA**, no andar zero, na data de {DIA}/{MES}/{ANO}, ==**das 13:00 às 17:00**==, para tratar de assunto do seu interesse.',
+    ident: 'Por se tratar de documento que só pode ser entregue a pessoa indicada acima, ao entrar em contato, é **__obrigatório__** apresentar um comprovante de identidade (==**__foto do RG ou CNH__**==).',
+    arts: 'Art. 252. Quando, por 2 (duas) vezes, o oficial de justiça houver procurado o citando em seu domicílio ou residência sem o encontrar, deverá, havendo suspeita de ocultação, intimar qualquer pessoa da família ou, em sua falta, ==**qualquer vizinho**== de que, no dia útil imediato, voltará a fim de efetuar a citação, na hora que designar.\n\nParágrafo único. Nos condomínios edilícios ou nos loteamentos com controle de acesso, será válida a intimação a que se refere o caput feita a funcionário da portaria responsável pelo recebimento de correspondência.\n\nArt. 253. No dia e na hora designados, o oficial de justiça, independentemente de novo despacho, comparecerá ao domicílio ou à residência do citando a fim de realizar a diligência.\n\n§ 1º Se o citando não estiver presente, o oficial de justiça procurará informar-se das razões da ausência, dando por feita a citação, ainda que o citando se tenha ocultado em outra comarca, seção ou subseção judiciárias.\n\n§ 2º A citação com hora certa será efetivada mesmo que a pessoa da família ou o ==**vizinho**== que houver sido intimado esteja ausente, ou se, embora presente, a pessoa da família ou o ==**vizinho**== se recusar a receber o mandado.\n\n§ 3º Da certidão da ocorrência, o oficial de justiça deixará contrafé com qualquer pessoa da família ou vizinho, conforme o caso, declarando-lhe o nome.\n\n§ 4º O oficial de justiça fará constar do mandado a advertência de que será nomeado curador especial se houver revelia.',
+    assin: '**Raphael**\nOFICIAL DE JUSTIÇA',
+    morador: '^^**__Atual morador, caso a pessoa indicada acima não resida neste endereço favor enviar mensagem por whatsapp ao número indicado acima, para evitar futuras diligências no seu endereço.__**^^',
+    zap: '^^**Whatsapp (apenas mensagem)**^^ **==459998620273==**'
+  };
+  function recadoCfg() {
+    var c = (state.cfg && state.cfg.recado) || {}, o = {};
+    Object.keys(RECADO_PADRAO).forEach(function (k) { o[k] = (c[k] !== undefined && c[k] !== null && (k === 'copias' || String(c[k]).trim() !== '')) ? c[k] : RECADO_PADRAO[k]; });
+    var n = parseInt(o.copias, 10); o.copias = n >= 0 && n <= 6 ? n : 2;
+    return o;
+  }
+  /* meses: sobrando menos de 5 dias para virar o mês, os bilhetes com WhatsApp saem com o mês seguinte; o último (sem WhatsApp) sempre com o mês atual */
+  function recadoMeses(agora) {
+    var d = new Date(agora), y = d.getFullYear(), m = d.getMonth(), ult = new Date(y, m + 1, 0).getDate(), falta = ult - d.getDate();
+    var at = { m: m + 1, y: y }, pr = { m: m === 11 ? 1 : m + 2, y: m === 11 ? y + 1 : y };
+    return { atual: at, primeiros: falta < 5 ? pr : at };
+  }
+  function recadoRuns(txt) {
+    var runs = [], st = { b: 0, u: 0, h: 0, r: 0 }, buf = '', i = 0, map = { '**': 'b', '__': 'u', '==': 'h', '^^': 'r' };
+    function solta() { if (buf) { runs.push({ t: buf, b: st.b, u: st.u, h: st.h, r: st.r }); buf = ''; } }
+    while (i < txt.length) {
+      var d2 = txt.substr(i, 2);
+      if (map[d2]) { solta(); st[map[d2]] = st[map[d2]] ? 0 : 1; i += 2; } else { buf += txt.charAt(i); i++; }
+    }
+    solta();
+    return runs;
+  }
+  async function desenharRecado(out, fontes, campos, nome, mes, ano, comZap) {
+    var W = 841.92, H = 595.32, pg = out.addPage([W, H]), X0 = 30, X1 = 418, rgb = PDFLib.rgb;
+    pg.drawRectangle({ x: 14, y: H - 585, width: 412, height: 577, borderWidth: 1.4, borderColor: rgb(0, 0, 0) });
+    try { var im = await out.embedJpg(Uint8Array.from(atob(BRASAO_B64), function (c) { return c.charCodeAt(0); })); pg.drawImage(im, { x: 346, y: H - 80, width: 68, height: 68 }); } catch (e) { /* sem brasão */ }
+    var topo = 17;
+    function fonteDe(r) { return r.b ? fontes.b : fontes.n; }
+    function palavras(txt) {
+      var ws = [];
+      recadoRuns(txt).forEach(function (r) {
+        r.t.replace(/\u0001/g, '_____').split(/(\s+)/).forEach(function (p) { if (p === '') { return; } ws.push({ t: /^\s+$/.test(p) ? ' ' : p, esp: /^\s+$/.test(p), b: r.b, u: r.u, h: r.h, r: r.r }); });
+      });
+      return ws;
+    }
+    function larg(w, size) { return (w.b ? fontes.b : fontes.n).widthOfTextAtSize(w.t, size); }
+    function linha(ws, x, yTop, size, largTot, just) {
+      var tot = ws.reduce(function (a, w) { return a + larg(w, size); }, 0), nEsp = ws.filter(function (w) { return w.esp; }).length, extra = just && nEsp ? (largTot - tot) / nEsp : 0;
+      var cx = x, base = H - (yTop + size * 0.85);
+      ws.forEach(function (w, k) {
+        var wd = larg(w, size) + (w.esp ? extra : 0), f = w.b ? fontes.b : fontes.n, ant = ws[k - 1], prox = ws[k + 1];
+        var hl = w.h && (!w.esp || (ant && ant.h && prox && prox.h)), ul = w.u && (!w.esp || (ant && ant.u && prox && prox.u));
+        if (hl) { pg.drawRectangle({ x: cx, y: base - size * 0.22, width: wd, height: size * 1.05, color: rgb(1, 1, 0) }); }
+        if (!w.esp) { pg.drawText(w.t, { x: cx, y: base, size: size, font: f, color: w.r ? rgb(0.8, 0, 0) : rgb(0, 0, 0) }); }
+        if (ul) { pg.drawLine({ start: { x: cx, y: base - size * 0.12 }, end: { x: cx + wd, y: base - size * 0.12 }, thickness: Math.max(0.5, size * 0.055), color: w.r ? rgb(0.8, 0, 0) : rgb(0, 0, 0) }); }
+        cx += wd;
+      });
+    }
+    function paragrafo(txt, o) {
+      var ws = palavras(txt), largura = o.largura || (X1 - X0), x = o.x == null ? X0 : o.x, size = o.size, lh = o.lh, lin = [], cur = [], cw = 0, ind = o.indent || 0, first = true;
+      ws.forEach(function (w) {
+        var wl = larg(w, size), lim = largura - (first ? ind : 0);
+        if (w.esp && !cur.length) { return; }
+        if (!w.esp && cw + wl > lim && cur.length) { while (cur.length && cur[cur.length - 1].esp) { cur.pop(); } lin.push({ ws: cur, ind: first ? ind : 0 }); first = false; cur = []; cw = 0; }
+        cur.push(w); cw += wl;
+      });
+      if (cur.length) { while (cur.length && cur[cur.length - 1].esp) { cur.pop(); } lin.push({ ws: cur, ind: first ? ind : 0, ult: true }); }
+      lin.forEach(function (l, k) {
+        var tot = l.ws.reduce(function (a, w) { return a + larg(w, size); }, 0), xx = x + l.ind;
+        if (o.centro) { xx = x + (largura - tot) / 2; }
+        linha(l.ws, xx, topo, size, largura - l.ind, o.just && !l.ult);
+        topo += lh;
+      });
+    }
+    function sub(t) { return t.replace(/\{DIA\}/g, '\u0001').replace(/\{MES\}/g, ('0' + mes).slice(-2)).replace(/\{ANO\}/g, String(ano)); }
+    /* cabeçalho */
+    campos.cab.split('\n').forEach(function (l) { paragrafo(l, { size: 10.5, lh: 11.3, x: 35, largura: 330 }); });
+    topo = Math.max(topo, 60) + 13;
+    /* SR.(A). nome */
+    var rot = 'SR.(A). ', nm = String(nome || '').toUpperCase(), sz = 14, fR = fontes.n, fN = fontes.b;
+    var wr = fR.widthOfTextAtSize(rot, sz), ate = 349, disp = ate - 35 - wr - 6;
+    while (sz > 7 && fN.widthOfTextAtSize(nm, sz) > disp) { sz -= 0.5; }
+    var base0 = H - (topo + 14 * 0.85);
+    pg.drawText(rot, { x: 35, y: base0, size: 14, font: fR, color: rgb(0, 0, 0) });
+    pg.drawText(nm, { x: 35 + wr, y: base0, size: sz, font: fN, color: rgb(0, 0, 0) });
+    pg.drawLine({ start: { x: 35 + wr, y: base0 - 2 }, end: { x: ate, y: base0 - 2 }, thickness: 0.7, color: rgb(0, 0, 0) });
+    pg.drawText('.', { x: ate + 1, y: base0, size: 14, font: fR, color: rgb(0, 0, 0) });
+    topo += 26;
+    paragrafo(sub(campos.corpo), { size: 11.7, lh: 12, x: 35, largura: 383, just: true });
+    topo += 14;
+    paragrafo(sub(campos.ident), { size: 9, lh: 11.2, x: 27, largura: 391, just: true });
+    topo += 14;
+    campos.arts.split(/\n\s*\n/).forEach(function (p) { paragrafo(sub(p), { size: 7.4, lh: 9.3, x: 27, largura: 391, just: true, indent: 26 }); topo += 12.5; });
+    topo = Math.max(topo, 452);
+    campos.assin.split('\n').forEach(function (l, k) { paragrafo(l, { size: k ? 10.5 : 12.9, lh: k ? 11 : 13, x: 27, largura: 391, centro: true }); });
+    if (comZap) {
+      topo = Math.max(topo + 14, 494);
+      paragrafo(campos.morador, { size: 9, lh: 11.2, x: 35, largura: 383, just: true });
+      topo = Math.max(topo + 6, 534);
+      campos.zap.split('\n').forEach(function (l) { paragrafo(sub(l), { size: 10.5, lh: 12, x: 27, largura: 391, centro: true }); });
+    }
+  }
+  async function desenharRecados(out, nome, agora, fontes) {
+    var c = recadoCfg(), mm = recadoMeses(agora);
+    if (!c.copias) { return 0; }
+    fontes = fontes || { n: await out.embedFont(PDFLib.StandardFonts.TimesRoman), b: await out.embedFont(PDFLib.StandardFonts.TimesRomanBold) };
+    for (var k = 0; k < c.copias; k++) {
+      var ultimo = k === c.copias - 1, ref = ultimo ? mm.atual : mm.primeiros;
+      await desenharRecado(out, fontes, c, nome, ref.m, ref.y, !ultimo);
+    }
+    return c.copias;
+  }
+  window.__mandadosTeste = window.__mandadosTeste || {};
+  window.__mandadosTeste.recado = { meses: recadoMeses, pdf: async function (nome, agora) { await ensureLib('pdflib'); var out = await PDFLib.PDFDocument.create(); await desenharRecados(out, nome, agora); return Array.from(await out.save()); } };
+  function abrirRecadoModelo() {
+    var c = recadoCfg();
+    function $(id) { return document.getElementById(id); }
+    function campo(id, rot, val, lin) { return '<label class="f" for="' + id + '">' + rot + '</label><textarea id="' + id + '" style="min-height:' + lin * 22 + 'px;font-size:15px">' + esc(val) + '</textarea>'; }
+    openModal('Modelo do recado',
+      '<p class="note">O recado sai <strong>só no botão Imprimir</strong>, logo depois da contrafé, uma folha por cópia. Nome do mandado preenchido; dia em branco; mês e ano automáticos (faltando menos de 5 dias para virar o mês, os bilhetes com WhatsApp saem com o mês seguinte). A <strong>última cópia sai sempre sem o WhatsApp</strong> e sem o aviso do morador.</p>' +
+      '<label class="f" for="rcCop">Cópias por mandado (0 = não imprimir)</label><input type="number" id="rcCop" min="0" max="6" value="' + c.copias + '">' +
+      '<p class="note">Marcas no texto: <code>**negrito**</code> · <code>__sublinhado__</code> · <code>==amarelo==</code> · <code>^^vermelho^^</code>. No texto principal, <code>{DIA}</code> <code>{MES}</code> <code>{ANO}</code> viram a data.</p>' +
+      campo('rcCab', 'Cabeçalho (uma linha por linha)', c.cab, 4) + campo('rcCorpo', 'Texto principal', c.corpo, 4) + campo('rcIdent', 'Aviso da identidade', c.ident, 3) +
+      campo('rcArts', 'Artigos (deixe uma linha em branco entre os parágrafos)', c.arts, 8) + campo('rcAssin', 'Assinatura (nome e cargo, uma linha cada)', c.assin, 2) +
+      campo('rcMor', 'Aviso ao atual morador (só nas cópias com WhatsApp)', c.morador, 3) + campo('rcZap', 'Rodapé com o WhatsApp (só nas cópias com WhatsApp)', c.zap, 2) +
+      '<div class="actions"><button class="btn primary" id="rcSalva">Salvar</button><button class="btn" id="rcVer">Visualizar</button><button class="btn ghost" id="rcPadrao">Voltar ao modelo padrão</button></div><div id="rcBox"></div>');
+    function ler() { return { copias: Math.min(6, Math.max(0, parseInt($('rcCop').value, 10) || 0)), cab: $('rcCab').value, corpo: $('rcCorpo').value, ident: $('rcIdent').value, arts: $('rcArts').value, assin: $('rcAssin').value, morador: $('rcMor').value, zap: $('rcZap').value }; }
+    $('rcSalva').onclick = function () { state.cfg.recado = ler(); save(); closeModal(); toast('Modelo do recado salvo.'); };
+    $('rcPadrao').onclick = function () { state.cfg.recado = null; save(); abrirRecadoModelo(); toast('Voltou ao modelo padrão.'); };
+    $('rcVer').onclick = async function () {
+      var antes = state.cfg.recado; state.cfg.recado = ler();
+      try {
+        if (!(await ensureLib('pdflib'))) { toast('Ferramenta de PDF não carregou.'); return; }
+        var out = await PDFLib.PDFDocument.create(); await desenharRecados(out, 'Maria da Silva', Date.now());
+        var imgs = await pdfParaImagens(await out.save(), 1, 6);
+        $('rcBox').innerHTML = imgs ? imgs.map(function (u) { return '<img alt="Prévia do recado" style="width:100%;border:1px solid var(--line);border-radius:6px;margin-top:8px" src="' + u + '">'; }).join('') : '<p class="note">Não consegui montar a prévia aqui.</p>';
+      } finally { state.cfg.recado = antes; }
+    };
+  }
+
   /* Imprimir mandados */
   function ordenar(list) {
     return list.slice().sort(function (a, b) {
@@ -8642,13 +8973,14 @@ function shrinkImage(file, maxSide, qual) {
       (sem.length ? ' Ficam de fora, por não terem o PDF guardado: ' + esc(sem.map(function (i) { return i.nome; }).join(', ')) + '.' : '') + '</p>' +
       '<ol class="ordem">' + lista.map(function (i) { return '<li>' + esc(i.nome) + ' <span class="note">- ' + esc(enderecoSimples(i.endereco).texto) + (fileOk(i) ? '' : ' (sem PDF)') + '</span></li>'; }).join('') + '</ol>' +
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcCf" checked style="width:24px;height:24px"> Incluir a contrafé</label>' +
+      (recadoCfg().copias ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcRec" checked style="width:24px;height:24px"> Incluir o recado (' + recadoCfg().copias + (recadoCfg().copias === 1 ? ' cópia' : ' cópias') + ' por mandado, depois da contrafé)</label>' : '') +
       (com.some(temAuto) ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcAuto" checked style="width:24px;height:24px"> Incluir o auto preenchido (busca e apreensão, penhora, remoção ou avaliação) (' + com.filter(temAuto).length + ')</label>' +
         '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcHoje" style="width:24px;height:24px"> Escrever a data de hoje no auto (senão o dia e o mês ficam em branco)</label>' : '') +
       '<div class="actions"><button class="btn primary" id="pcGo"' + (com.length ? '' : ' disabled') + '>Gerar PDF</button><button class="btn" id="pcNo">Cancelar</button></div>' +
       '<p class="note">Depois de gerar, você pode <strong>visualizar</strong> o arquivo antes de imprimir.</p>');
     document.getElementById('pcNo').onclick = closeModal;
     document.getElementById('pcGo').onclick = async function () {
-      var incl = document.getElementById('pcCf').checked;
+      var incl = document.getElementById('pcCf').checked, incRec = !!(document.getElementById('pcRec') && document.getElementById('pcRec').checked), fontesRec = null;
       var incAuto = !!(document.getElementById('pcAuto') && document.getElementById('pcAuto').checked), hojeAuto = !!(document.getElementById('pcHoje') && document.getElementById('pcHoje').checked), avisosAuto = [];
       this.disabled = true;
       var marcas = [];
@@ -8675,6 +9007,10 @@ function shrinkImage(file, maxSide, qual) {
             await desenharAuto(out, da, { oficial: state.me && state.me.nome, diaHoje: hojeAuto, agora: Date.now(), comarca: optAuto().comarca, estado: optAuto().estado, foro: optAuto().foro });
             var lc = lacunasAuto(da);
             if (lc.length) { avisosAuto.push(it.nome + ': ' + lc.join(', ')); }
+          }
+          if (incRec && etipo(it) !== 'eletronico') {
+            fontesRec = fontesRec || { n: await out.embedFont(PDFLib.StandardFonts.TimesRoman), b: await out.embedFont(PDFLib.StandardFonts.TimesRomanBold) };
+            await desenharRecados(out, it.nome, Date.now(), fontesRec);
           }
         }
         var bytes = await out.save(), total = out.getPageCount();
@@ -9018,7 +9354,7 @@ function shrinkImage(file, maxSide, qual) {
   /* Tudo o que antes ficava no bloco "Certidão" do cartão agora fica dentro da janela de Negativo/Positivo */
   function certExtrasHtml(it) {
     var pn = partesNec(it), ph = it.partes || {}, h = '<p class="note" style="margin:14px 0 4px">Outras formas de certificar</p><div class="actions" style="display:grid;grid-template-columns:1fr 1fr">';
-    h += '<button class="btn primary" style="grid-column:1/-1" data-op="__voz">Certificar por voz</button>';
+    if (iaAtiva()) { h += '<button class="btn primary" style="grid-column:1/-1" data-op="__voz">Certificar por IA</button>'; }
     h += '<button class="btn' + (pronto(it) ? ' primary' : '') + '" data-op="__cert">' + (pronto(it) ? 'Certificar (pronto)' : 'Certificar') + '</button><button class="btn" data-op="__externo">Certificada em outro meio (sem PDF)</button>';
     if ((ph.fis || ph.on) && partesFaltando(pn, ph).length) { h += '<button class="btn" style="grid-column:1/-1" data-op="__juntar">Juntar e revisar só com o que está pronto</button>'; }
     if (ph.fis || ph.on) { h += '<button class="btn ghost" style="grid-column:1/-1" data-op="__desfazer">Refazer as partes</button>'; }
@@ -9027,7 +9363,7 @@ function shrinkImage(file, maxSide, qual) {
   }
   function extraOp(it, v) {
     if (v === '__voz') { openVoz(it); }
-    else if (v === '__cert') { openCert(it); }
+    else if (v === '__cert') { if (pronto(it) && abrirProntoCert(it)) { return true; } openCert(it); }
     else if (v === '__externo') { abrirExterno(it); }
     else if (v === '__juntar') { abrirFinal(it); }
     else if (v === '__desfazer') { it.partes = null; delete it.semOnline; save(); render(); closeModal(); toast('As partes foram desfeitas.'); }
@@ -9035,7 +9371,7 @@ function shrinkImage(file, maxSide, qual) {
     else { return false; }
     return true;
   }
-  function abrirCertificar(it) {
+  function abrirCertificar(it, forcar) {
     openModal('Certificar', '<p><strong>' + esc(it.nome) + '</strong></p>' + certExtrasHtml(it) + '<div class="actions"><button class="btn ghost" data-op="__x">Cancelar</button></div>');
     document.getElementById('mbody').onclick = function (e) {
       var b = e.target.closest ? e.target.closest('[data-op]') : null;
@@ -9075,16 +9411,17 @@ function shrinkImage(file, maxSide, qual) {
     };
   }
   /* Negativo / Positivo (WhatsApp ou presencial): abre a lista de certidões daquele tipo */
-  function opcoesResposta(parte, tipo) {
-    var pos = parte === 'on' ? 'pos' : 'pospres', base = parte === 'on' ? OPC_ONLINE : OPC_FISICA;
+  function opcoesResposta(parte, tipo, it) {
+    var pos = parte === 'on' ? 'pos' : 'pospres', base = parte === 'on' ? OPC_ONLINE : ((it && tipo !== 'pos' && isBA(it)) ? OPC_BA : OPC_FISICA);
     var l = base.filter(function (o) { return (o[0] === pos) === (tipo === 'pos'); }).map(function (o) { return [o[0], o[1]]; });
     modelos().filter(function (m) { return m.onde === parte && ((m.tipo === 'positiva') === (tipo === 'pos')); }).forEach(function (m) { l.push(['m:' + m.id, m.nome]); });
     return l;
   }
   function abrirResposta(it, parte, tipo) {
-    var l = opcoesResposta(parte, tipo);
+    var l = opcoesResposta(parte, tipo, it);
+    var btnWa = (parte !== 'on' && tipo === 'pos' && onlinePossivel(it)) ? '<button class="btn okb" data-op="__poswa" style="grid-column:1/-1"><span class="wai" aria-hidden="true"></span> Positiva por WhatsApp</button>' : '';
     openModal((parte === 'on' ? 'WhatsApp' : 'Presencial') + ': ' + (tipo === 'pos' ? 'positivo' : 'negativo'),
-      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha a certidão:</p><div class="actions" style="display:grid;grid-template-columns:1fr">' +
+      '<p><strong>' + esc(it.nome) + '</strong></p><p class="note">Escolha a certidão:</p><div class="actions" style="display:grid;grid-template-columns:1fr">' + btnWa +
       l.map(function (o) { return '<button class="btn ' + (tipo === 'pos' ? 'okb' : 'negb') + '" data-op="' + esc(o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>' + certExtrasHtml(it) + '<div class="actions"><button class="btn ghost" data-op="__x">Cancelar</button></div>');
     document.getElementById('mbody').onclick = function (e) {
       var b = e.target.closest ? e.target.closest('[data-op]') : null;
@@ -9092,6 +9429,7 @@ function shrinkImage(file, maxSide, qual) {
       var v = b.getAttribute('data-op');
       if (v === '__x') { closeModal(); return; }
       if (v === '__tipo') { abrirTipoAto(it, function () { abrirResposta(it, parte, tipo); }); return; }
+      if (v === '__poswa') { abrirParte(it, 'on', 'pos'); return; }
       if (extraOp(it, v)) { return; }
       abrirParte(it, parte, v);
     };
@@ -9129,8 +9467,6 @@ function shrinkImage(file, maxSide, qual) {
   function enriquecerComAgenda(it) {
     var mudou = false, c = acharContato(it, contatosLista());
     if (c && (c.tels || []).length) { it.telefones = mergePhones(it.telefones || [], c.tels); it.agenda = { id: c.id, nome: c.nome }; mudou = true; }
-    var pe = state.cfg.guardarPessoas === false ? null : acharPessoa(it, pessoasLista());
-    if (pe && (pe.tels || []).length) { it.telefones = mergePhones(it.telefones || [], pe.tels); it.jaIntimado = { quando: pe.quando, proc: pe.proc, tel: pe.tels[0] }; mudou = true; }
     return mudou;
   }
   function aplicarAgendaLista() {
@@ -9189,7 +9525,75 @@ function shrinkImage(file, maxSide, qual) {
     if ($('ctNovo')) { $('ctNovo').onclick = function () { abrirAgenda(); }; }
     $('ctAplicar').onclick = function () { var n = aplicarAgendaLista(); toast(n ? 'Agenda aplicada a ' + n + (n === 1 ? ' mandado.' : ' mandados.') : 'Nenhum mandado da lista combina com a agenda.'); };
   }
-  function abrirBancoPessoas(filtro) {
+  /* ---- Lista telefônica: pessoas guardadas (intimadas por WhatsApp) + as que você cadastrar + agenda; só consulta, nunca puxa número sozinho ---- */
+  function listaTelTodos() {
+    var l = pessoasLista().map(function (p) { return { id: p.id, nome: p.nome, tels: p.tels || [], origem: p.manual ? 'manual' : 'pessoa', proc: p.proc, quando: p.quando, obs: p.obs || '' }; });
+    contatosLista().forEach(function (c) { l.push({ id: c.id, nome: c.nome, tels: c.tels || [], origem: 'agenda', obs: '' }); });
+    return l.sort(function (a, b) { return norm(a.nome).localeCompare(norm(b.nome), 'pt'); });
+  }
+  function listaTelAchar(it) {
+    var pe = acharPessoa(it, pessoasLista());
+    if (pe && (pe.tels || []).length) { return { tels: pe.tels }; }
+    return null;
+  }
+  function listaTelTelHtml(t) {
+    var n = normPhone(t);
+    return n && n.ok && n.wa ? '<a href="https://wa.me/' + esc(n.wa) + '" target="_blank" rel="noopener">' + esc(n.label) + '</a>' : esc(t);
+  }
+  function listaTelHtml() {
+    var f = norm(listaTelFiltro), l = listaTelTodos().filter(function (p) { return !f || norm(p.nome).indexOf(f) !== -1 || p.tels.some(function (t) { return String(t).replace(/\D/g, '').indexOf(f.replace(/\D/g, '') || '§') !== -1; }); });
+    var h = '<div class="grp"><input type="text" id="ltQ" placeholder="Buscar na lista telefônica (nome ou número)" value="' + esc(listaTelFiltro) + '" autocomplete="off"><div class="actions"><button class="btn primary small" data-lt="novo">➕ Novo contato</button></div></div>';
+    if (listaTelForm) {
+      var ed = listaTelForm === 'novo' ? null : pessoasLista().filter(function (p) { return p.id === listaTelForm; })[0];
+      h += '<div class="grp"><strong>' + (ed ? 'Editar contato' : 'Novo contato') + '</strong><label class="f" for="ltNome">Nome</label><input type="text" id="ltNome" autocomplete="off" value="' + esc(ed ? ed.nome : '') + '"><label class="f" for="ltTel">WhatsApp (mais de um: separe com ponto e vírgula)</label><input type="text" id="ltTel" inputmode="tel" autocomplete="off" value="' + esc(ed ? (ed.tels || []).join('; ') : '') + '"><div class="actions"><button class="btn primary" data-lt="salvar">Salvar</button><button class="btn" data-lt="cancelar">Cancelar</button></div></div>';
+    }
+    h += '<p class="note">' + listaTelTodos().length + ' na lista' + (f ? ', mostrando ' + l.length : '') + '. Quando chegar um mandado com o nome de alguém daqui, o número aparece em vermelho no cartão com a palavra “lista”, só para você conferir se é a mesma pessoa. O app não usa esse número sozinho.</p>';
+    var letra = '';
+    l.forEach(function (p) {
+      var L = (norm(p.nome).charAt(0) || '#').toUpperCase();
+      if (L !== letra) { letra = L; h += '<h3 style="margin:12px 0 2px;font-size:16px">' + esc(L) + '</h3>'; }
+      var pe = p.origem !== 'agenda';
+      h += '<div class="grp"><strong>' + esc(p.nome) + '</strong>' + (p.origem === 'agenda' ? ' <span class="note">(agenda)</span>' : '') + '<br>' + (p.tels.length ? p.tels.map(listaTelTelHtml).join(' · ') : '<span class="note">sem número</span>') + (p.proc ? '<br><span class="note">Proc. ' + esc(p.proc) + '</span>' : '') +
+        '<div class="actions">' + (p.origem === 'agenda' ? '<button class="btn small" data-lt="agenda" data-id="' + esc(p.id) + '">Editar na agenda</button>' : '<button class="btn small" data-lt="edit" data-id="' + esc(p.id) + '">Editar</button><button class="btn small ghost" data-lt="del" data-id="' + esc(p.id) + '">Apagar</button>') + '</div></div>';
+    });
+    if (!l.length) { h += '<p class="empty">' + (f ? 'Ninguém com esse nome ou número.' : 'A lista está vazia. Quem você intimar por WhatsApp (positiva) entra aqui, e você também pode cadastrar à mão.') + '</p>'; }
+    h += '<label class="f" style="display:flex;gap:10px;align-items:center;margin-top:12px"><input type="checkbox" id="ltGuardar" style="width:24px;height:24px"' + (state.cfg.guardarPessoas === false ? '' : ' checked') + '> Guardar quem eu intimar por WhatsApp (positiva)</label>';
+    return h;
+  }
+  var listaTelFiltro = '', listaTelForm = '';
+  function listaTelAcoes(e) {
+    var q = e.target;
+    if (q && q.id === 'ltGuardar') { state.cfg.guardarPessoas = q.checked; save(); render(); return; }
+    var b = e.target.closest ? e.target.closest('[data-lt]') : null;
+    if (!b) { return; }
+    var a = b.getAttribute('data-lt'), id = b.getAttribute('data-id');
+    if (a === 'novo') { listaTelForm = 'novo'; render(); var n0 = document.getElementById('ltNome'); if (n0) { n0.focus(); } }
+    else if (a === 'edit') { listaTelForm = id; render(); }
+    else if (a === 'cancelar') { listaTelForm = ''; render(); }
+    else if (a === 'agenda') { abrirAgenda(id); }
+    else if (a === 'del') {
+      var pe = pessoasLista().filter(function (p) { return p.id === id; })[0];
+      if (!pe) { return; }
+      var bk = JSON.parse(JSON.stringify(pe));
+      state.cfg.pessoas = pessoasLista().filter(function (p) { return p.id !== id; }); save(); render();
+      toast('Contato apagado.', function () { state.cfg.pessoas = pessoasLista().concat([bk]); save(); render(); });
+    }
+    else if (a === 'salvar') {
+      var nome = String(document.getElementById('ltNome').value || '').trim(), tels = telsTexto(document.getElementById('ltTel').value).filter(function (x) { return normPhone(x).ok; });
+      if (!nome) { toast('Escreva o nome.'); return; }
+      if (!tels.length) { toast('Escreva um WhatsApp válido, com DDD.'); return; }
+      var lst = state.cfg.pessoas = pessoasLista().slice(), ed = listaTelForm !== 'novo' ? lst.filter(function (p) { return p.id === listaTelForm; })[0] : null;
+      if (ed) { ed.nome = nome; ed.nomeN = norm(nome); ed.tels = tels; }
+      else { lst.push({ id: uid(), nome: nome, nomeN: norm(nome), docFim: '', tels: tels, quando: Date.now(), proc: '', n: 1, manual: true }); }
+      listaTelForm = ''; save(); render(); toast('Contato salvo.');
+    }
+  }
+  document.getElementById('list').addEventListener('click', listaTelAcoes);
+  document.getElementById('list').addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'ltQ') { listaTelFiltro = e.target.value; var pos = e.target.selectionStart; render(); var q2 = document.getElementById('ltQ'); if (q2) { q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (x) { /* sem seleção */ } } }
+  });
+  function abrirBancoPessoas() { tab = 'lista'; closeModal(); render(); window.scrollTo(0, 0); }
+  function abrirBancoPessoasAntigo(filtro) {
     var l = pessoasLista().slice().sort(function (a, b) { return (b.quando || 0) - (a.quando || 0); }), f = norm(filtro || '');
     var vis = f ? l.filter(function (p) { return p.nomeN.indexOf(f) !== -1; }) : l;
     function $(id) { return document.getElementById(id); }
@@ -9347,9 +9751,7 @@ function shrinkImage(file, maxSide, qual) {
   /* só entra na fila o que precisa de ação agora: o mandado só eletrônico cuja 1ª mensagem está dentro do prazo fica de fora */
   function cumprElegivel(i) {
     if (!i || i.status !== 'pendente') { return false; }
-    if (etipo(i) === 'local') { return true; }
-    var oi = onlineInfo(i, Date.now());
-    return oi.n === 0 || oi.repetir || oi.pronto;
+    return etipo(i) === 'local';
   }
   /* fila de navegação, na ordem da rota; o cartão que está na tela não some na hora, mesmo que a mensagem já tenha sido mandada */
   function cumprLista() {
@@ -9363,7 +9765,7 @@ function shrinkImage(file, maxSide, qual) {
   }
   function iniciarCumprimento() {
     var rota = rotaSel().filter(function (i) { return i.status === 'pendente'; });      /* a rota inteira, na ordem dela (as 10 marcadas servem só para enviar) */
-    var extras = sortedSel().filter(function (i) { return etipo(i) !== 'local' && i.status === 'pendente'; });
+    var extras = [];
     var todas = rota.concat(extras);
     if (!todas.length) { toast('Não há paradas na rota.'); return; }
     var lista = todas.filter(cumprElegivel);
@@ -9378,6 +9780,38 @@ function shrinkImage(file, maxSide, qual) {
     var real = ra.acum || 0, est = (ra.est || 0) * 60000, dif = Math.round((real - est) / 60000);
     return '<p>Tempo: <strong>' + fmtDur(real) + '</strong>' + (est ? ' · estimado ' + fmtDur(est) + ' (' + (dif === 0 ? 'igual à estimativa' : Math.abs(dif) + ' min a ' + (dif > 0 ? 'mais' : 'menos')) + ')' : '') + '</p>';
   }
+  /* trechos de 10 na ordem travada da rota: cards 1-10, 11-20, 21-30... (só o que ainda falta) */
+  function cumprGrupo(ra, g) {
+    var ids = ra.ids.slice(g * 10, g * 10 + 10), rest = rotaRestantes();
+    return ids.filter(function (id) { return rest.indexOf(id) !== -1; }).map(byId).filter(Boolean);
+  }
+  function cumprLinksGrupo(ra, g) {
+    var ch = cumprGrupo(ra, g); if (!ch.length) { return null; }
+    var origin = '';
+    if (g > 0) {
+      var ant = ra.ids.slice(0, g * 10).map(byId).filter(Boolean);
+      if (ant.length) { origin = textoParada(ant[ant.length - 1]); }
+    } else { origin = saidaGpsOn() ? '' : String(state.origin || '').trim(); }
+    return { ch: ch, a: mapsUrl(origin, ch), b: mapsUrlB(origin, ch) };
+  }
+  function cumprGrupoHtml(ra, g, comLista) {
+    var L = cumprLinksGrupo(ra, g); if (!L) { return ''; }
+    var ini = g * 10 + 1, fim = g * 10 + L.ch.length;
+    return '<div class="grp cumprtrecho"><p style="margin:0 0 6px"><strong>Rota dos cards ' + ini + ' a ' + fim + '</strong> (' + L.ch.length + (L.ch.length === 1 ? ' endereço' : ' endereços') + ')</p>' +
+      (comLista ? '<ol class="note" style="margin:0 0 8px;padding-left:20px">' + L.ch.map(function (c) { return '<li>' + esc(textoParada(c)) + '</li>'; }).join('') + '</ol>' : '') +
+      '<div class="actions"><a class="btn primary" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(L.a) + '">Abrir no Maps</a><a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="' + esc(L.b) + '">Abrir pelas coordenadas</a></div></div>';
+  }
+  function cumprTrechoDoCard(ra, lista, id) {
+    var ord = (ra.ord && ra.ord[id]) || (ra.ids.indexOf(id) + 1), g = Math.floor((ord - 1) / 10);
+    var primeiro = lista.filter(function (x) { return Math.floor((((ra.ord && ra.ord[x]) || (ra.ids.indexOf(x) + 1)) - 1) / 10) === g; })[0];
+    return primeiro === id ? cumprGrupoHtml(ra, g, true) : '';
+  }
+  function cumprGruposTodos(ra) {
+    var h = '', ng = Math.ceil(ra.ids.length / 10);
+    for (var g = 0; g < ng; g++) { h += cumprGrupoHtml(ra, g, false); }
+    return h || '<p class="note">Todos os trechos já foram atendidos.</p>';
+  }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.cumpr = { seed: function (items) { state.items = items; items.forEach(function (i) { sel[i.id] = true; }); iniciarCumprimento(); return state.rotaAtiva && state.rotaAtiva.ids.length; }, html: function () { return cumprHtml(); }, ir: function (d) { return cumprIr(d); }, estado: function () { return { ids: state.rotaAtiva && state.rotaAtiva.ids, cur: state.rotaAtiva && state.rotaAtiva.cur, tempos: state.tempos, ativo: cumprAtivo() }; } };
   function cumprHtml() {
     var ra = state.rotaAtiva, lista = cumprLista(), n = ra.ids.length;
     if (!lista.length) {
@@ -9388,7 +9822,7 @@ function shrinkImage(file, maxSide, qual) {
     if (!ra.ord) { ra.ord = {}; ra.ids.forEach(function (x, j) { ra.ord[x] = j + 1; }); }
     if (cumprUltimo !== id) { cumprUltimo = id; window.scrollTo(0, 0); }
     var an = cumprAnim; cumprAnim = '';
-    return '<div class="cumprwrap' + (an ? ' in-' + an : '') + '" id="cumprWrap">' + card(it, ra.ord[id]) + '</div>';
+    return '<div class="cumprwrap' + (an ? ' in-' + an : '') + '" id="cumprWrap">' + card(it, ra.ord[id]) + cumprTrechoDoCard(ra, lista, id) + '</div>';
   }
   function cumprBarra() {
     var el = document.getElementById('cumprBar'), on = cumprAtivo();
@@ -9457,11 +9891,20 @@ function shrinkImage(file, maxSide, qual) {
     if (b.getAttribute('data-cb') === 'min') { ra.cumpr = false; ra.ids.forEach(function (id) { var x = byId(id); if (x && x.status === 'pendente') { sel[id] = true; } }); save(); render(); document.getElementById('btnRoute').onclick(); toast('Cumprimento minimizado. O cronômetro continua.'); return; }
       if (b.getAttribute('data-cb') === 'reiniciar') { ra.acum = 0; ra.seg = Date.now(); save(); render(); toast('Cronômetro reiniciado.'); return; }
       if (b.getAttribute('data-cb') === 'sair') {
-      var voltarRota = false;
-      if (!cumprLista().length) { state.rotaAtiva = null; toast('Cumprimento concluído.'); }
-      else { ra.acum = tempoDecorrido(ra); ra.seg = null; ra.cumpr = false; ra.ids.forEach(function (id) { var x = byId(id); if (x && x.status === 'pendente') { sel[id] = true; } }); voltarRota = true; }
+      var restam = cumprLista().length, feitos = ra.ids.length - restam;
+      if (!restam) { state.rotaAtiva = null; toast('Cumprimento concluído.'); }
+      else {
+        /* sair encerra de verdade: guarda o que foi feito para as estatísticas; o que não foi atendido continua pendente em Mandados */
+        ra.acum = tempoDecorrido(ra); ra.seg = null;
+        if (!ra.tFim && feitos > 0) {
+          var raEst = { est: Math.round((ra.est || 0) * feitos / ra.ids.length), acum: ra.acum };
+          registrarTempo(raEst, feitos);
+          var ult = state.tempos[state.tempos.length - 1]; if (ult) { ult.parcial = true; ult.total = ra.ids.length; }
+        }
+        state.rotaAtiva = null;
+        toast('Cumprimento encerrado: ' + feitos + ' de ' + ra.ids.length + ' atendidos (' + fmtDur(ra.acum) + '). O que faltou continua em Mandados.');
+      }
       save(); render();
-      if (voltarRota) { document.getElementById('btnRoute').onclick(); }
     }
   });
   function iniciarRota() {
@@ -9582,7 +10025,17 @@ function shrinkImage(file, maxSide, qual) {
     return '<div class="actions">' + (zapHref(txt) ? '<a class="btn primary" style="text-decoration:none" id="rZapWa" href="' + zapHref(txt) + '">Mandar todas as rotas por WhatsApp' + esc(zapRotulo()) + '</a>' : '') + '<button class="btn" id="rZapGo" data-smsall="1">Todas as rotas: ' + esc(smsBotao()) + '</button><a class="btn small ghost" style="text-decoration:none" href="' + smsHref(txt) + '">Tentar abrir direto no Mensagens</a></div>' +
       (meuSmsTxt() ? '' : '<p class="note">Sem número, o SMS abre sem destinatário e você escolhe para quem mandar. Para fixar o número, escreva em Meus dados.</p>');
   }
+    var pulaDevidos = false;
     document.getElementById('btnRoute').onclick = function () {
+    if (cumprAtivo()) {
+      openModal('Rota travada', '<p class="note">O modo cumprimento está aberto: a ordem da rota não muda mais. Para refazer a rota, saia do modo cumprimento.</p>' + cumprGruposTodos(state.rotaAtiva) + '<div class="actions"><button class="btn primary" id="rtFecha">Voltar ao cumprimento</button></div>');
+      document.getElementById('rtFecha').onclick = function () { closeModal(); };
+      return;
+    }
+    if (!pulaDevidos) {
+      var dvl = devidosRota();
+      if (dvl.length) { abrirDevidos(dvl, function () { pulaDevidos = true; try { document.getElementById('btnRoute').onclick(); } finally { pulaDevidos = false; } }); return; }
+    }
     if (!sortedSel().length) { toast('Marque os cartões que vão na rota.'); return; }
     modoReord = false; rotaIniAberta = false;
     if (!rotaSel().length) { openModal('Rota de hoje', '<p>Nenhum dos mandados marcados tem endereço físico em ' + cidadesTxt() + ', então não há rota para montar.</p>' + foraDaRota()); return; }
