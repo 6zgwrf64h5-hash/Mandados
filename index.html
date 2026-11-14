@@ -2701,6 +2701,7 @@ var _ruasIdx = null;
   function geoGoogleDe(x) { var g = _geoGoogle[chaveGeo(x)]; return g && g.t && !g.nao && Date.now() - g.t <= GEO_VALIDADE ? g : null; }
   /* Pontos que valem mais que o mapa da rua: o que você colou, o que o Google achou, o número da casa no pacote */
   function pontoOverride(x) {
+    if (x.localReal && isFinite(x.localReal.la) && isFinite(x.localReal.lo)) { return [x.localReal.la, x.localReal.lo]; }
     if (x.endRotaManual) { var mm = coordManual(x); if (mm) { return mm; } }
     var g = geoGoogleDe(x);
     if (g) { return [g.la, g.lo]; }
@@ -3251,6 +3252,7 @@ function refinarCaminho(lista, inicio, fixos, fimFixo) {
 }
 /* De onde veio o ponto usado para a parada (para o usuário poder conferir) */
 function fonteDoPonto(x) {
+  if (x.localReal && isFinite(x.localReal.la)) { return 'local exato gravado por você' + (x.localReal.t ? ' em ' + new Date(x.localReal.t).toLocaleDateString('pt-BR') : ''); }
   var end = x.endRota && !ehCoord(x.endRota) ? x.endRota : (x.ruaRef || x.endereco), k = chaveDoEndereco(end);
   if (x.endRotaManual && coordManual(x)) { return 'ponto que você colou'; }
   var gg = geoGoogleDe(x);
@@ -4168,9 +4170,40 @@ window.__iniciarApp = function () {
     } catch (e) { if (e && /cifrados/.test(e.message || '')) { throw e; } }
     return null;
   }
-  function save() { guardarPessoasPositivas(); gravarState(); if (!state.syncOn) { ligarCopiaSozinha(); } schedulePush(); }
+  function save() { aplicarLocaisReais(); guardarPessoasPositivas(); gravarState(); if (!state.syncOn) { ligarCopiaSozinha(); } schedulePush(); }
   function segGet(k) { try { return (window.__cofre && window.__cofre.lerSeg) ? window.__cofre.lerSeg(k) : localStorage.getItem(k); } catch (e) { return null; } }
   function segSet(k, v) { try { if (window.__cofre && window.__cofre.gravarSeg) { window.__cofre.gravarSeg(k, v); } else if (v) { localStorage.setItem(k, v); } else { localStorage.removeItem(k); } } catch (e) { /* sem acesso */ } }
+  /* Local exato (GPS) gravado no mandado, sem mexer no endereço; vale também para outros mandados do mesmo endereço */
+  function chaveLocalReal(i) { return norm(enderecoSimples(i.endereco).texto) + '|' + norm(i.bairro || '') + '|' + norm(i.cidade || ''); }
+  function aplicarLocaisReais() {
+    var m = state && state.cfg && state.cfg.locaisReais; if (!m) { return; }
+    var ks = Object.keys(m); if (!ks.length) { return; }
+    (state.items || []).forEach(function (i) { if (!i.localReal && i.endereco) { var L = m[chaveLocalReal(i)]; if (L) { i.localReal = L; } } });
+  }
+  function gravarLocalReal(it) {
+    if (!navigator.geolocation) { toast('Este aparelho não oferece localização aqui.'); return; }
+    toast('Lendo a localização… fique no local.');
+    navigator.geolocation.getCurrentPosition(function (pp) {
+      var ant = it.localReal || null, L = { la: +pp.coords.latitude.toFixed(6), lo: +pp.coords.longitude.toFixed(6), pr: Math.round(pp.coords.accuracy || 0), t: Date.now() };
+      var mem = (state.cfg.locaisReais = state.cfg.locaisReais || {}), ch = chaveLocalReal(it), antMem = mem[ch] || null;
+      it.localReal = L; mem[ch] = L; save(); render();
+      toast('Local exato gravado' + (L.pr ? ' (±' + L.pr + ' m)' : '') + '. O endereço do mandado não foi alterado.' + (L.pr > 50 ? ' Precisão baixa: se puder, regrave a céu aberto.' : ''), function () {
+        if (ant) { it.localReal = ant; } else { delete it.localReal; } if (antMem) { mem[ch] = antMem; } else { delete mem[ch]; } save(); render();
+      });
+    }, function (er) { toast(er && er.code === 1 ? 'Localização negada. No iPhone: Ajustes > Privacidade > Serviços de Localização.' : 'Não consegui a sua posição agora.'); },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+  }
+  function apagarLocalReal(it) {
+    var ant = it.localReal || null, mem = state.cfg.locaisReais || {}, ch = chaveLocalReal(it), antMem = mem[ch] || null;
+    delete it.localReal; delete mem[ch]; save(); render();
+    toast('Local exato apagado. Volta a valer o endereço do mandado.', function () { it.localReal = ant; if (antMem) { (state.cfg.locaisReais = state.cfg.locaisReais || {})[ch] = antMem; } save(); render(); });
+  }
+  function localRealHtml(i) {
+    var L = i.localReal;
+    if (!L) { return '<div class="actions"><button class="btn small" data-act="gravarlocal">📍 Gravar local exato (GPS)</button></div>'; }
+    var d = new Date(L.t || 0), dd = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+    return '<p class="meta">📍 Local exato gravado em ' + dd + (L.pr ? ' (±' + L.pr + ' m)' : '') + '. A navegação e o mapa usam esse ponto; o endereço do mandado não foi alterado. <a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + L.la + ',' + L.lo + '">ver no mapa</a></p><div class="actions"><button class="btn small" data-act="gravarlocal">Regravar aqui</button><button class="btn small ghost" data-act="apagarlocal">Apagar local</button></div>';
+  }
   function gravarState() {
     var t = JSON.stringify(state);
     if (window.__cofre && window.__cofre.ativo()) { window.__cofre.gravarEstado(t); return; }
@@ -4201,6 +4234,7 @@ window.__iniciarApp = function () {
   state.files = state.files || [];
   state.apagados = state.apagados || [];
   state.cfg = state.cfg || {};
+  aplicarLocaisReais();
   setDDD(state.cfg.ddd || '');
   setSede(state.cfg.comarca, state.cfg.uf, state.cfg.tribunal);
   setPadroes(state.cfg.padroes);
@@ -5671,7 +5705,7 @@ window.__iniciarApp = function () {
       h += '<div class="grp on ' + corWa + '"><div class="grp-h"><p class="grp-t">WhatsApp Virtual</p>' + addBtn + '</div>' + onl + '</div>';
       if (parPrin) { h += '<div class="grp cert2"><p class="grp-t">Certificar</p><div class="resp"><button class="rbtn neg" data-act="resp" data-p="' + parPrin + '" data-t="neg"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg> Negativo' + (i.partes && i.partes.fis && i.partes.fis.t && i.partes.fis.tipo !== 'positiva' && i.status === 'pendente' ? '<small class="rsub">física certificada em ' + fmtDH(i.partes.fis.t) + '</small>' : '') + '</button><div class="rpos"><button class="rbtn pos" data-act="resp" data-p="' + parPrin + '" data-t="pos"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg> Positivo</button>' + (loc && temOn2 ? '<button class="rbtn rwa" data-act="resp" data-p="on" data-t="pos" aria-label="Positivo virtual (WhatsApp)" title="Positivo virtual (WhatsApp)"><span class="wai" aria-hidden="true"></span></button>' : '') + '</div></div></div>'; }
       if (loc) {
-        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : (i.semZapObs && i.semZapObs.nums && i.semZapObs.nums.length ? '<label class="dgop semzapobs"><input type="checkbox" data-szobs="1"' + (i.semZapObs.on !== false ? ' checked' : '') + '> Constar na certidão: telefone ' + esc(i.semZapObs.nums.join(', ')) + ' sem WhatsApp</label>' : '') + '<div class="visgrp' + ((i.visitas || []).length ? ' tem' : '') + '"><button class="btn small primary wide" data-act="visita"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z"/></svg> Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª diligência física</button>' + ((i.visitas || []).length ? '<button class="notasbtn" type="button" data-act="notas" aria-label="Ver as anotações das diligências" title="Anotações das diligências">📝<sup>' + (i.visitas || []).length + '</sup></button>' : '') + '</div>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' diligências</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small certfora" data-act="certfora" aria-label="Encaminhar para Certidões (certificado por outro meio)" title="Encaminhar para Certidões">✅</button><button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
+        h += '<div class="grp fis"><p class="grp-t">Presencial (no endereço)</p>' + '<div class="selhid">' + selParte('fis') + '</div>' + localRealHtml(i) + '<div class="actions">' + (fisicaFeita(i) ? '<button class="btn small ghost" data-act="fisundo">Desfazer diligência física</button>' : (i.semZapObs && i.semZapObs.nums && i.semZapObs.nums.length ? '<label class="dgop semzapobs"><input type="checkbox" data-szobs="1"' + (i.semZapObs.on !== false ? ' checked' : '') + '> Constar na certidão: telefone ' + esc(i.semZapObs.nums.join(', ')) + ' sem WhatsApp</label>' : '') + '<div class="visgrp' + ((i.visitas || []).length ? ' tem' : '') + '"><button class="btn small primary wide" data-act="visita"><svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6 8 15.6l1-4z"/></svg> Registrar ' + (((i.visitas || []).length >= 3 ? 3 : (i.visitas || []).length + 1)) + 'ª diligência física</button>' + ((i.visitas || []).length ? '<button class="notasbtn" type="button" data-act="notas" aria-label="Ver as anotações das diligências" title="Anotações das diligências">📝<sup>' + (i.visitas || []).length + '</sup></button>' : '') + '</div>' + ((i.visitas || []).length >= 2 ? '<button class="btn small" data-act="visfim">Encerrar com ' + (i.visitas || []).length + ' diligências</button>' : '') + ((i.visitas || []).length ? '<button class="btn small ghost" data-act="visdel">Desfazer última visita</button>' : '') + '') + (fileOk(i) ? '<button class="btn small" data-act="ver">Ver mandado</button>' : '') + '<button class="btn small certfora" data-act="certfora" aria-label="Encaminhar para Certidões (certificado por outro meio)" title="Encaminhar para Certidões">✅</button><button class="btn small ghost" data-act="del">Excluir</button>' + ((isBA(i) || atoPalavras(i.tipo).bem) ? '<button class="btn small wide" data-act="auto">Auto de ' + autoDoAto(i.tipo).toLowerCase() + '</button>' : '') + '</div></div>';
       }
       if (!((temNum && temNumero) || loc)) { h += '<div class="grp cer"><div class="actions"><button class="btn small primary wide" data-act="certmenu">' + (pronto(i) ? 'Certificar (pronto)' : 'Certificar') + '</button></div></div>'; }
       var man = '';
@@ -6296,6 +6330,8 @@ window.__iniciarApp = function () {
       if (act === 'prioauto') { delete it.prio; } else { it.prio = act === 'prioini' ? 'inicio' : (act === 'priofim' ? 'fim' : 'normal'); }
       save(); render(); toast(act === 'prioini' ? 'A rota começa por este mandado.' : (act === 'priofim' ? 'Este mandado fica por último na rota.' : (act === 'prionormal' ? 'Não conta mais como prioridade.' : 'Prioridade automática.')));
     }
+    else if (act === 'gravarlocal') { gravarLocalReal(it); }
+    else if (act === 'apagarlocal') { apagarLocalReal(it); }
     else if (act === 'fisundo') { it.fisica = null; save(); render(); toast('Diligência física desfeita.'); }
     else if (act === 'visita') {
       it.visitas = it.visitas || [];
@@ -9758,6 +9794,7 @@ function shrinkImage(file, maxSide, qual) {
     return nome.toLowerCase().replace(/(^|\s)(\S)/g, function (m, a1, b1) { return a1 + b1.toUpperCase(); }).replace(/\s(Do|Da|De|Dos|Das)\s/g, function (m) { return m.toLowerCase(); });
   }
   function textoParada(i) {
+    if (i.localReal && isFinite(i.localReal.la) && isFinite(i.localReal.lo)) { return i.localReal.la.toFixed(6) + ',' + i.localReal.lo.toFixed(6); }
     if (i.endRota && RE_COORD.test(i.endRota)) { return i.endRota.replace(/\s+/g, ''); }
     if (i.endRota) { return i.endRota + ', ' + cidadeNome(i); }
     return enderecoSimples(i.endereco).texto + ', ' + cidadeNome(i);
