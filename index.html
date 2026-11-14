@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https: blob: data:; worker-src 'self' blob:; frame-src 'self' blob:; media-src 'self' blob: data:; font-src 'self' data:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mandados do dia</title>
@@ -1325,13 +1326,84 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
     var km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
     return b64(new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt, iterations: iter, hash: 'SHA-256' }, km, 256)));
   }
-  async function definir(pin, seg) {
-    var o = ler() || {}, n = { seg: seg };
-    if (o.cred) { n.cred = o.cred; }
-    if (pin) { var salt = crypto.getRandomValues(new Uint8Array(16)); n.s = b64(salt); n.h = await hash(pin, salt, ITER); n.i = ITER; }
-    else if (o.h) { n.s = o.s; n.h = o.h; n.i = o.i; }
-    localStorage.setItem(LK, JSON.stringify(n));
+  /* ===== Cofre: dados guardados cifrados (AES-256-GCM) com uma chave aleatória protegida pelo PIN (e pelo Face ID, se o aparelho der PRF) ===== */
+  var VITER = 600000, SAL_PRF = new TextEncoder().encode('mandados-cofre-v1'), VK = null, VRAW = null, ultimoBits = null, claro = false, cbs = [], estadoTxt = null, segMem = {}, SEGK = ['mandados-ia', 'mandados-ia-chave', 'mandados-google-chave'], MKEY = 'mandados-v3', pend = null, rodando = false;
+  function temCofre() { var o = ler(); return !!(o && o.vk); }
+  function cofreAtivo() { return !!VK && !claro; }
+  function quandoPronto(f) { if (!temCofre() || VK) { f(); } else { cbs.push(f); } }
+  async function derivar(pin, salt, iter) {
+    var km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+    return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt, iterations: iter, hash: 'SHA-256' }, km, 256));
   }
+  function aesDe(bytes) { return crypto.subtle.importKey('raw', bytes, 'AES-GCM', true, ['encrypt', 'decrypt']); }
+  async function verificador(bits) { var j = new Uint8Array(bits.length + 1); j.set(bits); j[bits.length] = 118; return b64(new Uint8Array(await crypto.subtle.digest('SHA-256', j))); }
+  async function embrulhar(raw, chave) { var iv = crypto.getRandomValues(new Uint8Array(12)); var ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, chave, raw)); return { iv: b64(iv), ct: b64(ct) }; }
+  async function desembrulhar(w, chave) { return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: deb64(w.iv) }, chave, deb64(w.ct))); }
+  async function cifrarTexto(t) { var iv = crypto.getRandomValues(new Uint8Array(12)); var ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, VK, new TextEncoder().encode(t))); return JSON.stringify({ enc: 1, iv: b64(iv), ct: b64(ct) }); }
+  async function decifrarTexto(env) { return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: deb64(env.iv) }, VK, deb64(env.ct))); }
+  async function cifrarBlob(b) { var iv = crypto.getRandomValues(new Uint8Array(12)); var ab = await b.arrayBuffer(); var ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, VK, ab); return { enc: 1, iv: iv, data: ct, type: b.type || '' }; }
+  async function decifrarBlob(v) { var pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: v.iv }, VK, v.data); return new Blob([pt], { type: v.type || '' }); }
+  function gravarEstado(t) {
+    pend = t; if (rodando) { return; } rodando = true;
+    (async function () {
+      try { while (pend !== null) { var x = pend; pend = null; var env = await cifrarTexto(x); try { localStorage.setItem(MKEY, env); } catch (e) { /* sem espaço */ } } } catch (e) { /* ignora */ }
+      rodando = false;
+    })();
+  }
+  function drenar() { return new Promise(function (res) { (function w() { if (!rodando && pend === null) { res(); } else { setTimeout(w, 20); } })(); }); }
+  async function abrirSegredos() {
+    segMem = {};
+    for (var q = 0; q < SEGK.length; q++) {
+      var r = null; try { r = localStorage.getItem(SEGK[q]); } catch (e) { r = null; }
+      if (r === null) { continue; }
+      if (r.indexOf('enc:') === 0) { try { segMem[SEGK[q]] = await decifrarTexto(JSON.parse(r.slice(4))); } catch (e) { /* ilegível */ } } else { segMem[SEGK[q]] = r; }
+    }
+  }
+  function lerSeg(k) {
+    if (VK && !claro) { return Object.prototype.hasOwnProperty.call(segMem, k) ? segMem[k] : null; }
+    try { return localStorage.getItem(k); } catch (e) { return null; }
+  }
+  function gravarSeg(k, v) {
+    if (v === null || v === undefined || v === '') { delete segMem[k]; try { localStorage.removeItem(k); } catch (e) { /* sem acesso */ } return Promise.resolve(); }
+    if (cofreAtivo()) { segMem[k] = v; return cifrarTexto(v).then(function (env) { try { localStorage.setItem(k, 'enc:' + env); } catch (e) { /* sem espaço */ } }); }
+    try { localStorage.setItem(k, v); } catch (e) { /* sem acesso */ }
+    return Promise.resolve();
+  }
+  async function carregarCofre(raw) {
+    VRAW = raw; VK = await aesDe(raw);
+    try {
+      var r = null; try { r = localStorage.getItem(MKEY); } catch (e) { r = null; }
+      estadoTxt = null;
+      if (r && r.indexOf('{"enc":1,') === 0) { estadoTxt = await decifrarTexto(JSON.parse(r)); }
+      await abrirSegredos();
+    } catch (e) { VK = null; VRAW = null; estadoTxt = null; throw e; }
+    var f = cbs.splice(0); f.forEach(function (fn) { try { fn(); } catch (e) { setTimeout(function () { throw e; }); } });
+  }
+  async function definir(pin, seg) {
+    var o = ler() || {}, n = { seg: seg }, novo = false;
+    ['cred', 'prf', 'fw', 'vk', 'mig', 's', 'h', 'i'].forEach(function (k) { if (o[k] !== undefined) { n[k] = o[k]; } });
+    if (pin) {
+      var salt = crypto.getRandomValues(new Uint8Array(16)), bits = await derivar(pin, salt, VITER);
+      novo = !VRAW; var raw = VRAW || crypto.getRandomValues(new Uint8Array(32));
+      n.s = b64(salt); n.i = VITER; n.h = await verificador(bits); n.vk = await embrulhar(raw, await aesDe(bits));
+      if (novo) { n.mig = 0; }
+      localStorage.setItem(LK, JSON.stringify(n));
+      if (novo) { VRAW = raw; VK = await aesDe(raw); await abrirSegredos(); }
+    } else { localStorage.setItem(LK, JSON.stringify(n)); }
+    if (novo && window.__migrarCofre) { await window.__migrarCofre('cifrar'); }
+  }
+  async function abrirComPin(pin) {
+    var o = ler(); if (!o) { return true; }
+    if (o.vk) {
+      if (VK) { ultimoBits = null; return true; }
+      var bits = ultimoBits || await derivar(pin, deb64(o.s), o.i); ultimoBits = null;
+      await carregarCofre(await desembrulhar(o.vk, await aesDe(bits)));
+      return true;
+    }
+    if (o.h) { await definir(pin, o.seg); return true; }
+    return true;
+  }
+  function marcarMig() { var o = ler(); if (!o) { return; } o.mig = 1; localStorage.setItem(LK, JSON.stringify(o)); }
   /* Face ID / Touch ID: WebAuthn com autenticador do aparelho; nada sai do iPhone */
   async function faceDisponivel() {
     try { return !!(window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()); } catch (e) { return false; }
@@ -1341,11 +1413,23 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
       challenge: crypto.getRandomValues(new Uint8Array(32)), rp: { name: 'Mandados do dia', id: location.hostname },
       user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'oficial', displayName: 'Oficial de Justiça' },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' }, timeout: 60000, attestation: 'none' } });
-    var o = ler() || { seg: 60 }; o.cred = b64(new Uint8Array(c.rawId));
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'required' }, extensions: { prf: {} }, timeout: 60000, attestation: 'none' } });
+    var ext = c.getClientExtensionResults ? c.getClientExtensionResults() : {};
+    var o = ler() || { seg: 60 }; o.cred = b64(new Uint8Array(c.rawId)); o.prf = !!(ext.prf && ext.prf.enabled); delete o.fw;
     localStorage.setItem(LK, JSON.stringify(o));
+    if (o.prf && VK && VRAW) { try { await faceEmbrulhar(); } catch (e) { /* o cofre fica só com o PIN */ } }
   }
-  function faceRemover() { var o = ler(); if (!o) { return; } delete o.cred; if (!o.h) { localStorage.removeItem(LK); } else { localStorage.setItem(LK, JSON.stringify(o)); } }
+  async function faceEmbrulhar() {
+    var o = ler(); if (!o || !o.cred || !VRAW) { return false; }
+    var r = await navigator.credentials.get({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), rpId: location.hostname,
+      allowCredentials: [{ type: 'public-key', id: deb64(o.cred), transports: ['internal'] }], userVerification: 'required', timeout: 60000, extensions: { prf: { eval: { first: SAL_PRF } } } } });
+    var e = r && r.getClientExtensionResults ? r.getClientExtensionResults() : {}, f = e.prf && e.prf.results && e.prf.results.first;
+    if (!f) { return false; }
+    o.fw = await embrulhar(VRAW, await aesDe(new Uint8Array(f)));
+    localStorage.setItem(LK, JSON.stringify(o));
+    return true;
+  }
+  function faceRemover() { var o = ler(); if (!o) { return; } delete o.cred; delete o.fw; delete o.prf; if (!o.h) { localStorage.removeItem(LK); } else { localStorage.setItem(LK, JSON.stringify(o)); } }
   /* Diagnóstico: o Face ID deste aparelho consegue gerar uma chave de criptografia (PRF)? Não altera o bloqueio. */
   async function testarPrf(log) {
     function hx(b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
@@ -1378,16 +1462,33 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
     var o = ler();
     if (!o || !o.cred) { return false; }
     try {
-      var r = await navigator.credentials.get({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), rpId: location.hostname,
-        allowCredentials: [{ type: 'public-key', id: deb64(o.cred), transports: ['internal'] }], userVerification: 'required', timeout: 60000 } });
-      return !!r;
+      var pk = { challenge: crypto.getRandomValues(new Uint8Array(32)), rpId: location.hostname,
+        allowCredentials: [{ type: 'public-key', id: deb64(o.cred), transports: ['internal'] }], userVerification: 'required', timeout: 60000 };
+      if (o.vk && !VK && o.prf && o.fw) { pk.extensions = { prf: { eval: { first: SAL_PRF } } }; }
+      var r = await navigator.credentials.get({ publicKey: pk });
+      if (!r) { return false; }
+      if (o.vk && !VK) {
+        var e = r.getClientExtensionResults ? r.getClientExtensionResults() : {}, f = e.prf && e.prf.results && e.prf.results.first;
+        if (!f || !o.fw) { return false; }
+        await carregarCofre(await desembrulhar(o.fw, await aesDe(new Uint8Array(f))));
+      }
+      return true;
     } catch (e) { return false; }
   }
   function mudarTempo(seg) { var o = ler(); if (!o) { return; } o.seg = seg; localStorage.setItem(LK, JSON.stringify(o)); }
-  function remover() { try { localStorage.removeItem(LK); } catch (e) { /* sem acesso */ } esconde(); }
-  async function confere(pin) { var o = ler(); if (!o) { return true; } if (!o.h) { return false; } return (await hash(pin, deb64(o.s), o.i || ITER)) === o.h; }
+  async function remover() {
+    if (temCofre() && VK && window.__migrarCofre) { await window.__migrarCofre('claro'); }
+    try { localStorage.removeItem(LK); } catch (e) { /* sem acesso */ }
+    VK = null; VRAW = null; claro = false; segMem = {}; esconde();
+  }
+  async function confere(pin) {
+    var o = ler(); if (!o) { return true; } if (!o.h) { return false; }
+    if (o.vk) { var bits = await derivar(pin, deb64(o.s), o.i); ultimoBits = bits; return (await verificador(bits)) === o.h; }
+    return (await hash(pin, deb64(o.s), o.i || ITER)) === o.h;
+  }
   function esconde() { if (ov && ov.parentNode) { ov.parentNode.removeChild(ov); } ov = null; document.documentElement.style.overflow = ''; }
   function apagarTudo() {
+    VK = null; VRAW = null; segMem = {}; estadoTxt = null;
     try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf('mandados') === 0) { localStorage.removeItem(k); } }); } catch (e) { /* sem acesso */ }
     ['mandados-files', 'mandados-ruas'].forEach(function (n) { try { indexedDB.deleteDatabase(n); } catch (e) { /* sem acesso */ } });
     setTimeout(function () { location.reload(); }, 400);
@@ -1417,14 +1518,14 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
       var v = String(pin.value || '').trim();
       if (!v) { return; }
       var ok = false; try { ok = await confere(v); } catch (e) { ok = false; }
-      if (ok) { erros = 0; esconde(); return; }
+      if (ok) { var ab = false; try { ab = await abrirComPin(v); } catch (e) { ab = false; } if (ab) { erros = 0; esconde(); return; } msg.textContent = 'Não consegui abrir os dados com este PIN. Tente de novo.'; pin.value = ''; return; }
       erros++; pin.value = '';
       if (erros >= 5) { ate = Date.now() + Math.min(300, 15 * Math.pow(2, erros - 5)) * 1000; msg.textContent = 'PIN errado. Aguarde antes de tentar de novo.'; }
       else { msg.textContent = 'PIN errado. Restam ' + (5 - erros) + ' tentativas antes de esperar.'; }
     }
     if (document.getElementById('lkOk')) { document.getElementById('lkOk').onclick = tenta; }
     if (document.getElementById('lkPin')) { pin.onkeydown = function (e) { if (e.key === 'Enter') { tenta(); } }; }
-    async function viaFace() { msg.textContent = ''; if (await faceEntrar()) { erros = 0; esconde(); } else { msg.textContent = 'Não consegui confirmar o Face ID. Toque no botão para tentar de novo.'; } }
+    async function viaFace() { msg.textContent = ''; if (await faceEntrar()) { erros = 0; esconde(); } else { msg.textContent = (temCofre() && !VK) ? 'Para abrir os dados guardados, digite o PIN.' : 'Não consegui confirmar o Face ID. Toque no botão para tentar de novo.'; } }
     if (document.getElementById('lkFace')) { document.getElementById('lkFace').onclick = viaFace; if (autoFace) { setTimeout(function () { faceEntrar().then(function (ok) { if (ok && ov) { esconde(); } }); }, 150); } }
     document.getElementById('lkEsq').onclick = function (e) { e.preventDefault(); document.getElementById('lkEsqBox').hidden = false; };
     document.getElementById('lkApaga').onclick = function () { if (window.confirm('Apagar todos os mandados e PDFs deste aparelho? Só dá para voltar com um backup em arquivo.')) { apagarTudo(); } };
@@ -1437,7 +1538,8 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
     else if ((o.seg >= 0 && Date.now() - ocultoEm >= (o.seg || 0) * 1000) || (ov && ov.querySelector && (ov.querySelector('#lkPin') || ov.querySelector('#lkFace')))) { mostra(true); }
     else { esconde(); }
   });
-  window.__bloqueio = { apagarTudo: apagarTudo, testarPrf: testarPrf, faceDisponivel: faceDisponivel, faceCadastrar: faceCadastrar, faceRemover: faceRemover, faceEntrar: faceEntrar, temFace: function () { var o = ler(); return !!(o && o.cred); }, temPin: function () { var o = ler(); return !!(o && o.h); }, ativo: function () { return !!ler(); }, seg: function () { var o = ler(); return o ? (o.seg === undefined ? 900 : o.seg) : 900; }, definir: definir, mudarTempo: mudarTempo, remover: remover, confere: confere, trancar: function () { mostra(true); }, aberto: function () { return !ov; } };
+  window.__cofre = { quandoPronto: quandoPronto, ativo: cofreAtivo, temCofre: temCofre, estadoClaro: function () { return estadoTxt; }, gravarEstado: gravarEstado, drenar: drenar, cifrarBlob: cifrarBlob, decifrarBlob: decifrarBlob, lerSeg: lerSeg, gravarSeg: gravarSeg, segMem: function (k) { return Object.prototype.hasOwnProperty.call(segMem, k) ? segMem[k] : null; }, segKeys: SEGK, modoClaro: function (v) { claro = !!v; }, precisaMig: function () { var o = ler(); return !!(o && o.vk && o.mig === 0 && VK); }, marcarMig: marcarMig };
+  window.__bloqueio = { ligarCofre: async function (pin) { if (!(await confere(pin))) { return false; } return abrirComPin(pin); }, temCofre: temCofre, apagarTudo: apagarTudo, testarPrf: testarPrf, faceDisponivel: faceDisponivel, faceCadastrar: faceCadastrar, faceRemover: faceRemover, faceEntrar: faceEntrar, temFace: function () { var o = ler(); return !!(o && o.cred); }, temPin: function () { var o = ler(); return !!(o && o.h); }, ativo: function () { return !!ler(); }, seg: function () { var o = ler(); return o ? (o.seg === undefined ? 900 : o.seg) : 900; }, definir: definir, mudarTempo: mudarTempo, remover: remover, confere: confere, trancar: function () { mostra(true); }, aberto: function () { return !ov; } };
   mostra(true);
 })();
 </script>
@@ -4041,7 +4143,7 @@ function iaUsuarioAjuste(d) {
 }
 /*PURE-END*/
 
-(function () {
+window.__iniciarApp = function () {
   var KEY = 'mandados-v3';
   var MODO_ATALHO = true;
   var state = null;
@@ -4056,15 +4158,23 @@ function iaUsuarioAjuste(d) {
 
   function load() {
     try {
-      var r = localStorage.getItem(KEY);
+      var r = (window.__cofre && window.__cofre.estadoClaro()) || localStorage.getItem(KEY);
+      if (r && r.indexOf('{"enc":1,') === 0) { throw new Error('Dados cifrados: abra o app com o PIN.'); }
       if (r && r.length < 4000000) {
         var o = JSON.parse(r);
         if (o && Array.isArray(o.items)) { return o; }
       }
-    } catch (e) {}
+    } catch (e) { if (e && /cifrados/.test(e.message || '')) { throw e; } }
     return null;
   }
-  function save() { guardarPessoasPositivas(); try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} if (!state.syncOn) { ligarCopiaSozinha(); } schedulePush(); }
+  function save() { guardarPessoasPositivas(); gravarState(); if (!state.syncOn) { ligarCopiaSozinha(); } schedulePush(); }
+  function segGet(k) { try { return (window.__cofre && window.__cofre.lerSeg) ? window.__cofre.lerSeg(k) : localStorage.getItem(k); } catch (e) { return null; } }
+  function segSet(k, v) { try { if (window.__cofre && window.__cofre.gravarSeg) { window.__cofre.gravarSeg(k, v); } else if (v) { localStorage.setItem(k, v); } else { localStorage.removeItem(k); } } catch (e) { /* sem acesso */ } }
+  function gravarState() {
+    var t = JSON.stringify(state);
+    if (window.__cofre && window.__cofre.ativo()) { window.__cofre.gravarEstado(t); return; }
+    try { localStorage.setItem(KEY, t); } catch (e) { /* sem espaço */ }
+  }
   function uid() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   var DEMO = [
@@ -4593,7 +4703,7 @@ function iaUsuarioAjuste(d) {
       var c = await syncGet();
       nuvemOk = !!c;
       if (c && !state.syncOn) {
-        state.syncOn = true; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+        state.syncOn = true; gravarState();
         if (!avisouLigar) { avisouLigar = true; toast('Cópia segura ligada: tudo o que você mudar passa a ser salvo na sua conta sozinho.'); }
         schedulePush(); render();
       }
@@ -4652,7 +4762,7 @@ function iaUsuarioAjuste(d) {
         state.apagadosArq = [];
         syncErr = avisos.join(' '); ok = true;
         var d2 = new Date(); syncAt = pad(d2.getHours()) + ':' + pad(d2.getMinutes());
-        try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+        gravarState();
       }
     } catch (e) { syncErr = syncMsg(e); }
     pushing = false; syncProg = ''; pendNuvem = !ok;
@@ -5119,6 +5229,19 @@ function iaUsuarioAjuste(d) {
     });
   }
   function idbPut(id, blob) {
+    var C = window.__cofre, pre = (C && C.ativo() && blob instanceof Blob) ? C.cifrarBlob(blob) : Promise.resolve(blob);
+    return pre.then(function (val) { return idbPutCru(id, val); });
+  }
+  function idbChaves() {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var rq = db.transaction('files').objectStore('files').getAllKeys();
+        rq.onsuccess = function () { res(rq.result || []); };
+        rq.onerror = function () { rej(rq.error); };
+      });
+    });
+  }
+  function idbPutCru(id, blob) {
     return idb().then(function (db) {
       return new Promise(function (res, rej) {
         var tx = db.transaction('files', 'readwrite');
@@ -5129,6 +5252,9 @@ function iaUsuarioAjuste(d) {
     });
   }
   function idbGet(id) {
+    return idbGetCru(id).then(function (v) { return (v && v.enc === 1 && v.iv && window.__cofre) ? window.__cofre.decifrarBlob(v) : v; });
+  }
+  function idbGetCru(id) {
     return idb().then(function (db) {
       return new Promise(function (res, rej) {
         var rq = db.transaction('files').objectStore('files').get(id);
@@ -5137,6 +5263,28 @@ function iaUsuarioAjuste(d) {
       });
     });
   }
+  var migrando = false;
+  window.__migrarCofre = async function (modo) {
+    var C = window.__cofre; if (!C || migrando) { return; }
+    migrando = true;
+    try {
+      if (modo === 'claro') { C.modoClaro(true); await C.drenar(); }
+      gravarState();
+      if (modo !== 'claro') { await C.drenar(); }
+      var ids = await idbChaves();
+      for (var i = 0; i < ids.length; i++) {
+        var v = await idbGetCru(ids[i]);
+        if (modo === 'claro') { if (v && v.enc === 1) { await idbPutCru(ids[i], await C.decifrarBlob(v)); } }
+        else if (v instanceof Blob) { await idbPut(ids[i], v); }
+      }
+      var ps = [];
+      C.segKeys.forEach(function (k) { var val = modo === 'claro' ? C.segMem(k) : C.lerSeg(k); if (val !== null && val !== undefined) { ps.push(C.gravarSeg(k, val)); } });
+      await Promise.all(ps);
+      if (modo !== 'claro') { C.marcarMig(); }
+    } catch (e) { C.modoClaro(false); migrando = false; throw e; }
+    migrando = false;
+  };
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.idb = { get: idbGet, cru: idbGetCru, chaves: idbChaves };
   function idbHas(id) {
     return idb().then(function (db) {
       return new Promise(function (res, rej) {
@@ -5642,14 +5790,14 @@ function iaUsuarioAjuste(d) {
       state.cfg.meuSms = String(document.getElementById('meSms').value || '').trim();
       if (MODO_ATALHO && document.getElementById('meChave')) {
         var ch = String(document.getElementById('meChave').value || '').trim();
-        try { if (ch) { localStorage.setItem('mandados-ia-chave', ch); } else { localStorage.removeItem('mandados-ia-chave'); } } catch (e) {}
+        segSet('mandados-ia-chave', ch);
         state.cfg.iaModelo = String(document.getElementById('meModelo').value || '').trim() || null;
       }
       var velE = Math.max(5, Math.min(90, parseFloat(String(document.getElementById('meVel').value).replace(',', '.')) || 25)), atE = Math.max(1, Math.min(60, parseFloat(String(document.getElementById('meAtend').value).replace(',', '.')) || 6));
       state.cfg.est = (velE === 25 && atE === 6) ? null : { vel: velE, atend: atE };
       if (MODO_ATALHO && document.getElementById('meGoogle')) {
         var gk = String(document.getElementById('meGoogle').value || '').trim();
-        try { if (gk) { localStorage.setItem('mandados-google-chave', gk); } else { localStorage.removeItem('mandados-google-chave'); } } catch (e) {}
+        segSet('mandados-google-chave', gk);
       }
       state.cfg.meuZap = String(document.getElementById('meZap').value || '').trim();
       state.cfg.enquadrarAuto = document.getElementById('meEnq').checked ? null : false;
@@ -6974,7 +7122,7 @@ function iaUsuarioAjuste(d) {
     else { render(); toast('Sem número para a on-line: vamos certificar agora.'); openCert(it); }
   }
   var GG_LIMITE_DIA = 150, ggAndamento = false;
-  function chaveGoogle() { try { return localStorage.getItem('mandados-google-chave') || ''; } catch (e) { return ''; } }
+  function chaveGoogle() { return segGet('mandados-google-chave') || ''; }
   function enderecoParaGoogle(c) {
     var se = enderecoSimples(c.endereco), bruto = String(c.cidade || ''), cid = bruto.split('/')[0].trim() || (cidades()[0] || '');
     var uf = (/\/\s*([A-Za-z]{2})\s*$/.exec(bruto) || [])[1] || ufCfg();
@@ -7953,9 +8101,9 @@ function shrinkImage(file, maxSide, qual) {
   /* Ajustar o texto: o oficial diz (por voz ou texto) o que quer trocar; só trocas simples */
 
   /* ===== IA opcional: tudo aqui só roda para quem cadastrou uma chave. Nada do que é falado, enviado ou respondido fica guardado. ===== */
-  function iaLer() { try { var c = JSON.parse(localStorage.getItem('mandados-ia') || 'null'); return c && typeof c === 'object' ? c : null; } catch (e) { return null; } }
+  function iaLer() { try { var c = JSON.parse(segGet('mandados-ia') || 'null'); return c && typeof c === 'object' ? c : null; } catch (e) { return null; } }
   function iaAtiva() { var c = iaLer(); return !!(c && c.key); }
-  function iaGravar(c) { try { if (c && c.key) { localStorage.setItem('mandados-ia', JSON.stringify(c)); } else { localStorage.removeItem('mandados-ia'); } return true; } catch (e) { return false; } }
+  function iaGravar(c) { try { segSet('mandados-ia', (c && c.key) ? JSON.stringify(c) : null); return true; } catch (e) { return false; } }
   async function iaChamar(sistema, usuario, cfgOpt) {
     var cfg = cfgOpt || iaLer();
     if (!cfg || !cfg.key) { throw new Error('Cadastre a chave da IA em Meus dados.'); }
@@ -9246,7 +9394,8 @@ function shrinkImage(file, maxSide, qual) {
     return runs;
   }
   async function desenharRecado(out, fontes, campos, nome, mes, ano, comZap) {
-    var W = 841.92, H = 595.32, pg = out.addPage([W, H]), X0 = 30, X1 = 418, rgb = PDFLib.rgb;
+    var W = 841.92, H = 595.32, pg = out.addPage([H, W]), X0 = 30, X1 = 418, rgb = PDFLib.rgb;
+    pg.translateContent(H / 2 - 220, W / 2 - 298.82);   /* folha em pé: o recado (caixa de 412 x 577) fica centralizado */
     pg.drawRectangle({ x: 14, y: H - 585, width: 412, height: 577, borderWidth: 1.4, borderColor: rgb(0, 0, 0) });
     try { var im = await out.embedJpg(Uint8Array.from(atob(BRASAO_B64), function (c) { return c.charCodeAt(0); })); pg.drawImage(im, { x: 346, y: H - 80, width: 68, height: 68 }); } catch (e) { /* sem brasão */ }
     var topo = 17;
@@ -9315,6 +9464,7 @@ function shrinkImage(file, maxSide, qual) {
       campos.zap.split('\n').forEach(function (l) { paragrafo(sub(l), { size: 10.5, lh: 12, x: 27, largura: 391, centro: true }); });
     }
   }
+  function semRecado(i) { var t = norm(i.tipo || ''); return !!atoPalavras(i.tipo).bem && /busca|apreens|penhor|remo[cç]|remocao|remover/.test(t); }
   async function desenharRecados(out, nome, agora, fontes) {
     var c = recadoCfg(), mm = recadoMeses(agora);
     if (!c.copias) { return 0; }
@@ -9326,19 +9476,21 @@ function shrinkImage(file, maxSide, qual) {
     return c.copias;
   }
   window.__mandadosTeste = window.__mandadosTeste || {};
+  window.__mandadosTeste.semRecado = semRecado;
   window.__mandadosTeste.recado = { meses: recadoMeses, pdf: async function (nome, agora) { await ensureLib('pdflib'); var out = await PDFLib.PDFDocument.create(); await desenharRecados(out, nome, agora); return Array.from(await out.save()); } };
   function abrirBloqueio() {
     var B = window.__bloqueio, on = B.ativo(), temPin = B.temPin(), temFace = B.temFace();
     function $(id) { return document.getElementById(id); }
     function opt(v, t) { return '<option value="' + v + '"' + (B.seg() === v ? ' selected' : '') + '>' + t + '</option>'; }
     openModal('Bloqueio do aplicativo',
-      '<p class="note">Pede o Face ID e/ou o PIN ao abrir o app e quando você volta depois de um tempo fora. Protege contra quem pegar o celular desbloqueado. <strong>Não criptografa os dados guardados</strong>: por isso o backup tem senha própria e o aparelho deve ter senha de tela.</p>' +
-      (on ? '<p class="chk ok"><strong>Bloqueio ligado</strong>' + (temFace ? ' com Face ID' : '') + (temPin ? (temFace ? ' e PIN' : ' com PIN') : '') + '.</p>' : '<p class="chk bad">Bloqueio desligado.</p>') +
+      '<p class="note">Pede o Face ID e/ou o PIN ao abrir o app e quando você volta depois de um tempo fora. Protege contra quem pegar o celular desbloqueado. <strong>Com PIN, os dados guardados (mandados, PDFs, chaves) ficam criptografados</strong> neste aparelho (cofre). O Face ID abre o cofre se o aparelho permitir; senão o app pede o PIN ao abrir. Quanto mais longo o PIN, mais protegido. Não dá para recuperar o PIN: só o backup com senha.</p>' +
+      (B.temCofre() ? '<p class="chk ok"><strong>Cofre ligado</strong>: dados criptografados.</p>' : '') + (on ? '<p class="chk ok"><strong>Bloqueio ligado</strong>' + (temFace ? ' com Face ID' : '') + (temPin ? (temFace ? ' e PIN' : ' com PIN') : '') + '.</p>' : '<p class="chk bad">Bloqueio desligado.</p>') +
       '<div id="bqFaceRow" hidden><label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="bqFace" style="width:24px;height:24px"' + (temFace ? ' checked' : '') + '> Entrar com Face ID (sem digitar nada)</label><p class="note">O Face ID é conferido pelo próprio iPhone; o app não recebe o seu rosto. Se o rosto falhar, o iPhone pede a senha do aparelho. Se você também cadastrar um PIN, ele serve de reserva.</p></div>' +
       '<label class="f" for="bqPin">' + (temPin ? 'Novo PIN (deixe vazio para manter)' : 'PIN (4 a 12 números; opcional se usar Face ID)') + '</label><input type="password" id="bqPin" inputmode="numeric" maxlength="12" autocomplete="off">' +
       '<label class="f" for="bqPin2">Repita o PIN</label><input type="password" id="bqPin2" inputmode="numeric" maxlength="12" autocomplete="off">' +
       '<label class="f" for="bqSeg">Pedir de novo depois de</label><select id="bqSeg">' + opt(0, 'Sempre que sair do app') + opt(60, '1 minuto fora') + opt(300, '5 minutos fora') + opt(900, '15 minutos fora') + opt(1800, '30 minutos fora') + opt(3600, '1 hora fora') + opt(21600, '6 horas fora') + opt(-1, 'Só quando eu fechar o app de vez') + '</select>' +
       '<p class="note" id="bqErro" style="color:#C62828;font-weight:700"></p>' +
+      (temPin && !B.temCofre() ? '<div class="chk bad"><p>O cofre ainda não está ligado. Digite seu PIN atual uma vez para criptografar os dados.</p><input type="password" id="bqCofrePin" inputmode="numeric" maxlength="12" autocomplete="off" aria-label="PIN atual"><div class="actions"><button class="btn primary" id="bqCofreOk">Ligar o cofre</button></div><p class="note" id="bqCofreErro" style="color:#C62828;font-weight:700"></p></div>' : '') +
       '<div id="bqPrfRow" hidden><p class="note" style="margin-top:12px">Diagnóstico: testa se o Face ID deste aparelho consegue gerar uma chave de criptografia (para decidir sobre criptografar os dados guardados). Cria uma chave chamada “Mandados teste” no chaveiro; pode apagar depois em Ajustes, Senhas. Não muda o seu bloqueio.</p><div class="actions"><button class="btn" id="bqPrf">Testar chave do Face ID</button></div><div id="bqPrfOut"></div></div>' +
       '<div class="actions"><button class="btn primary" id="bqSalva">' + (on ? 'Salvar' : 'Ligar o bloqueio') + '</button>' + (on ? '<button class="btn ghost" id="bqTira">Desligar</button><button class="btn" id="bqAgora">Bloquear agora</button>' : '') + '<button class="btn" id="bqFecha">Fechar</button></div>');
     B.faceDisponivel().then(function (ok) { if (ok && $('bqFaceRow')) { $('bqFaceRow').hidden = false; $('bqPrfRow').hidden = false; } });
@@ -9356,6 +9508,7 @@ function shrinkImage(file, maxSide, qual) {
       $('bqPrf').disabled = false;
     };
     $('bqFecha').onclick = closeModal;
+    if ($('bqCofreOk')) { $('bqCofreOk').onclick = async function () { var pp = String($('bqCofrePin').value || '').trim(); $('bqCofreOk').disabled = true; $('bqCofreErro').textContent = 'Criptografando…'; var ok = false; try { ok = await B.ligarCofre(pp); } catch (e) { ok = false; } if (ok) { closeModal(); toast('Cofre ligado: dados criptografados.'); } else { $('bqCofreOk').disabled = false; $('bqCofreErro').textContent = 'PIN incorreto ou falha ao criptografar.'; } }; }
     $('bqSalva').onclick = async function () {
       var a = $('bqPin').value.trim(), b2 = $('bqPin2').value.trim(), seg = parseInt($('bqSeg').value, 10), quer = !$('bqFaceRow').hidden && $('bqFace').checked;
       if (a && !/^\d{4,12}$/.test(a)) { $('bqErro').textContent = 'O PIN precisa ter de 4 a 12 números.'; return; }
@@ -9368,7 +9521,7 @@ function shrinkImage(file, maxSide, qual) {
       if (!quer && temFace) { B.faceRemover(); }
       await B.definir(a || null, seg); closeModal(); toast(a || !temPin ? 'Bloqueio salvo. Se usar PIN, anote: não dá para recuperar.' : 'Bloqueio salvo.');
     };
-    if ($('bqTira')) { $('bqTira').onclick = function () { B.remover(); closeModal(); toast('Bloqueio desligado.'); }; }
+    if ($('bqTira')) { $('bqTira').onclick = async function () { try { await B.remover(); closeModal(); toast('Bloqueio desligado.'); } catch (e) { toast('Não consegui desligar com segurança. Nada foi alterado.'); } }; }
     if ($('bqAgora')) { $('bqAgora').onclick = function () { closeModal(); B.trancar(); }; }
   }
   function abrirRecadoModelo() {
@@ -9452,7 +9605,7 @@ function shrinkImage(file, maxSide, qual) {
             var lc = lacunasAuto(da);
             if (lc.length) { avisosAuto.push(it.nome + ': ' + lc.join(', ')); }
           }
-          if (incRec && etipo(it) !== 'eletronico') {
+          if (incRec && etipo(it) !== 'eletronico' && !semRecado(it)) {
             fontesRec = fontesRec || { n: await out.embedFont(PDFLib.StandardFonts.TimesRoman), b: await out.embedFont(PDFLib.StandardFonts.TimesRomanBold) };
             await desenharRecados(out, it.nome, Date.now(), fontesRec);
           }
@@ -11004,7 +11157,9 @@ function shrinkImage(file, maxSide, qual) {
 
     } catch (e) { buscandoNuvem = false; try { render(); } catch (e2) {} }
   })();
-})();
+  setTimeout(function () { if (window.__cofre && window.__cofre.precisaMig()) { window.__migrarCofre('cifrar'); } }, 1500);
+};
+(window.__cofre ? window.__cofre.quandoPronto : function (f) { f(); })(window.__iniciarApp);
 </script>
 </body>
 </html>
