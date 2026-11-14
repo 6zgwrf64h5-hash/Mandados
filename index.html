@@ -5691,6 +5691,7 @@ window.__iniciarApp = function () {
 
   /* Janela */
   function openModal(title, html) {
+    var rm0 = document.getElementById('rMinTop'); if (rm0) { rm0.remove(); } document.getElementById('mtitle').style.marginRight = '';
     document.getElementById('mtitle').textContent = title;
     document.getElementById('mbody').innerHTML = html;
     document.getElementById('modal').hidden = false;
@@ -5704,6 +5705,7 @@ window.__iniciarApp = function () {
     liveDocs = [];
     document.getElementById('modal').hidden = true;
     document.getElementById('mbody').innerHTML = '';
+    var rm1 = document.getElementById('rMinTop'); if (rm1) { rm1.remove(); } document.getElementById('mtitle').style.marginRight = '';
   }
   document.getElementById('mclose').onclick = closeModal;
   document.getElementById('modal').addEventListener('click', function (e) { if (e.target === this) { closeModal(); } });
@@ -9811,7 +9813,7 @@ function shrinkImage(file, maxSide, qual) {
     var perto = pertoDaCasa(arr, fimEf(), zonasAtivas() ? raioCasa() : 0);
     var modo = modoRota(), bg = modo === 'bairro' ? agruparBairros(arr) : null, num = 0;
     var bgx = bg || agruparBairros(arr);
-    out += '<div class="actions rtodos"><button class="btn small" data-rtodos="1">' + (marcadasRota().length ? 'Limpar todos' : 'Selecionar todos') + '</button><button class="btn small ghost" data-rmin="1">Minimizar</button></div>' + resumoPrimUlt();
+    out += '<div class="actions rtodos"><button class="btn small" data-rtodos="1">' + (marcadasRota().length ? 'Limpar todos' : 'Selecionar todos') + '</button></div>';
     var susp = arr.filter(function (c) { return !pontoOverride(c) && (!ruaNoMapa(c) || (bgx.longe && bgx.longe[c.id])); });
     if (susp.length) { out += '<div class="suspbox">⚠ <strong>' + susp.length + (susp.length === 1 ? ' parada com ponto duvidoso' : ' paradas com ponto duvidoso') + '</strong> (rua não achada ou longe do resto do bairro): ' + esc(susp.map(function (c) { return c.nome; }).join(', ')) + '. Toque em <em>ver no mapa</em> para conferir ou em <em>Corrigir</em> antes de sair.</div>'; }
     if (MODO_ATALHO) {
@@ -10720,6 +10722,11 @@ function shrinkImage(file, maxSide, qual) {
       '<div class="actions"><button class="btn primary" id="rPrint">Imprimir os mandados nesta ordem</button><button class="btn" id="rCopyAll">Copiar todos os links</button></div>' +
       '<div class="actions"><button class="btn ghost" id="rAjustes">Ajustes da rota (Meus dados)</button></div>');
     function $(id) { return document.getElementById(id); }
+    (function () {
+      var mb = document.createElement('button'); mb.className = 'btn small ghost'; mb.id = 'rMinTop'; mb.type = 'button'; mb.textContent = 'Minimizar';
+      var fc = $('mclose'); fc.parentNode.insertBefore(mb, fc); $('mtitle').style.marginRight = 'auto';
+      mb.onclick = function () { rotaMin = true; closeModal(); render(); toast('Rota minimizada. Toque na faixa preta para voltar.'); };
+    })();
     function refaz() { $('rBody').innerHTML = rotaCorpo(); }
     $('rBody').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('[data-sd]') : null;
