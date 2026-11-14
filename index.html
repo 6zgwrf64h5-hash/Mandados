@@ -286,6 +286,7 @@ canvas.sig { width: 100%; height: 170px; background: #fff; border: 1.5px solid v
 .card .pick input { width: 30px; height: 30px; }
 .card h3 { font-size: 18px; line-height: 1.2; padding-right: 44px; }
 .card .meta { font-size: 14px; margin: 1px 0 0; }
+.sist { font-size: 10px; line-height: 1; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; margin-left: 4px; vertical-align: 1px; letter-spacing: .02em; white-space: nowrap; }
 .card .addr { margin: 5px 0 0; font-size: 16px; font-weight: 600; line-height: 1.3; }
 .card .flags { margin: 6px 0 0; gap: 4px; }
 .card .flag { font-size: 13px; padding: 2px 8px; }
@@ -1442,6 +1443,13 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
 </script>
 <script>
 /*PURE-START*/
+var _sede = { cidade: 'Foz do Iguaçu', uf: 'PR', tribunal: 'Tribunal de Justiça do Estado do Paraná', sigla: 'TJPR' };
+function setSede(cidade, uf, tribunal) {
+  _sede.cidade = String(cidade || '').trim() || 'Foz do Iguaçu';
+  _sede.uf = String(uf || '').trim().toUpperCase() || 'PR';
+  _sede.tribunal = String(tribunal || '').trim() || 'Tribunal de Justiça do Estado do Paraná';
+  _sede.sigla = /paran[áa]|tjpr/i.test(_sede.tribunal) ? 'TJPR' : _sede.tribunal;
+}
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -1719,7 +1727,7 @@ function audFlag(a, now) {
 /* ---- Blocos: cada mandado do PDF começa numa página de contrafé ---- */
 function isContrafeStart(text) {
   var x = norm(text);
-  return /contrafe\s+de\s+\w/.test(x.slice(0, 600)) && x.indexOf('certidao (positiva/negativa)') !== -1;
+  return /contrafe\s+de\s+\w/.test(x.slice(0, 600)) && (x.indexOf('certidao (positiva/negativa)') !== -1 || /certifico\s+que\W{0,4}em\s+cumprimento\s+ao\s+mandado\s+retro/.test(x));
 }
 function splitBlocks(pages) {
   var starts = [];
@@ -1728,6 +1736,90 @@ function splitBlocks(pages) {
   return starts.map(function (st, k) {
     return { cf: st, first: st, last: (k + 1 < starts.length ? starts[k + 1] : pages.length) - 1 };
   });
+}
+
+/* ---- Sistema do mandado: Projudi, SEEU ou eproc ---- */
+var SIST_ROT = { projudi: 'Projudi', seeu: 'SEEU', eproc: 'eproc' };
+function sistemaDe(it) {
+  if (it && SIST_ROT[it.sist]) { return it.sist; }
+  var d = String((it && it.processo) || '').replace(/\D/g, '').charAt(0);
+  return d === '4' ? 'seeu' : (d === '6' ? 'eproc' : 'projudi');
+}
+/* ---- eproc: PDF "Gestão de Mandados"; cada mandado tem o rodapé "Processo N  Mandado N" em todas as páginas ---- */
+function splitBlocksEproc(pages) {
+  var blocos = [], cur = null;
+  pages.forEach(function (p, i) {
+    var m = /Processo\s+\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\s+Mandado\s+(\d{6,})/.exec(p.text);
+    var num = m ? m[1] : '';
+    if (cur && num && num === cur.num) { cur.last = i; return; }
+    cur = null;
+    if (num && /MANDADO\s+D[EO]\s+\S/.test(p.text) && /Mandado\s+N[º°o]\s*:\s*\d{6,}/.test(p.text)) {
+      cur = { num: num, cf: i, first: i, last: i, eproc: true };
+      blocos.push(cur);
+    }
+  });
+  blocos.forEach(function (b) { b.loc = parseEproc(pages[b.first].text); });
+  return blocos;
+}
+function parseEndEproc(raw) {
+  var t = String(raw || '').replace(/\s+/g, ' ').trim().replace(/,\s*$/, '');
+  if (!t) { return { endereco: '', bairro: '', cidade: '', cep: '' }; }
+  var m = /^(.*?)\s+-\s+(.*?)\s+-\s+(\d{8})\s*,\s*(.+)$/.exec(t);
+  if (m) { return { endereco: m[1].trim(), bairro: /^null$/i.test(m[2].trim()) ? '' : m[2].trim(), cep: m[3], cidade: m[4].replace(/\s*\/\s*/, '/').trim() }; }
+  var c = /^(.*?)\s*-\s*(\d{8})$/.exec(t), cep = '';
+  if (c) { t = c[1].trim(); cep = c[2]; }
+  var ps = t.split(/\s*,\s*/).filter(function (x) { return x; });
+  if (ps.length >= 3 && /\/\s*[A-Za-z]{2}$/.test(ps[ps.length - 1])) {
+    var cid = ps.pop().replace(/\s*\/\s*/, '/'), bai = ps.pop();
+    return { endereco: ps.join(', '), bairro: /^null$/i.test(bai) ? '' : bai, cidade: cid, cep: cep };
+  }
+  var se = splitEndereco(t);
+  return { endereco: se.endereco, bairro: se.bairro, cidade: se.cidade, cep: cep };
+}
+function parseEproc(text) {
+  var t = String(text || '').replace(/\s+/g, ' ').trim();
+  var mf = /Processo\s+(\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4})\s+Mandado\s+(\d{6,})/.exec(t);
+  var proc = mf ? mf[1] : ((/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/.exec(t) || [''])[0]);
+  var mt = /MANDADO\s+D[EO]\s+(.+?)\s+Mandado\s+N/.exec(t), tipo = '';
+  if (mt) { tipo = mt[1].toLowerCase().replace(/(^|[\/])\s*([a-zà-ú])/g, function (x, a, b) { return a + b.toUpperCase(); }); }
+  var mv = /Estado do Paran[áa]\s+(.+?)\s+(?:Avenida|Av\.|Rua|Pra[cç]a|Rodovia|Alameda|Travessa)\b/.exec(t), vara = mv ? mv[1].trim() : '';
+  var nome = '', ends = [], tels = [], contatos = '';
+  var mB = /Destinat[áa]rio\(a\):\s*(.+?)\s+Endere[çc]o:\s*(.+?)\s+Contatos:\s*(.*?)\s+(?:O\(A\)|MANDA)/.exec(t);
+  var mA = /da parte\s+(.+?),\s*CPF\s*[\d.\-\/]*\s*,\s*(.+?)\s*\(\s*([^)]*)\)\s*,?\s*([\d() \-]*?)\s*,?\s*conforme/.exec(t);
+  if (mB) {
+    nome = mB[1].trim(); contatos = mB[3];
+    var re = /(.+?)\s*\(\s*(?:Residencial|Comercial|Profissional|[A-Za-zÀ-ú]+)\s*\)\s*(?:e\s+)?/g, x;
+    while ((x = re.exec(mB[2]))) { ends.push(x[1].trim()); }
+    if (!ends.length) { ends.push(mB[2].trim()); }
+  } else if (mA) {
+    nome = mA[1].trim(); ends.push(mA[2].trim()); contatos = mA[4];
+  } else {
+    var mC = /parte:\s*(.+?)\s*,/.exec(t);
+    if (mC) {
+      nome = mC[1].trim();
+      var pos = t.lastIndexOf(nome), resto = pos >= 0 ? t.slice(pos + nome.length) : '';
+      var me = /^\s*(.+?)\s*\(\s*(?:Residencial|Comercial|Profissional|[A-Za-zÀ-ú]+)\s*\)/.exec(resto);
+      if (me) { ends.push(me[1].trim()); }
+    }
+  }
+  contatos = String(contatos || '').replace(/\(#\)[^(]*\(#\)/g, ' ');
+  var mt2 = contatos.match(/\(?\d{2}\)?\s*9?\d{4}[-\s]?\d{4}|\b\d{10,11}\b/g) || [];
+  tels = mt2.map(function (x) { return x.trim(); });
+  var e1 = parseEndEproc(ends[0] || '');
+  return {
+    nome: nome.toUpperCase(), processo: proc, ident: mf ? mf[2] : '', tipo: tipo, vara: vara, urgente: '',
+    telefones: tels, endereco: e1.endereco, bairro: e1.bairro, cidade: e1.cidade, cep: e1.cep, endereco_raw: ends[0] || '',
+    outrosEnd: ends.slice(1)
+  };
+}
+/* SEEU: "Rua X, 10 Bairro: Y Cidade: Z/PR CEP: 85.000-000 Telefone: ..." */
+function splitEnderecoRotulos(raw) {
+  var t = String(raw || '').replace(/^\s*\*\s*/, '').replace(/\s+/g, ' ').trim();
+  function pega(re) { var m = re.exec(t); return m ? m[1].trim() : ''; }
+  var fim = '(?=\\s*(?:Bairro:|Cidade:|CEP:|Telefone|$))';
+  var rua = pega(new RegExp('^(.*?)\\s*(?:Bairro:|Cidade:|CEP:|Telefone)')) || t;
+  var bairro = pega(new RegExp('Bairro:\\s*(.*?)' + fim)), cidade = pega(new RegExp('Cidade:\\s*(.*?)' + fim));
+  return { endereco: rua.replace(/[,\s]+$/, ''), bairro: bairro, cidade: cidade.replace(/\s*\/\s*/, '/') };
 }
 function splitEndereco(raw) {
   var t = String(raw || '').replace(/^\s*\*\s*/, '').replace(/\s+/g, ' ').trim();
@@ -1766,7 +1858,7 @@ function parseContrafe(text) {
     }
   }
   if (/^\d{7}-\d{2}\.\d{4}/.test(ender) || /^(parte|processo|urgente|identificador|telefone)/i.test(ender)) { ender = ''; }
-  var se = splitEndereco(ender);
+  var se = /\bCidade:/i.test(ender) ? splitEnderecoRotulos(ender) : splitEndereco(ender);
   return {
     nome: nome.toUpperCase(), processo: proc, ident: ident, tipo: tipo, vara: vara,
     urgente: /^\s*sim/i.test(urg) ? 'Urgente: ' + urg.replace(/^\s*sim\s*-?\s*/i, '').trim() : '',
@@ -1909,7 +2001,7 @@ function fisicaAntesTexto(o) {
 function buildModeloBase(key, o) {
   var a = atoPalavras(o.tipo), nome = o.nome || 'NOME COMPLETO';
   var zap = o.celular ? '\n\nCERTIFICO ainda que tentei contato via whatsapp, porém ' + justZap(key, o.just) + '.' : '';
-  var fecho = 'O referido é verdade. Dou fé.\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (o.oficial ? o.oficial + '\n' : '') + 'Oficial de Justiça';
+  var fecho = 'O referido é verdade. Dou fé.\n\n' + _sede.cidade + ', datado digitalmente.\n\n' + (o.oficial ? o.oficial + '\n' : '') + 'Oficial de Justiça';
   var dil = o.diligencia ? '\n\nDiligência' + ((key === 'mudou' || key === 'naoconhece') ? 's' : '') + ' a receber: R$ ' + o.diligencia : '';
   var recebeu = 'CERTIFICO que em cumprimento ao r. mandado expedido pelo MM. Juízo de Direito desta comarca, no dia ' + (o.data || '__/__/____') + ', via whatsapp (número consta no comprovante em anexo), foi procedida à ' + a.subst + ' do Sr.(A) ' + nome + ', que ficou(aram) ciente(s) do inteiro teor do presente mandado e das cópias que o acompanhavam após receber contrafé(s) de forma virtual.';
   var morador = (o.morador || 'NOME DO MORADOR') + ', ' + ((key === 'mudou' && o.paren) || PAREN.atual);
@@ -2119,12 +2211,17 @@ function lacunasAuto(d) {
   return f;
 }
 
-var MSG_PADRAO = 'Prezado(a) Sr(a) {NOME},\n\n' +
-  'Meu nome é {OFICIAL}, matrícula {MATRICULA}, sou Oficial de Justiça, servidor da Direção do Fórum da Comarca de Foz do Iguaçu, do Tribunal de Justiça do Estado do Paraná.\n' +
-  'Caso queira confirmar a autenticidade deste contato, acesse o site do Tribunal de Justiça do Estado do Paraná, diretamente através do link: bit.ly/tjprcontatos, ou acessando o site do Tribunal de Justiça do Estado do Paraná (www.tjpr.jus.br), clicando em Institucional > Corregedoria > Foro Judicial > Autenticação de Contatos, ou ainda, telefonando para a sala dos oficiais de justiças, localizada no fórum de Foz do Iguaçu (45 3308-8085 das 13h as 17h).\n' +
-  'Disponho de comunicação oficial para lhe entregar. No entanto, como pode tratar de conteúdo que diga respeito a terceiros e para evitar que seja entregue à pessoa errada, necessito que Vossa Senhoria confirme sua identidade. Por favor, o seu nome é o contido no endereçamento (1ª linha) desta comunicação? (Responda: SIM ou NÃO)';
+function msgPadrao() {
+  var cid = _sede.cidade, trib = _sede.tribunal, tjpr = _sede.sigla === 'TJPR', foz = /^foz do igua[çc]u$/i.test(cid);
+  var l2 = tjpr
+    ? 'Caso queira confirmar a autenticidade deste contato, acesse o site do Tribunal de Justiça do Estado do Paraná, diretamente através do link: bit.ly/tjprcontatos, ou acessando o site do Tribunal de Justiça do Estado do Paraná (www.tjpr.jus.br), clicando em Institucional > Corregedoria > Foro Judicial > Autenticação de Contatos, ou ainda, telefonando para a sala dos oficiais de justiças, localizada no fórum de ' + cid + (foz ? ' (45 3308-8085 das 13h as 17h)' : '') + '.\n'
+    : 'Caso queira confirmar a autenticidade deste contato, acesse o site oficial do ' + trib + ' ou procure a secretaria do fórum da Comarca de ' + cid + '.\n';
+  return 'Prezado(a) Sr(a) {NOME},\n\n' +
+    'Meu nome é {OFICIAL}, matrícula {MATRICULA}, sou Oficial de Justiça, servidor da Direção do Fórum da Comarca de ' + cid + ', do ' + trib + '.\n' + l2 +
+    'Disponho de comunicação oficial para lhe entregar. No entanto, como pode tratar de conteúdo que diga respeito a terceiros e para evitar que seja entregue à pessoa errada, necessito que Vossa Senhoria confirme sua identidade. Por favor, o seu nome é o contido no endereçamento (1ª linha) desta comunicação? (Responda: SIM ou NÃO)';
+}
 function montarMensagem(tpl, nome, oficial, mat) {
-  return String(tpl || MSG_PADRAO)
+  return String(tpl || msgPadrao())
     .replace(/\{NOME\}/g, String(nome || '').toUpperCase())
     .replace(/\{OFICIAL\}/g, oficial || '')
     .replace(/\{MATRICULA\}/g, mat || '');
@@ -3093,7 +3190,7 @@ function separarDil(texto) {
 }
 function promptAjuste(it, texto, pedido, ctx) {
   ctx = ctx || {};
-  return 'Você revisa uma CERTIDÃO de oficial de justiça (Comarca de Foz do Iguaçu, TJPR). O oficial pediu uma mudança no texto. Faça SOMENTE a mudança pedida e mantenha o restante igual, com o mesmo formato, vocabulário e tom.\n\n' +
+  return 'Você revisa uma CERTIDÃO de oficial de justiça (Comarca de ' + _sede.cidade + ', ' + _sede.sigla + '). O oficial pediu uma mudança no texto. Faça SOMENTE a mudança pedida e mantenha o restante igual, com o mesmo formato, vocabulário e tom.\n\n' +
     'REGRAS:\n- Em certidão de cumprimento POSITIVO por WhatsApp, SEMPRE inclua (ou mantenha) o parágrafo "CERTIFICO ainda que a identidade foi confirmada previamente." logo depois do parágrafo do cumprimento.\n- Não invente fatos, nomes, datas, horários, números nem endereços. Se o pedido exigir um dado que você não tem, escreva [preencher: o que falta] e liste em "faltando".\n' +
     (ctx.parte ? '- Este texto é só UMA PARTE da certidão: NÃO acrescente o título CERTIDÃO, nem "Ante o exposto devolvo", nem o fecho, data ou assinatura. Devolva só o(s) parágrafo(s) da parte, já com a mudança.\n' : '- Mantenha a linha CERTIDÃO no começo e o fecho (O referido é verdade. Dou fé. / Foz do Iguaçu, datado digitalmente. / nome do oficial / Oficial de Justiça).\n') +
     '- Não escreva a linha "Diligência a receber" (a página acrescenta). Não use markdown.\n\n' +
@@ -3120,7 +3217,7 @@ function vozLocal(fala, it, ctx) {
   var n = norm(fala);
   tipo = /(citei|intimei|notifiquei|cumpri|cumprid|recebeu|ciente|aceitou|entreguei)/.test(n) && !/nao (recebeu|aceitou|foi possivel)/.test(n) ? 'positiva' : 'negativa';
   var a = atoPalavras(it.tipo), pessoal = ehAtoPessoal(it.tipo);
-  var fecho = 'O referido é verdade. Dou fé.\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (oficial ? oficial + '\n' : '') + 'Oficial de Justiça';
+  var fecho = 'O referido é verdade. Dou fé.\n\n' + _sede.cidade + ', datado digitalmente.\n\n' + (oficial ? oficial + '\n' : '') + 'Oficial de Justiça';
   texto = 'CERTIDÃO\n\nCERTIFICO que, em cumprimento ao r. mandado' + (tipo === 'negativa' ? ', dirigi-me ao endereço indicado, e DEIXEI DE ' + (a.bem ? a.verbo + ' o bem indicado do(a) Sr(a). ' : (pessoal ? a.verbo + ' o(a) Sr(a). ' : 'CUMPRIR O MANDADO em face de o(a) Sr(a). ')) + String(it.nome || '').toUpperCase() + ', tendo em vista que ' : ', ') + fraseVoz(fala) + '.' +
     (tipo === 'negativa' ? '\n\nAnte o exposto devolvo o mandado para os devidos fins.' : '') + '\n\n' + fecho + (dil ? '\n\nDiligência a receber: R$ ' + dil : '');
   return { key: '', tipo: tipo, texto: texto, faltando: ['conferir o texto: usei a sua fala quase como foi dita'], entendi: 'Não encontrei um dos seus modelos para este caso, então escrevi um texto livre.' };
@@ -3143,9 +3240,9 @@ function promptVoz(it, fala, ctx) {
     ctx.online ? 'Tentativas on-line registradas na página: ' + ctx.online : '',
     ctx.diaCont ? 'Último envio por WhatsApp registrado em: ' + fmtDate(ctx.diaCont) : ''
   ].filter(function (x) { return x; }).join('\n');
-  return 'Você ajuda um Oficial de Justiça da Comarca de Foz do Iguaçu (TJPR) a redigir a CERTIDÃO de cumprimento de um mandado. Ele ditou por voz o que aconteceu. Escreva a certidão completa, no mesmo formato, vocabulário e tom dos MODELOS abaixo (que são dele), adaptando ao que foi ditado.\n\n' +
+  return 'Você ajuda um Oficial de Justiça da Comarca de ' + _sede.cidade + ' (' + _sede.sigla + ') a redigir a CERTIDÃO de cumprimento de um mandado. Ele ditou por voz o que aconteceu. Escreva a certidão completa, no mesmo formato, vocabulário e tom dos MODELOS abaixo (que são dele), adaptando ao que foi ditado.\n\n' +
     'REGRAS:\n- Em certidão de cumprimento POSITIVO por WhatsApp, SEMPRE inclua (ou mantenha) o parágrafo "CERTIFICO ainda que a identidade foi confirmada previamente." logo depois do parágrafo do cumprimento.\n- Use SOMENTE os fatos ditados e os DADOS DO MANDADO. Não invente nomes, datas, horários, números, endereços nem resultados. Se faltar algo importante, escreva [preencher: o que falta] no lugar e liste em "faltando".\n' +
-    '- Comece com a linha CERTIDÃO. Termine com "O referido é verdade. Dou fé.", "Foz do Iguaçu, datado digitalmente.", o nome do oficial e "Oficial de Justiça".\n' +
+    '- Comece com a linha CERTIDÃO. Termine com "O referido é verdade. Dou fé.", "' + _sede.cidade + ', datado digitalmente.", o nome do oficial e "Oficial de Justiça".\n' +
     '- O ato do mandado pode ser citação, intimação, notificação, penhora, avaliação, busca e apreensão, constatação ou outro. Adapte os verbos e o conteúdo ao ato dos DADOS e ao que foi explicado, ainda que os modelos tratem de citação ou intimação.\n' +
     '- Se o ditado se encaixar em um modelo, siga a estrutura e as frases dele.\n- Se não se encaixar (caso fora do comum), escreva de forma improvisada, mas formal, curta e objetiva, em primeira pessoa (dirigi-me, deixei de, certifico), e nos casos negativos termine com "Ante o exposto devolvo o mandado para os devidos fins."\n' +
     '- Não escreva a linha "Diligência a receber" (a página acrescenta). Não use markdown.\n\nDADOS DO MANDADO:\n' + dados + '\n\nMODELOS DO OFICIAL:\n' + ex + '\n\nDITADO DO OFICIAL (entre ### e ###):\n###' + String(fala || '').trim() + '###\n\n' +
@@ -3659,7 +3756,7 @@ function montarCertidaoPartes(fis, on, o) {
   var corpo = [fis && fis.texto, on && on.texto].filter(function (x) { return x && String(x).trim(); }).map(function (x) { return String(x).trim(); }).join('\n\n');
   corpo = comNumProx(corpo);
   var ehPortao = !!(fis && fis.modelo === 'baportao'), ehBA = !!(fis && /DEIXEI DE APREENDER/.test(String(fis.texto || '')));
-  var fecho = (ehPortao ? 'Dou fé.' : 'O referido é verdade. Dou fé.') + '\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (o.oficial ? o.oficial + '\n' : '') + 'Oficial de Justiça';
+  var fecho = (ehPortao ? 'Dou fé.' : 'O referido é verdade. Dou fé.') + '\n\n' + _sede.cidade + ', datado digitalmente.\n\n' + (o.oficial ? o.oficial + '\n' : '') + 'Oficial de Justiça';
   var plural = !!(fis && (fis.modelo === 'mudou' || fis.modelo === 'naoconhece'));
   var dil = o.diligencia ? '\n\nDiligência' + (plural ? 's' : '') + ' a receber: R$ ' + o.diligencia : '';
   var fim = (positiva || ehPortao) ? '' : '\n\nAnte o exposto devolvo ' + (fis && fis.modelo === 'numero' && !ehBA ? 'o r. mandado em cartório' : 'o mandado') + ' para os devidos fins.';
@@ -3718,7 +3815,7 @@ function promptParte(it, parte, fala, ctx) {
   var exF = OPC_FISICA.map(function (p) { return '--- EXEMPLO (' + p[0] + ') ---\n' + parteFisicaTexto(p[0], { tipo: it.tipo, nome: 'FULANO DE TAL', morador: 'NOME DO MORADOR', paren: PAREN.mae, visitas: ['24/10/2026, às 14:30', '25/10/2026, às 09:10'] }); }).join('\n\n');
   var exO = ['pos', 'neg'].map(function (k) { return '--- EXEMPLO (' + k + ') ---\n' + parteOnlineTexto(k, { tipo: it.tipo, nome: 'FULANO DE TAL', data: '01/01/2026', idConf: true, just: 'documento', temFisica: !!ctx.temFisica }); }).join('\n\n');
   var dados = ['Nome da pessoa: ' + nome + (ehEmpresaIt(it) ? ' (EMPRESA: escreva "a empresa NOME" no lugar de "o(a) Sr(a). NOME" e adapte pronomes e verbos)' : ''), 'Processo: ' + (it.processo || ''), 'Ato do mandado: ' + (it.tipo || '') + (ehAtoPessoal(it.tipo) ? ' (verbo: ' + a.verbo + '; substantivo: ' + a.subst + ')' : ' (não é citação nem intimação: adapte os verbos ao ato)'), 'Vara: ' + (it.vara || ''), 'Endereço: ' + (it.endereco || ''), 'Oficial: ' + (ctx.oficial || ''), ctx.outra ? 'A outra parte da certidão já está pronta: ' + ctx.outra : ''].filter(function (x) { return x; }).join('\n');
-  return 'Você ajuda um Oficial de Justiça da Comarca de Foz do Iguaçu (TJPR) a redigir UMA PARTE da certidão de cumprimento de um mandado: a parte ' + (parte === 'fis' ? 'FÍSICA (o que aconteceu no endereço)' : 'ON-LINE (o contato por WhatsApp)') + '. Ele contou brevemente o que aconteceu. Escreva só o(s) parágrafo(s) dessa parte, no mesmo formato, vocabulário e tom dos EXEMPLOS (que são dele).\n\n' +
+  return 'Você ajuda um Oficial de Justiça da Comarca de ' + _sede.cidade + ' (' + _sede.sigla + ') a redigir UMA PARTE da certidão de cumprimento de um mandado: a parte ' + (parte === 'fis' ? 'FÍSICA (o que aconteceu no endereço)' : 'ON-LINE (o contato por WhatsApp)') + '. Ele contou brevemente o que aconteceu. Escreva só o(s) parágrafo(s) dessa parte, no mesmo formato, vocabulário e tom dos EXEMPLOS (que são dele).\n\n' +
     'REGRAS:\n- Em certidão de cumprimento POSITIVO por WhatsApp, SEMPRE inclua (ou mantenha) o parágrafo "CERTIFICO ainda que a identidade foi confirmada previamente." logo depois do parágrafo do cumprimento.\n- Escreva SOMENTE a parte pedida: sem o título CERTIDÃO, sem "Ante o exposto devolvo", sem "O referido é verdade. Dou fé.", sem data, sem assinatura e sem linha de custas. A página junta as partes e acrescenta o fecho.\n' +
     '- Use SOMENTE os fatos contados e os DADOS DO MANDADO. Não invente nomes, datas, horários, números nem resultados. O que faltar vai como [preencher: o que falta] e na lista "faltando".\n- Em primeira pessoa (dirigi-me, deixei de, certifico), formal, curto e objetivo. O ato pode não ser citação ou intimação: adapte os verbos ao ato.\n' +
     '- "tipo" é "positiva" se a pessoa foi citada, intimada ou notificada (ou o ato foi cumprido) e "negativa" se não.\n\nDADOS DO MANDADO:\n' + dados + '\n\nEXEMPLOS DE PARTES ' + (parte === 'fis' ? 'FÍSICAS' : 'ON-LINE') + ':\n' + (parte === 'fis' ? exF : exO) + '\n\nO QUE O OFICIAL CONTOU (entre ### e ###):\n###' + String(fala || '').trim() + '###\n\n' +
@@ -3811,7 +3908,7 @@ function iaCortarFecho(texto) {
 }
 function iaMontarInteira(tipo, corpo, ctx) {
   ctx = ctx || {};
-  var fecho = 'O referido é verdade. Dou fé.\n\nFoz do Iguaçu, datado digitalmente.\n\n' + (ctx.oficial ? ctx.oficial + '\n' : '') + 'Oficial de Justiça';
+  var fecho = 'O referido é verdade. Dou fé.\n\n' + _sede.cidade + ', datado digitalmente.\n\n' + (ctx.oficial ? ctx.oficial + '\n' : '') + 'Oficial de Justiça';
   return 'CERTIDÃO\n\n' + corpo + (tipo === 'negativa' ? '\n\nAnte o exposto devolvo o mandado para os devidos fins.' : '') + '\n\n' + fecho + (ctx.custas ? '\n\nDiligência a receber: R$ ' + ctx.custas : '');
 }
 function iaSistema(tipoAto) {
@@ -3824,7 +3921,7 @@ function iaSistema(tipoAto) {
   add('parte on-line negativa', function () { return parteOnlineTexto('neg', { pj: false, tipo: t, nome: n, just: 'documento', temFisica: true }); });
   add('parte on-line positiva', function () { return parteOnlineTexto('pos', { pj: false, tipo: t, nome: n, data: '01/01/2026', idConf: true }); });
   return [
-    'Você ajuda um Oficial de Justiça do Tribunal de Justiça do Paraná a redigir certidões. Você NÃO lê o mandado e não conhece o processo: recebe só o que o oficial falou ou escreveu, o tipo do ato e o nome da pessoa.',
+    'Você ajuda um Oficial de Justiça do ' + _sede.tribunal + ' a redigir certidões. Você NÃO lê o mandado e não conhece o processo: recebe só o que o oficial falou ou escreveu, o tipo do ato e o nome da pessoa.',
     'REGRAS:',
     '1. Reescreva o que o oficial contou em linguagem formal de certidão, na 1ª pessoa do singular e no passado (“dirigi-me”, “tentei”, “informou”), de forma clara e objetiva.',
     '2. Use SOMENTE os fatos que o oficial contou. Não invente nomes, datas, horários, endereços, números, parentescos nem resultado. Se faltar um dado necessário, escreva [INFORMAR: o que falta].',
@@ -3924,6 +4021,7 @@ function iaUsuarioAjuste(d) {
   state.apagados = state.apagados || [];
   state.cfg = state.cfg || {};
   setDDD(state.cfg.ddd || '');
+  setSede(state.cfg.comarca, state.cfg.uf, state.cfg.tribunal);
   setPadroes(state.cfg.padroes);
   if (MODO_ATALHO) { state.syncOn = false; }
   function cidades() { return state.cfg.cidades && state.cfg.cidades.length ? state.cfg.cidades : CIDADES_PADRAO; }
@@ -4250,7 +4348,7 @@ function iaUsuarioAjuste(d) {
 
   function message(nome) {
     var me = state.me || { nome: '', mat: '' };
-    return montarMensagem(me.msg && me.msg.trim() ? me.msg : MSG_PADRAO, nome, me.nome, me.mat);
+    return montarMensagem(me.msg && me.msg.trim() ? me.msg : msgPadrao(), nome, me.nome, me.mat);
   }
 
   function copyText(t) {
@@ -4282,11 +4380,12 @@ function iaUsuarioAjuste(d) {
 
   /* Bibliotecas de PDF e ZIP: carregam só depois que a página abriu */
   var LIBS = {
-    pdfjs: { ok: function () { return !!window.pdfjsLib; }, srcs: ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'] },
+    pdfjs: { ok: function () { return !!window.pdfjsLib; }, locais: ['./lib/pdf.min.js', './lib/pdf.worker.min.js'], tudo: true, srcs: ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'] },
     pdflib: { ok: function () { return !!window.PDFLib; }, locais: ['./lib/pdf-lib.min.js'], srcs: ['https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'] },
     jszip: { ok: function () { return !!window.JSZip; }, locais: ['./lib/jszip.min.js'], srcs: ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'] }
   };
-  var libPromises = {};
+  var libPromises = {}, pdfWorkerLocal = false;
+  function pdfWorkerUrl() { return pdfWorkerLocal ? new URL('./lib/pdf.worker.min.js', location.href).href : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
   function loadScript(src) {
     return new Promise(function (res, rej) {
       var el = document.createElement('script');
@@ -4302,7 +4401,9 @@ function iaUsuarioAjuste(d) {
     if (!libPromises[name]) {
       libPromises[name] = (async function () {
         /* primeiro a cópia que vai junto com o app; só se faltar, a biblioteca da internet */
-        for (var q = 0; q < (L.locais || []).length; q++) { try { await loadScript(L.locais[q]); if (L.ok()) { return true; } } catch (e) { /* tenta a próxima */ } }
+        var locOk = 0;
+        for (var q = 0; q < (L.locais || []).length; q++) { try { await loadScript(L.locais[q]); locOk++; if (L.ok() && !L.tudo) { return true; } } catch (e) { /* tenta a próxima */ } }
+        if (L.tudo && locOk === L.locais.length && L.ok()) { pdfWorkerLocal = true; return true; }
         await Promise.all(L.srcs.map(loadScript));
         return L.ok();
       })().catch(function () { libPromises[name] = null; return false; });
@@ -5301,7 +5402,7 @@ function iaUsuarioAjuste(d) {
     h += '<div><div class="chead"><div class="cmain"><h3>' + (num ? '<span class="cnum" aria-label="Posição ' + num + '">' + num + '</span>' : '') + esc(i.nome) + '</h3>';
     var rsm = resumoAto(i), vcu = varaCurta(i.vara);
     if (rsm) { h += '<p class="trata">' + esc(rsm) + '</p>'; }
-    h += '<p class="meta proc">Proc. ' + esc(i.processo) + (vcu ? ' · ' + esc(vcu) : '') + '</p>';
+    h += '<p class="meta proc">Proc. ' + esc(i.processo) + (vcu ? ' · ' + esc(vcu) : '') + ' <span class="sist" title="Sistema do mandado">' + SIST_ROT[sistemaDe(i)] + '</span></p>';
     if (i.aviso && i.aviso.length > 70) { h += '<details class="orient"><summary>Orientações do mandado</summary><p>' + esc(i.aviso) + '</p></details>'; }
     var endTxt = esc(i.endereco) + (i.bairro ? ', ' + esc(i.bairro) : '');
     if (etipo(i) !== 'eletronico' && /\S/.test(i.endereco || '')) {
@@ -5388,7 +5489,7 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="meSms">Celular que recebe a rota por SMS (quando você toca em “Enviar por SMS”)</label><input type="text" id="meSms" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuSmsTxt()) + '" autocomplete="off"><p class="note" id="meSmsNota"></p>' +
       '<label class="f" for="meZap">WhatsApp que recebe a rota (abre a conversa com o link já pronto)</label><input type="text" id="meZap" inputmode="tel" placeholder="(45) 99999-9999" value="' + esc(meuZapTxt()) + '" autocomplete="off"><p class="note" id="meZapNota"></p>' +
       '<label class="f" for="meMsg">Mensagem padrão do WhatsApp (pode editar)</label>' +
-      '<textarea id="meMsg" style="min-height:260px">' + esc(me.msg && me.msg.trim() ? me.msg : MSG_PADRAO) + '</textarea>' +
+      '<textarea id="meMsg" style="min-height:260px">' + esc(me.msg && me.msg.trim() ? me.msg : msgPadrao()) + '</textarea>' +
       '<p class="note">Escreva <strong>{NOME}</strong> onde vai o nome da pessoa (em maiúsculas), <strong>{OFICIAL}</strong> onde vai o seu nome e <strong>{MATRICULA}</strong> onde vai a matrícula. A pergunta “o seu nome é o contido na 1ª linha?” só faz sentido se o nome estiver na primeira linha.</p>' +
       '<div class="actions"><button class="btn small" id="meMsgVer">Ver como fica</button><button class="btn small ghost" id="meMsgPad">Voltar ao texto padrão</button></div>' +
       '<pre id="meMsgPrev" class="note" style="white-space:pre-wrap" hidden></pre>' +
@@ -5455,7 +5556,7 @@ function iaUsuarioAjuste(d) {
       pv.textContent = montarMensagem(document.getElementById('meMsg').value, 'Maria da Silva', document.getElementById('meNome').value.trim(), document.getElementById('meMat').value.trim());
       pv.hidden = false;
     };
-    document.getElementById('meMsgPad').onclick = function () { document.getElementById('meMsg').value = MSG_PADRAO; toast('Texto padrão restaurado. Toque em Salvar.'); };
+    document.getElementById('meMsgPad').onclick = function () { document.getElementById('meMsg').value = msgPadrao(); toast('Texto padrão restaurado. Toque em Salvar.'); };
     document.getElementById('meGen').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('[data-gen]') : null;
       if (!b) { return; }
@@ -5465,7 +5566,7 @@ function iaUsuarioAjuste(d) {
       var n = document.getElementById('meNome').value.trim(), m = document.getElementById('meMat').value.trim();
       if (!n || !m) { toast('Preencha o nome e a matrícula'); return; }
       var tx = document.getElementById('meMsg').value;
-      var custom = tx.trim() && tx.trim() !== MSG_PADRAO.trim() ? tx : '';
+      var custom = tx.trim() && tx.trim() !== msgPadrao().trim() ? tx : '';
       state.cfg.msgAnalise = document.getElementById('meAn').value.trim() || null;
       state.cfg.meuSms = String(document.getElementById('meSms').value || '').trim();
       if (MODO_ATALHO && document.getElementById('meChave')) {
@@ -5783,18 +5884,21 @@ function iaUsuarioAjuste(d) {
       '<label class="f" for="cdCid">Cidades (uma por linha)</label><textarea id="cdCid" style="min-height:120px">' + esc(cidades().join('\n')) + '</textarea>' +
       '<label class="f" for="cdUf">Sigla do estado das cidades (para o mapa)</label><input type="text" id="cdUf" value="' + esc(ufCfg()) + '" autocomplete="off">' +
       '<div class="grp"><p class="grp-t">Ruas das cidades</p><ul class="note" id="cdRuasLista" style="margin:6px 0;padding-left:18px">' + ruasStatusHtml() + '</ul><div class="actions"><button class="btn" id="cdRuasBaixar" type="button">Baixar as ruas das cidades</button></div><p class="note">Baixa do seu site as ruas de cada cidade da lista e guarda neste aparelho; depois funciona sem internet. Também baixa sozinho quando você salva.</p></div>' +
+      '<label class="f" for="cdTrib">Tribunal ao qual você está vinculado</label><input type="text" id="cdTrib" value="' + esc(_sede.tribunal) + '" autocomplete="off">' +
       '<label class="f" for="cdCom">Comarca (no auto de busca e apreensão)</label><input type="text" id="cdCom" value="' + esc(optAuto().comarca) + '" autocomplete="off">' +
       '<label class="f" for="cdEst">Estado por extenso (no auto)</label><input type="text" id="cdEst" value="' + esc(optAuto().estado) + '" autocomplete="off">' +
       '<label class="f" for="cdForo">Endereço do fórum (no auto)</label><input type="text" id="cdForo" value="' + esc(optAuto().foro) + '" autocomplete="off">' +
       '<div class="actions"><button class="btn primary" id="cdSave">Salvar</button><button class="btn ghost" id="cdPad">Voltar ao padrão (Foz do Iguaçu)</button></div>' +
       '<p class="note">A mensagem do WhatsApp e as certidões têm texto próprio: o da mensagem você edita em Meus dados.</p>');
-    $('cdPad').onclick = function () { state.cfg.cidades = null; state.cfg.uf = null; state.cfg.comarca = null; state.cfg.estado = null; state.cfg.foro = null; save(); render(); closeModal(); toast('Voltou ao padrão de Foz do Iguaçu.'); };
+    $('cdPad').onclick = function () { state.cfg.cidades = null; state.cfg.uf = null; state.cfg.comarca = null; state.cfg.estado = null; state.cfg.foro = null; state.cfg.tribunal = null; setSede(); save(); render(); closeModal(); toast('Voltou ao padrão de Foz do Iguaçu.'); };
     function cdAplicar() {
       var ls = $('cdCid').value.split('\n').map(function (x) { return x.trim(); }).filter(function (x) { return x; });
       if (!ls.length) { toast('Escreva pelo menos uma cidade.'); return false; }
       state.cfg.cidades = ls;
       state.cfg.uf = ($('cdUf').value.trim() || 'PR').toUpperCase();
       state.cfg.comarca = $('cdCom').value.trim() || null;
+      state.cfg.tribunal = $('cdTrib').value.trim() || null;
+      setSede(state.cfg.comarca, state.cfg.uf, state.cfg.tribunal);
       state.cfg.estado = $('cdEst').value.trim() || null;
       state.cfg.foro = $('cdForo').value.trim() || null;
       save(); return true;
@@ -6399,7 +6503,7 @@ function iaUsuarioAjuste(d) {
     try {
       var file = await idbGet(it.fileId);
       if (!file) { if (await faltaPdf(it, viewMandado)) { return; } body.innerHTML = '<p>O arquivo não está mais neste aparelho.</p>'; return; }
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
       doc = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
       liveDocs.push(doc);
     } catch (e) { body.innerHTML = '<p>Não consegui abrir o PDF.</p>'; return; }
@@ -6440,7 +6544,7 @@ function iaUsuarioAjuste(d) {
     try {
       file = await idbGet(it.fileId);
       if (!file) { closeModal(); if (await faltaPdf(it, shareMandado)) { return; } toast('O arquivo não está mais neste aparelho'); return; }
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
       doc = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
       liveDocs.push(doc);
     } catch (e) { closeModal(); toast('Não consegui abrir o PDF'); return; }
@@ -6662,8 +6766,8 @@ function iaUsuarioAjuste(d) {
     var total = blocks.length;
     var info = blocks.map(function (b, i) {
       var pags = [];
-      for (var k = b.first + 1; k <= b.last; k++) { pags.push(k); }
-      return { k: i + 1, loc: parseContrafe(pages[b.cf].text), cf: b.cf, pags: pags };
+      for (var k = b.first + (b.eproc ? 0 : 1); k <= b.last; k++) { pags.push(k); }
+      return { k: i + 1, loc: b.loc || parseContrafe(pages[b.cf].text), cf: b.cf, pags: pags, eproc: !!b.eproc };
     });
     rs.esperados += total;
     var results = {}, fatal = null;
@@ -6685,7 +6789,8 @@ function iaUsuarioAjuste(d) {
       if (telEnd.length) { mm.telefones = mergePhones(mm.telefones, telEnd); mm.endereco = limpaEndereco(mm.endereco, telEnd); }
       mm.telCandidatos = tpd.duvidosos.filter(function (d) { return mergePhones(mm.telefones, [d]).length > mm.telefones.length; });
       mm.paginas = x.pags.map(function (i) { return pages[i].n; });
-      mm.paginas_contrafe = [pages[x.cf].n];
+      mm.paginas_contrafe = x.eproc ? [] : [pages[x.cf].n];
+      if (l.outrosEnd && l.outrosEnd.length) { mm.aviso = (mm.aviso ? mm.aviso + ' | ' : '') + 'Outro endereço no mandado: ' + l.outrosEnd.join(' ; '); }
       mm.texto = txtM; mm.conducao = detectarConducao(txtM);
       if (!m) {
         var cl = classificarLocal(l, txtM, regras());
@@ -6699,6 +6804,8 @@ function iaUsuarioAjuste(d) {
       it.cls = sc2.cls; it.motivo = sc2.motivo;
       var rTxt = acharRegra(Object.assign({}, mm, { tipo: (mm.tipo || '') + ' ' + (l.tipo || '') }), regras().filter(function (r) { return r.onde === 'txt'; }));
       if (rTxt) { it.txtAcao = rTxt.acao; it.txtMotivo = rTxt.motivo || ''; }
+      it.sist = x.eproc ? 'eproc' : (/seeu\.pje\.jus\.br|SEEU\s*-\s*Processo/i.test(txtM + ' ' + pages[x.cf].text) ? 'seeu' : 'projudi');
+      if (x.eproc) { it.pagPrincipal = pages[x.cf].n; }
       it.ident = l.ident; it.ctipo = l.tipo; it.gratuito = /\bgratuito\b/i.test(txtM);
       var au = parseAudiencia(txtM); if (au) { it.audData = au.data; it.audHora = au.hora; if (!it.audTrecho) { it.audTrecho = au.trecho; } }
       it.saudeLiminar = ehSaudeLiminar(txtM, state.cfg.saudeWords, state.cfg.liminarWords);
@@ -6720,7 +6827,7 @@ function iaUsuarioAjuste(d) {
 
   async function readPdf(file, fileId, sample, ctl) {
     if (!(await ensureLib('pdfjs'))) { throw { msg: 'A ferramenta de leitura de PDF não carregou. Confira a internet.' }; }
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
     var buf = await file.arrayBuffer();
     var doc;
     try { doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise; }
@@ -6735,13 +6842,14 @@ function iaUsuarioAjuste(d) {
       pages.push({ n: p, text: ptxt, kind: pageKind(ptxt), page: page });
     }
     var blocks = splitBlocks(pages);
+    if (!blocks.length) { blocks = splitBlocksEproc(pages); }
     if (blocks.length) {
       var nb = await readBlocks(pages, blocks, fileId, sample, ctl);
       try { doc.destroy(); } catch (e) {}
       return nb;
     }
     try { doc.destroy(); } catch (e) {}
-    throw { msg: 'Este PDF não está num formato que o leitor reconhece: ele precisa de página de contrafé e de texto (não pode ser só imagem).' };
+    throw { msg: 'Este PDF não está num formato que o leitor reconhece: ele precisa ser mandado do Projudi, do SEEU (com contrafé) ou do eproc, com texto (não pode ser só imagem).' };
   }
 
   document.getElementById('btnPdf').onclick = function () { document.getElementById('fileIn').click(); };
@@ -7257,7 +7365,7 @@ function iaUsuarioAjuste(d) {
         corpo += 'NÃO LOGREI ÊXITO em ' + v2 + ' o(a) Sr(a). ' + it.nome + (obs ? ', pelo seguinte motivo: ' + obs : '') + '.';
       }
     }
-    return head + corpo + '\n\nO referido é verdade e dou fé.\n\nFoz do Iguaçu/PR, ' + fmtDate(data) + '.\n\n' + (state.me && state.me.nome ? state.me.nome + '\n' : '') + 'Oficial de Justiça';
+    return head + corpo + '\n\nO referido é verdade e dou fé.\n\n' + _sede.cidade + '/' + _sede.uf + ', ' + fmtDate(data) + '.\n\n' + (state.me && state.me.nome ? state.me.nome + '\n' : '') + 'Oficial de Justiça';
   }
 
   async function fisicaPdf(blobs) {
@@ -7401,7 +7509,7 @@ function iaUsuarioAjuste(d) {
 async function lerAnexos(file, maxSide, qual) {
   if (!(file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')))) { return [await shrinkImage(file, maxSide, qual)]; }
   if (!(await ensureLib('pdfjs'))) { throw new Error('pdfjs'); }
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
   var doc = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise, out = [], total = Math.min(doc.numPages, 12);
   for (var n = 1; n <= total; n++) {
     var pg = await doc.getPage(n), v0 = pg.getViewport({ scale: 1 }), sc = Math.min(2, (maxSide || 1500) / Math.max(v0.width, v0.height)), vp = pg.getViewport({ scale: sc });
@@ -8680,7 +8788,7 @@ function shrinkImage(file, maxSide, qual) {
       if (!(await ensureLib('pdflib')) || !(await ensureLib('pdfjs'))) { throw new Error('lib'); }
       var blobs = await loadPrints(it), gen = window.__mandadosTeste && window.__mandadosTeste.gerarPdfCert;
       var bytes = gen ? await gen(it, blobs) : await certPdf(it, it.certidao.texto, it.certidao.sig, blobs);
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
       doc = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
       liveDocs.push(doc);
       var html = '<p class="note">É o PDF que vai anexado ao processo' + (doc.numPages > 1 ? ' (' + doc.numPages + ' páginas)' : '') + '. Dá para dar zoom com os dedos.</p>';
@@ -8883,7 +8991,7 @@ function shrinkImage(file, maxSide, qual) {
     try {
       var file = await idbGet(it.fileId);
       if (!file) { return ''; }
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
       doc = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
       var out = '';
       var nums = (it.paginas || []).filter(function (n) { return n >= 1 && n <= doc.numPages; });
@@ -9230,6 +9338,7 @@ function shrinkImage(file, maxSide, qual) {
       '<ol class="ordem">' + lista.map(function (i) { return '<li>' + esc(i.nome) + ' <span class="note">- ' + esc(enderecoSimples(i.endereco).texto) + (fileOk(i) ? '' : ' (sem PDF)') + '</span></li>'; }).join('') + '</ol>' +
       '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcCf" checked style="width:24px;height:24px"> Incluir a contrafé</label>' +
       (recadoCfg().copias ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcRec" checked style="width:24px;height:24px"> Incluir o recado (' + recadoCfg().copias + (recadoCfg().copias === 1 ? ' cópia' : ' cópias') + ' por mandado, depois da contrafé)</label>' : '') +
+      (com.some(function (i) { return sistemaDe(i) === 'eproc'; }) ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcEp" checked style="width:24px;height:24px"> eproc: imprimir só a página principal do mandado, em 2 vias</label>' : '') +
       (com.some(temAuto) ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcAuto" checked style="width:24px;height:24px"> Incluir o auto preenchido (busca e apreensão, penhora, remoção ou avaliação) (' + com.filter(temAuto).length + ')</label>' +
         '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcHoje" style="width:24px;height:24px"> Escrever a data de hoje no auto (senão o dia e o mês ficam em branco)</label>' : '') +
       '<div class="actions"><button class="btn primary" id="pcGo"' + (com.length ? '' : ' disabled') + '>Gerar PDF</button><button class="btn" id="pcNo">Cancelar</button></div>' +
@@ -9238,6 +9347,7 @@ function shrinkImage(file, maxSide, qual) {
     document.getElementById('pcGo').onclick = async function () {
       var incl = document.getElementById('pcCf').checked, incRec = !!(document.getElementById('pcRec') && document.getElementById('pcRec').checked), fontesRec = null;
       var incAuto = !!(document.getElementById('pcAuto') && document.getElementById('pcAuto').checked), hojeAuto = !!(document.getElementById('pcHoje') && document.getElementById('pcHoje').checked), avisosAuto = [];
+      var soPrinc = !!(document.getElementById('pcEp') && document.getElementById('pcEp').checked);
       this.disabled = true;
       var marcas = [];
       try {
@@ -9252,6 +9362,7 @@ function shrinkImage(file, maxSide, qual) {
           if (!src) { continue; }
           var okP = function (n, i, a) { return a.indexOf(n) === i && n >= 1 && n <= src.getPageCount(); }, asc2 = function (a, b) { return a - b; };
           var pagsM = (it.paginas || []).filter(okP).sort(asc2), pagsC = incl ? (it.contrafe || []).filter(function (n, i, a) { return okP(n, i, a) && pagsM.indexOf(n) === -1; }).sort(asc2) : [];
+          if (soPrinc && sistemaDe(it) === 'eproc') { var pp = it.pagPrincipal || pagsM[0]; if (pp && okP(pp, 0, [pp])) { pagsM = [pp, pp]; pagsC = []; } }
           var nums = pagsM.concat(pagsC);      /* a contrafé vai depois do conteúdo do mandado */
           if (!nums.length) { continue; }
           var pgs = await out.copyPages(src, nums.map(function (n) { return n - 1; })), iniPag = out.getPageCount() + 1;
@@ -9277,7 +9388,7 @@ function shrinkImage(file, maxSide, qual) {
   }
   async function pdfParaImagens(bytes, de, ate) {
     if (!(await ensureLib('pdfjs'))) { return null; }
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
     var doc = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise, out = [];
     for (var p = de; p <= Math.min(ate, doc.numPages); p++) {
       var pg = await doc.getPage(p), vp = pg.getViewport({ scale: 1.1 }), c = document.createElement('canvas');
@@ -10646,6 +10757,83 @@ function shrinkImage(file, maxSide, qual) {
       varre(document.body);
     } catch (e) {}
   })();
+
+
+  /* ===== Cadastro obrigatório do primeiro acesso ===== */
+  function cadastroPendente() { return !state.cfg.cadastroV && !window.__PULAR_CAD; }
+  function cadastroTela() {
+    if (document.getElementById('cadOv')) { return; }
+    var me = state.me || {}, antigo = !!(state.me && state.me.nome);
+    var cid = antigo ? cidades().join('\n') : '', oa = optAuto();
+    var temPin = !!(window.__bloqueio && window.__bloqueio.temPin && window.__bloqueio.temPin());
+    var ov = document.createElement('div');
+    ov.id = 'cadOv'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Cadastro inicial');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:2147482000;background:var(--bg,#F3F5F8);color:var(--ink,#131A2B);overflow:auto;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 18px) 18px calc(env(safe-area-inset-bottom,0px) + 28px)';
+    ov.innerHTML = '<div style="max-width:560px;margin:0 auto">' +
+      '<h1 style="font-size:22px;margin:0 0 6px">Cadastro inicial</h1>' +
+      '<p class="note">Antes de usar o app, preencha os dados abaixo. Eles são necessários para as mensagens, certidões, rotas e para decidir o que é endereço da sua comarca. Ficam só neste aparelho e dá para alterar depois em Meus dados.</p>' +
+      '<label class="f" for="cdNome">Nome completo do servidor</label><input type="text" id="cdNome" autocomplete="off" value="' + esc(me.nome || '') + '">' +
+      '<label class="f" for="cdMat">Matrícula</label><input type="text" id="cdMat" autocomplete="off" value="' + esc(me.mat || '') + '">' +
+      '<label class="f" for="cdGen">Sou</label><select id="cdGen" class="sel"><option value="">Escolher…</option><option value="h"' + (me.genero === 'h' ? ' selected' : '') + '>Oficial (homem)</option><option value="m"' + (me.genero === 'm' ? ' selected' : '') + '>Oficiala (mulher)</option></select>' +
+      '<label class="f" for="cdTrib">Tribunal ao qual você está vinculado</label><input type="text" id="cdTrib" placeholder="Ex.: Tribunal de Justiça do Estado do Paraná" autocomplete="off" value="' + esc(antigo ? _sede.tribunal : (state.cfg.tribunal || '')) + '">' +
+      '<label class="f" for="cdEst">Estado por extenso</label><input type="text" id="cdEst" placeholder="Ex.: Paraná" autocomplete="off" value="' + esc(antigo ? oa.estado : (state.cfg.estado || '')) + '">' +
+      '<label class="f" for="cdUf">Sigla do estado</label><input type="text" id="cdUf" maxlength="2" placeholder="Ex.: PR" autocomplete="off" autocapitalize="characters" value="' + esc(antigo ? ufCfg() : (state.cfg.uf || '')) + '">' +
+      '<label class="f" for="cdCom">Comarca</label><input type="text" id="cdCom" placeholder="Ex.: Foz do Iguaçu" autocomplete="off" value="' + esc(antigo ? oa.comarca : (state.cfg.comarca || '')) + '">' +
+      '<label class="f" for="cdCid">Cidades abrangidas pela comarca (uma por linha)</label><textarea id="cdCid" style="min-height:90px" placeholder="Ex.:\nFoz do Iguaçu\nSanta Terezinha de Itaipu">' + esc(cid) + '</textarea>' +
+      '<p class="note">Só endereços dessas cidades contam como diligência física na sua comarca. Os de outras cidades ficam como cumprimento eletrônico.</p>' +
+      '<label class="f" for="cdForo">Endereço do fórum</label><input type="text" id="cdForo" placeholder="Rua, número, bairro" autocomplete="off" value="' + esc(antigo ? oa.foro : (state.cfg.foro || '')) + '">' +
+      '<label class="f" for="cdDDD">DDD da sua região</label><input type="text" id="cdDDD" inputmode="numeric" maxlength="2" placeholder="Ex.: 45" autocomplete="off" value="' + esc(state.cfg.ddd || '') + '">' +
+      (temPin ? '<p class="note">O bloqueio por PIN deste aparelho já está ativo.</p>' :
+        '<label class="f" for="cdPin">Crie o PIN do app (mínimo 6 números)</label><input type="password" id="cdPin" inputmode="numeric" autocomplete="new-password" maxlength="12">' +
+        '<label class="f" for="cdPin2">Repita o PIN</label><input type="password" id="cdPin2" inputmode="numeric" autocomplete="new-password" maxlength="12">' +
+        '<label class="dgop" id="cdFaceW" hidden><input type="checkbox" id="cdFace" checked> Também abrir com Face ID</label>' +
+        '<p class="note">O PIN tranca a tela do app. Se esquecer, só dá para entrar apagando os dados do app (restaure pelo backup).</p>') +
+      '<p class="note" id="cdErro" style="color:#B3261E;font-weight:600" hidden></p>' +
+      '<div class="actions"><button class="btn primary" id="cdOk" type="button">Concluir cadastro</button></div></div>';
+    document.body.appendChild(ov);
+    document.documentElement.style.overflow = 'hidden';
+    var $ = function (id) { return document.getElementById(id); };
+    if (!temPin && window.__bloqueio && window.__bloqueio.faceDisponivel) { window.__bloqueio.faceDisponivel().then(function (ok) { if (ok && $('cdFaceW')) { $('cdFaceW').hidden = false; } }).catch(function () {}); }
+    function erro(t, el) { var e = $('cdErro'); e.textContent = t; e.hidden = false; if (el) { try { el.focus(); } catch (x) {} } }
+    $('cdOk').onclick = async function () {
+      var v = function (id) { return String($(id).value || '').trim(); };
+      var nome = v('cdNome'), mat = v('cdMat'), trib = v('cdTrib'), est = v('cdEst'), uf = v('cdUf').toUpperCase(), com = v('cdCom'), foro = v('cdForo'), ddd = v('cdDDD').replace(/\D/g, '');
+      var cids = $('cdCid').value.split('\n').map(function (x) { return x.trim(); }).filter(function (x) { return x; });
+      if (nome.length < 5 || nome.indexOf(' ') < 0) { erro('Escreva o nome completo.', $('cdNome')); return; }
+      if (!mat) { erro('Informe a matrícula.', $('cdMat')); return; }
+      if (!$('cdGen').value) { erro('Escolha uma opção em “Sou”.', $('cdGen')); return; }
+      if (trib.length < 5) { erro('Informe o tribunal ao qual você está vinculado.', $('cdTrib')); return; }
+      if (est.length < 3) { erro('Informe o estado por extenso.', $('cdEst')); return; }
+      if (!/^[A-Z]{2}$/.test(uf)) { erro('A sigla do estado tem 2 letras (ex.: PR).', $('cdUf')); return; }
+      if (com.length < 3) { erro('Informe a comarca.', $('cdCom')); return; }
+      if (!cids.length) { erro('Escreva pelo menos uma cidade da comarca.', $('cdCid')); return; }
+      if (foro.length < 5) { erro('Informe o endereço do fórum.', $('cdForo')); return; }
+      if (ddd.length !== 2) { erro('Informe o DDD com 2 números.', $('cdDDD')); return; }
+      var pin = '';
+      if (!temPin) {
+        pin = v('cdPin');
+        if (!/^\d{6,12}$/.test(pin)) { erro('O PIN precisa ter de 6 a 12 números.', $('cdPin')); return; }
+        if (pin !== v('cdPin2')) { erro('Os dois PINs não são iguais.', $('cdPin2')); return; }
+      }
+      $('cdOk').disabled = true; $('cdOk').textContent = 'Salvando…';
+      try {
+        if (pin) {
+          await window.__bloqueio.definir(pin, 900);
+          if ($('cdFace') && $('cdFace').checked && !$('cdFaceW').hidden) { try { await window.__bloqueio.faceCadastrar(); } catch (x) { /* sem Face ID: fica só o PIN */ } }
+        }
+      } catch (x) { $('cdOk').disabled = false; $('cdOk').textContent = 'Concluir cadastro'; erro('Não consegui criar o PIN neste aparelho. Tente de novo.'); return; }
+      state.me = Object.assign({}, state.me || {}, { nome: nome, mat: mat, genero: $('cdGen').value });
+      state.cfg.tribunal = trib; state.cfg.estado = est; state.cfg.uf = uf; state.cfg.comarca = com; state.cfg.cidades = cids; state.cfg.foro = foro; state.cfg.ddd = ddd;
+      setDDD(ddd); setSede(com, uf, trib);
+      state.cfg.cadastroV = 1;
+      save();
+      ov.remove(); document.documentElement.style.overflow = '';
+      render(); toast('Cadastro concluído.');
+      try { baixarRuasCidades().catch(function () {}); } catch (x) {}
+    };
+  }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.cad = { pendente: cadastroPendente, abrir: cadastroTela };
+  if (cadastroPendente()) { cadastroTela(); }
 
   /* Depois que a página abriu: fonte e bibliotecas em segundo plano */
   setTimeout(function () {
