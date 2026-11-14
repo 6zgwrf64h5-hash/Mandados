@@ -9465,6 +9465,7 @@ function shrinkImage(file, maxSide, qual) {
     }
   }
   function semRecado(i) { var t = norm(i.tipo || ''); return !!atoPalavras(i.tipo).bem && /busca|apreens|penhor|remo[cç]|remocao|remover/.test(t); }
+  function levaRecado(i) { return etipo(i) === 'local' && !semRecado(i); }   /* só endereço físico dentro da comarca; fora dela ou sem endereço = só WhatsApp */
   async function desenharRecados(out, nome, agora, fontes) {
     var c = recadoCfg(), mm = recadoMeses(agora);
     if (!c.copias) { return 0; }
@@ -9476,7 +9477,7 @@ function shrinkImage(file, maxSide, qual) {
     return c.copias;
   }
   window.__mandadosTeste = window.__mandadosTeste || {};
-  window.__mandadosTeste.semRecado = semRecado;
+  window.__mandadosTeste.semRecado = semRecado; window.__mandadosTeste.levaRecado = levaRecado;
   window.__mandadosTeste.recado = { meses: recadoMeses, pdf: async function (nome, agora) { await ensureLib('pdflib'); var out = await PDFLib.PDFDocument.create(); await desenharRecados(out, nome, agora); return Array.from(await out.save()); } };
   function abrirBloqueio() {
     var B = window.__bloqueio, on = B.ativo(), temPin = B.temPin(), temFace = B.temFace();
@@ -9605,7 +9606,7 @@ function shrinkImage(file, maxSide, qual) {
             var lc = lacunasAuto(da);
             if (lc.length) { avisosAuto.push(it.nome + ': ' + lc.join(', ')); }
           }
-          if (incRec && etipo(it) !== 'eletronico' && !semRecado(it)) {
+          if (incRec && levaRecado(it)) {
             fontesRec = fontesRec || { n: await out.embedFont(PDFLib.StandardFonts.TimesRoman), b: await out.embedFont(PDFLib.StandardFonts.TimesRomanBold) };
             await desenharRecados(out, it.nome, Date.now(), fontesRec);
           }
