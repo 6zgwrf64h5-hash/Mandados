@@ -1739,7 +1739,7 @@ function splitBlocks(pages) {
 }
 
 /* ---- Sistema do mandado: Projudi, SEEU ou eproc ---- */
-var SIST_ROT = { projudi: 'Projudi', seeu: 'SEEU', eproc: 'eproc' };
+var SIST_ROT = { projudi: 'Projudi', seeu: 'SEEU', eproc: 'eproc', pje: 'PJe', esaj: 'e-SAJ', outro: 'Outro' };
 function sistemaDe(it) {
   if (it && SIST_ROT[it.sist]) { return it.sist; }
   var d = String((it && it.processo) || '').replace(/\D/g, '').charAt(0);
@@ -1764,6 +1764,8 @@ function splitBlocksEproc(pages) {
 function parseEndEproc(raw) {
   var t = String(raw || '').replace(/\s+/g, ' ').trim().replace(/,\s*$/, '');
   if (!t) { return { endereco: '', bairro: '', cidade: '', cep: '' }; }
+  var mc = /[,\s-]*CEP:?\s*(\d{5})-?(\d{3})\s*$/i.exec(t);
+  if (mc) { t = t.slice(0, mc.index).trim().replace(/[,\s-]+$/, ''); var rr = parseEndEproc(t); rr.cep = rr.cep || (mc[1] + mc[2]); return rr; }
   var m = /^(.*?)\s+-\s+(.*?)\s+-\s+(\d{8})\s*,\s*(.+)$/.exec(t);
   if (m) { return { endereco: m[1].trim(), bairro: /^null$/i.test(m[2].trim()) ? '' : m[2].trim(), cep: m[3], cidade: m[4].replace(/\s*\/\s*/, '/').trim() }; }
   var c = /^(.*?)\s*-\s*(\d{8})$/.exec(t), cep = '';
@@ -1820,6 +1822,74 @@ function splitEnderecoRotulos(raw) {
   var rua = pega(new RegExp('^(.*?)\\s*(?:Bairro:|Cidade:|CEP:|Telefone)')) || t;
   var bairro = pega(new RegExp('Bairro:\\s*(.*?)' + fim)), cidade = pega(new RegExp('Cidade:\\s*(.*?)' + fim));
   return { endereco: rua.replace(/[,\s]+$/, ''), bairro: bairro, cidade: cidade.replace(/\s*\/\s*/, '/') };
+}
+
+/* ---- Leitor genérico: para tribunais/sistemas que ainda não têm leitor próprio ---- */
+function sistemaPorTexto(t) {
+  var x = String(t || '');
+  if (/\bSEEU\b|seeu\.pje/i.test(x)) { return 'seeu'; }
+  if (/\beproc\b/i.test(x)) { return 'eproc'; }
+  if (/\bprojudi\b/i.test(x)) { return 'projudi'; }
+  if (/\bPJe\b|pje\.jus|processo judicial eletr/i.test(x)) { return 'pje'; }
+  if (/e-?SAJ\b|esaj\./i.test(x)) { return 'esaj'; }
+  return 'outro';
+}
+function splitBlocksGenerico(pages) {
+  /* O número do processo (padrão CNJ) costuma estar em todas as páginas do mandado: ele separa os mandados.
+     Uma página continua o mandado atual se tiver o número dele; só começa outro se trouxer outro número
+     e (tiver título de mandado ou o número aparecer também na página seguinte). Citação isolada de outro processo não separa. */
+  var info = pages.map(function (p) {
+    var n = norm(p.text);
+    return { ps: pageProcs(p.text), titulo: /(^|\n)\s*MANDADO\s+D[EO]\s+\S/i.test(p.text) || /\bmandado\s+d[eo]\s+(cita|intima|notifica|penhora|busca|condu|prisao|avalia|remocao|constata)/.test(n.slice(0, 900)) };
+  });
+  var blocos = [], cur = null;
+  pages.forEach(function (p, i) {
+    var ps = info[i].ps, main = ps.length ? ps[0] : '';
+    if (cur && ps.indexOf(cur.proc) !== -1) { cur.last = i; return; }
+    if (main) {
+      var proxima = info[i + 1] ? info[i + 1].ps.indexOf(main) !== -1 : false;
+      if (!cur || info[i].titulo || proxima) { cur = { proc: main, cf: i, first: i, last: i, generico: true }; blocos.push(cur); return; }
+    }
+    if (cur) { cur.last = i; }
+  });
+  blocos = blocos.filter(function (b) { return info.slice(b.first, b.last + 1).some(function (x) { return x.titulo; }) || blocos.length === 1 || (b.last > b.first); });
+  blocos.forEach(function (b) {
+    var txt = pages[b.first].text + (pages[b.first + 1] && b.last > b.first ? '\n' + pages[b.first + 1].text : '');
+    b.loc = parseGenerico(pages[b.first].text, txt);
+    b.sistema = sistemaPorTexto(pages.slice(b.first, b.last + 1).map(function (p) { return p.text; }).join('\n').slice(0, 20000));
+  });
+  return blocos;
+}
+function parseGenerico(text, textoExtra) {
+  var t = String(text || ''), t2 = String(textoExtra || t);
+  function lin(re, base) { var m = re.exec(base || t); return m ? m[1].replace(/\s+/g, ' ').trim() : ''; }
+  var proc = (/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/.exec(t) || [''])[0];
+  var tipo = lin(/(?:^|\n)\s*MANDADO\s+D[EO]\s+([^\n]+)/i).replace(/\s*(Mandado\s+N.*|N[º°o]\s*\d.*)$/i, '');
+  tipo = tipo.toLowerCase().replace(/(^|[\/])\s*([a-zà-ú])/g, function (x, a, b) { return a + b.toUpperCase(); }).slice(0, 60);
+  var nome = lin(/(?:Destinat[áa]rio\(a\)|Destinat[áa]rio|Executado\(?s?\)?|Intimando\(?a?\)?|Citando\(?a?\)?|Notificando\(?a?\)?|Intimado\(?a?\)?|Citado\(?a?\)?|Requerido\(?a?\)?|R[ée]u|Parte(?:\s+requerida)?)\s*:\s*([^\n]+)/i);
+  if (!nome) { nome = lin(/da\s+parte\s+([A-ZÀ-Ú][A-ZÀ-Ú' .-]{4,}?)\s*(?:,|\n|CPF)/); }
+  if (!nome) { nome = lin(/Ilustr[ií]ssimo\(a\)\s+([^\n]+)/i); }
+  nome = nome.replace(/\s*[,(]?\s*(CPF|CNPJ|RG)\b.*$/i, '').replace(/\s*(Endere[çc]o|Contatos?|Telefone).*$/i, '').replace(/[,;:]+$/, '').trim();
+  if (nome.length < 4 || /^\d/.test(nome)) { nome = ''; }
+  var ender = '';
+  var me = /Endere[çc]o(?:\(s\))?\s*:\s*([^\n]*)/i.exec(t2);
+  if (me) {
+    ender = me[1].trim();
+    if (!/\d{5}-?\d{3}|CEP/i.test(ender)) {
+      var resto = t2.slice(me.index + me[0].length), nx = /^\n[ \t]*([^\n]+)/.exec(resto);
+      if (nx && !/^(contato|telefone|obs|processo|certifico|parte|destinat)/i.test(nx[1].trim()) && nx[1].length < 140) { ender = (ender + ' ' + nx[1].trim()).replace(/\s+/g, ' '); }
+    }
+    ender = ender.replace(/\(\s*(Residencial|Comercial|Profissional)\s*\).*$/i, '').trim();
+  }
+  var se = /\bCidade:/i.test(ender) ? splitEnderecoRotulos(ender) : parseEndEproc(ender);
+  var cep = ((/\b(\d{5})-?(\d{3})\b/.exec(ender) || [])[0] || '').replace(/\D/g, '');
+  var linhas = t.split('\n').map(function (x) { return x.trim(); }).filter(function (x) { return x; }).slice(0, 14);
+  var vara = (linhas.filter(function (x) { return /\b(Vara|Juizado|Ju[ií]zo|Cart[óo]rio|Central)\b/i.test(x) && x.length < 120; })[0] || '').replace(/\s+/g, ' ');
+  var tels = [];
+  (t2.match(/(?:Contatos?|Telefones?|Celular|Whats(?:App)?|Fone)\s*:?[^\n]*/gi) || []).forEach(function (ln) {
+    (ln.replace(/\(#\)[^(]*\(#\)/g, ' ').match(/\(?\d{2}\)?\s*9?\d{4}[-\s]?\d{4}|\b\d{10,11}\b/g) || []).forEach(function (x) { if (tels.indexOf(x.trim()) < 0) { tels.push(x.trim()); } });
+  });
+  return { nome: nome.toUpperCase(), processo: proc, ident: '', tipo: tipo, vara: vara, urgente: '', telefones: tels.slice(0, 3), endereco: se.endereco, bairro: se.bairro, cidade: se.cidade, cep: cep || se.cep || '', endereco_raw: ender, outrosEnd: [] };
 }
 function splitEndereco(raw) {
   var t = String(raw || '').replace(/^\s*\*\s*/, '').replace(/\s+/g, ' ').trim();
@@ -5422,6 +5492,7 @@ function iaUsuarioAjuste(d) {
       if (fx.length) { h += '<details class="maisflags"><summary>+' + fx.length + (fx.length === 1 ? ' aviso' : ' avisos') + '</summary><div class="flags">' + fx.map(fh).join('') + '</div></details>'; }
     }
     h += telCandHtml(i);
+    if (i.generico && i.status === 'pendente') { h += '<div class="actions"><button class="btn small" data-act="editdados">Conferir / editar dados do mandado</button></div>'; }
     if (i.status === 'pendente') {
       h += '<p class="stcard">' + esc(statusCartao(i)) + '</p>';
       var mpr = motivoPronto(i, Date.now(), cidades()); if (mpr) { h += '<p class="prontobal">✅ Pronto para certificar: ' + esc(mpr) + '</p>'; }
@@ -6091,6 +6162,7 @@ function iaUsuarioAjuste(d) {
     else if (act === 'numx') { abrirNaoDeuCerto(it, b.getAttribute('data-tel')); }
     else if (act === 'resp') { abrirResposta(it, b.getAttribute('data-p'), b.getAttribute('data-t')); }
     else if (act === 'viewcert') { viewCert(it); }
+    else if (act === 'editdados') { abrirEditarDados(it); }
     else if (act === 'ver') { viewMandado(it); }
     else if (act === 'certfora') { abrirCertFora(it); }
     else if (act === 'share') { shareMandado(it); }
@@ -6723,7 +6795,7 @@ function iaUsuarioAjuste(d) {
       state.items.forEach(function (x) { if (!x.rem && ult.ch[x.id] === ult.chave) { x.rem = ult.t; } });
       save();
     } else { remAtual = Date.now(); }
-    reatt = 0; dups = 0; volt = 0; semIA = null; rs = { esperados: 0, ia: 0, local: 0 };
+    reatt = 0; dups = 0; volt = 0; semIA = null; rs = { esperados: 0, ia: 0, local: 0, generico: 0 };
     runCtl = new AbortController();
     var ctl = runCtl;
     openModal('Lendo os mandados',
@@ -6757,7 +6829,9 @@ function iaUsuarioAjuste(d) {
       (rs.esperados ? '<p>O PDF tem <strong>' + rs.esperados + '</strong> mandados (um por contrafé). Contei na leitura: <strong>' + (total + dups + reatt) + '</strong>' + ((total + dups + reatt) === rs.esperados ? ', tudo certo.' : '. <strong>Atenção: faltam ' + (rs.esperados - total - dups - reatt) + '.</strong>') + (dups ? ' Já estavam na lista: ' + dups + '.' : '') + (volt ? ' Voltaram à lista (estavam excluídos): ' + volt + '.' : '') + '</p>' : '') +
       '<p class="note">Na lista agora: ' + parts[0] + ' para enviar, ' + parts[1] + ' para conferir, ' + parts[2] + ' para não enviar.</p>' +
       '<p class="note">Confira sempre os nomes e números no próprio mandado antes de mandar a mensagem.</p>' +
+      (rs.generico ? '<p class="chk bad"><strong>' + rs.generico + (rs.generico === 1 ? ' mandado foi lido' : ' mandados foram lidos') + ' pelo leitor genérico</strong>, porque o modelo deste tribunal ainda não tem leitor próprio. Confira nome, endereço e telefone de cada um (botão “Conferir / editar dados” no cartão).</p><div class="actions"><button class="btn" id="okPedir">Pedir leitor para o meu tribunal</button></div>' : '') +
       '<div class="actions"><button class="btn primary" id="okDone">Ver a lista</button></div>');
+    if (document.getElementById('okPedir')) { document.getElementById('okPedir').onclick = function () { pedirLeitor(); }; }
     document.getElementById('okDone').onclick = function () { closeModal(); tab = 'enviar'; clsF = ''; render(); };
     render();
   }
@@ -6766,8 +6840,8 @@ function iaUsuarioAjuste(d) {
     var total = blocks.length;
     var info = blocks.map(function (b, i) {
       var pags = [];
-      for (var k = b.first + (b.eproc ? 0 : 1); k <= b.last; k++) { pags.push(k); }
-      return { k: i + 1, loc: b.loc || parseContrafe(pages[b.cf].text), cf: b.cf, pags: pags, eproc: !!b.eproc };
+      for (var k = b.first + ((b.eproc || b.generico) ? 0 : 1); k <= b.last; k++) { pags.push(k); }
+      return { k: i + 1, loc: b.loc || parseContrafe(pages[b.cf].text), cf: b.cf, pags: pags, eproc: !!b.eproc, generico: !!b.generico, sistema: b.sistema };
     });
     rs.esperados += total;
     var results = {}, fatal = null;
@@ -6789,7 +6863,8 @@ function iaUsuarioAjuste(d) {
       if (telEnd.length) { mm.telefones = mergePhones(mm.telefones, telEnd); mm.endereco = limpaEndereco(mm.endereco, telEnd); }
       mm.telCandidatos = tpd.duvidosos.filter(function (d) { return mergePhones(mm.telefones, [d]).length > mm.telefones.length; });
       mm.paginas = x.pags.map(function (i) { return pages[i].n; });
-      mm.paginas_contrafe = x.eproc ? [] : [pages[x.cf].n];
+      mm.paginas_contrafe = (x.eproc || x.generico) ? [] : [pages[x.cf].n];
+      if (x.generico && !mm.nome) { mm.nome = 'NOME NÃO IDENTIFICADO'; }
       if (l.outrosEnd && l.outrosEnd.length) { mm.aviso = (mm.aviso ? mm.aviso + ' | ' : '') + 'Outro endereço no mandado: ' + l.outrosEnd.join(' ; '); }
       mm.texto = txtM; mm.conducao = detectarConducao(txtM);
       if (!m) {
@@ -6804,7 +6879,8 @@ function iaUsuarioAjuste(d) {
       it.cls = sc2.cls; it.motivo = sc2.motivo;
       var rTxt = acharRegra(Object.assign({}, mm, { tipo: (mm.tipo || '') + ' ' + (l.tipo || '') }), regras().filter(function (r) { return r.onde === 'txt'; }));
       if (rTxt) { it.txtAcao = rTxt.acao; it.txtMotivo = rTxt.motivo || ''; }
-      it.sist = x.eproc ? 'eproc' : (/seeu\.pje\.jus\.br|SEEU\s*-\s*Processo/i.test(txtM + ' ' + pages[x.cf].text) ? 'seeu' : 'projudi');
+      if (x.generico) { it.generico = true; rs.generico = (rs.generico || 0) + 1; if (it.cls === 'enviar') { it.cls = 'conferir'; it.motivo = 'Leitura genérica: confira nome, endereço e telefone'; } }
+      it.sist = x.generico ? x.sistema : x.eproc ? 'eproc' : (/seeu\.pje\.jus\.br|SEEU\s*-\s*Processo/i.test(txtM + ' ' + pages[x.cf].text) ? 'seeu' : 'projudi');
       if (x.eproc) { it.pagPrincipal = pages[x.cf].n; }
       it.ident = l.ident; it.ctipo = l.tipo; it.gratuito = /\bgratuito\b/i.test(txtM);
       var au = parseAudiencia(txtM); if (au) { it.audData = au.data; it.audHora = au.hora; if (!it.audTrecho) { it.audTrecho = au.trecho; } }
@@ -6843,13 +6919,14 @@ function iaUsuarioAjuste(d) {
     }
     var blocks = splitBlocks(pages);
     if (!blocks.length) { blocks = splitBlocksEproc(pages); }
+    if (!blocks.length) { blocks = splitBlocksGenerico(pages); }
     if (blocks.length) {
       var nb = await readBlocks(pages, blocks, fileId, sample, ctl);
       try { doc.destroy(); } catch (e) {}
       return nb;
     }
     try { doc.destroy(); } catch (e) {}
-    throw { msg: 'Este PDF não está num formato que o leitor reconhece: ele precisa ser mandado do Projudi, do SEEU (com contrafé) ou do eproc, com texto (não pode ser só imagem).' };
+    throw { msg: 'Este PDF não está num formato que o leitor reconhece: não achei número de processo nem texto de mandado. O PDF precisa ter texto (não pode ser só imagem).' };
   }
 
   document.getElementById('btnPdf').onclick = function () { document.getElementById('fileIn').click(); };
@@ -10759,6 +10836,56 @@ function shrinkImage(file, maxSide, qual) {
   })();
 
 
+
+  /* Contato para o aviso "pedir leitor": o aviso só sai se a pessoa tocar no botão (nada é enviado sozinho) */
+  var CONTATO_DEV = { zap: '', email: '' };
+  function pedirLeitor() {
+    var trib = _sede.tribunal, com = _sede.cidade + '/' + _sede.uf;
+    var txt = 'Olá! Uso o app Mandados do dia. Meu tribunal: ' + trib + '. Comarca: ' + com + '. Ainda não tem leitor específico e posso enviar 2 ou 3 mandados de exemplo (com os nomes trocados).';
+    openModal('Pedir leitor para o meu tribunal',
+      '<p>Para ler direitinho os mandados do seu tribunal, o desenvolvedor precisa de <strong>2 ou 3 mandados de exemplo de cada tipo</strong>. Troque os nomes, CPFs e endereços por dados inventados antes de enviar: só o formato interessa.</p>' +
+      '<p class="note">A mensagem abaixo leva só o tribunal e a comarca. <strong>Nada é enviado sozinho:</strong> o botão abre o seu WhatsApp (ou e-mail) com o texto pronto, e você decide se manda.</p>' +
+      '<pre class="note" style="white-space:pre-wrap">' + esc(txt) + '</pre>' +
+      '<div class="actions"><button class="btn primary" id="plGo">Enviar pedido</button><button class="btn" id="plNo">Agora não</button></div>');
+    document.getElementById('plNo').onclick = closeModal;
+    document.getElementById('plGo').onclick = function () {
+      var z = String(CONTATO_DEV.zap || '').replace(/\D/g, '');
+      if (z) { window.open('https://wa.me/' + (z.length <= 11 ? '55' + z : z) + '?text=' + encodeURIComponent(txt), '_blank'); }
+      else if (CONTATO_DEV.email) { location.href = 'mailto:' + CONTATO_DEV.email + '?subject=' + encodeURIComponent('Leitor para o meu tribunal') + '&body=' + encodeURIComponent(txt); }
+      else if (navigator.share) { navigator.share({ text: txt }).catch(function () {}); }
+      else { toast('Copie o texto acima e envie ao desenvolvedor.'); }
+    };
+  }
+  function tribunalConhecido() { return /paran[áa]|tjpr/i.test(_sede.tribunal); }
+  function abrirEditarDados(it) {
+    openModal('Conferir / editar dados do mandado',
+      '<p class="note">O leitor genérico pode errar. Corrija o que estiver diferente do mandado e toque em Salvar.</p>' +
+      '<label class="f" for="edNome">Nome da parte</label><input type="text" id="edNome" value="' + esc(it.nome) + '" autocomplete="off">' +
+      '<label class="f" for="edProc">Número do processo</label><input type="text" id="edProc" value="' + esc(it.processo) + '" autocomplete="off">' +
+      '<label class="f" for="edTipo">Tipo do ato</label><input type="text" id="edTipo" value="' + esc(it.tipo) + '" autocomplete="off">' +
+      '<label class="f" for="edVara">Vara</label><input type="text" id="edVara" value="' + esc(it.vara) + '" autocomplete="off">' +
+      '<label class="f" for="edEnd">Endereço (rua e número)</label><input type="text" id="edEnd" value="' + esc(it.endereco) + '" autocomplete="off">' +
+      '<label class="f" for="edBai">Bairro</label><input type="text" id="edBai" value="' + esc(it.bairro) + '" autocomplete="off">' +
+      '<label class="f" for="edCid">Cidade/UF</label><input type="text" id="edCid" value="' + esc(it.cidade) + '" autocomplete="off">' +
+      '<label class="f" for="edTel">Telefones (um por linha)</label><textarea id="edTel" style="min-height:70px">' + esc((it.telefones || []).join('\n')) + '</textarea>' +
+      '<div class="actions"><button class="btn primary" id="edOk">Salvar</button><button class="btn" id="edNo">Cancelar</button></div>');
+    document.getElementById('edNo').onclick = closeModal;
+    document.getElementById('edOk').onclick = function () {
+      var v = function (id) { return document.getElementById(id).value.trim(); };
+      var nome = v('edNome').toUpperCase();
+      if (nome.length < 3) { toast('Escreva o nome da parte.'); return; }
+      it.nome = nome; it.processo = v('edProc'); it.tipo = v('edTipo'); it.vara = v('edVara');
+      it.endereco = v('edEnd'); it.bairro = v('edBai'); it.cidade = v('edCid');
+      it.telefones = mergePhones(v('edTel').split('\n').map(function (x) { return x.trim(); }).filter(function (x) { return x; }), []);
+      delete it.endRota; delete it.endRotaManual;
+      var l = { nome: it.nome, tipo: it.tipo, vara: it.vara, endereco: it.endereco, bairro: it.bairro, cidade: it.cidade, telefones: it.telefones };
+      var cl = classificarLocal(l, '', regras());
+      var sc = safeClass({ classificacao: cl.base, motivo: cl.baseMotivo, natureza: cl.natureza, tipo: it.tipo, vara: it.vara, nome: it.nome, endereco: it.endereco, cidade: it.cidade }, regras());
+      it.cls = sc.cls; it.motivo = sc.motivo; it.generico = false;
+      save(); closeModal(); render(); toast('Dados salvos.');
+    };
+  }
+
   /* ===== Cadastro obrigatório do primeiro acesso ===== */
   function cadastroPendente() { return !state.cfg.cadastroV && !window.__PULAR_CAD; }
   function cadastroTela() {
@@ -10829,6 +10956,12 @@ function shrinkImage(file, maxSide, qual) {
       save();
       ov.remove(); document.documentElement.style.overflow = '';
       render(); toast('Cadastro concluído.');
+      if (!tribunalConhecido()) { setTimeout(function () { openModal('Seu tribunal',
+        '<p>O app já lê mandados do <strong>Tribunal de Justiça do Paraná</strong>. Para o seu tribunal, ele usa um <strong>leitor genérico</strong>: acha o número do processo, o tipo do ato e, na maioria das vezes, nome, endereço e telefone, mas você precisa conferir cada mandado. Se algo vier errado, use “Conferir / editar dados” no cartão.</p><p class="note">Se quiser um leitor feito para o seu tribunal, é só pedir: o desenvolvedor precisa de 2 ou 3 mandados de exemplo.</p>' +
+        '<div class="actions"><button class="btn primary" id="tbPedir">Pedir leitor para o meu tribunal</button><button class="btn" id="tbOk">Continuar</button></div>');
+        document.getElementById('tbOk').onclick = closeModal;
+        document.getElementById('tbPedir').onclick = function () { pedirLeitor(); };
+      }, 400); }
       try { baixarRuasCidades().catch(function () {}); } catch (x) {}
     };
   }
