@@ -1436,7 +1436,7 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
     else if ((o.seg >= 0 && Date.now() - ocultoEm >= (o.seg || 0) * 1000) || (ov && ov.querySelector && (ov.querySelector('#lkPin') || ov.querySelector('#lkFace')))) { mostra(true); }
     else { esconde(); }
   });
-  window.__bloqueio = { testarPrf: testarPrf, faceDisponivel: faceDisponivel, faceCadastrar: faceCadastrar, faceRemover: faceRemover, faceEntrar: faceEntrar, temFace: function () { var o = ler(); return !!(o && o.cred); }, temPin: function () { var o = ler(); return !!(o && o.h); }, ativo: function () { return !!ler(); }, seg: function () { var o = ler(); return o ? (o.seg === undefined ? 900 : o.seg) : 900; }, definir: definir, mudarTempo: mudarTempo, remover: remover, confere: confere, trancar: function () { mostra(true); }, aberto: function () { return !ov; } };
+  window.__bloqueio = { apagarTudo: apagarTudo, testarPrf: testarPrf, faceDisponivel: faceDisponivel, faceCadastrar: faceCadastrar, faceRemover: faceRemover, faceEntrar: faceEntrar, temFace: function () { var o = ler(); return !!(o && o.cred); }, temPin: function () { var o = ler(); return !!(o && o.h); }, ativo: function () { return !!ler(); }, seg: function () { var o = ler(); return o ? (o.seg === undefined ? 900 : o.seg) : 900; }, definir: definir, mudarTempo: mudarTempo, remover: remover, confere: confere, trancar: function () { mostra(true); }, aberto: function () { return !ov; } };
   mostra(true);
 })();
 </script>
@@ -4283,8 +4283,8 @@ function iaUsuarioAjuste(d) {
   /* Bibliotecas de PDF e ZIP: carregam só depois que a página abriu */
   var LIBS = {
     pdfjs: { ok: function () { return !!window.pdfjsLib; }, srcs: ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'] },
-    pdflib: { ok: function () { return !!window.PDFLib; }, srcs: ['https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'] },
-    jszip: { ok: function () { return !!window.JSZip; }, srcs: ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'] }
+    pdflib: { ok: function () { return !!window.PDFLib; }, locais: ['./lib/pdf-lib.min.js'], srcs: ['https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'] },
+    jszip: { ok: function () { return !!window.JSZip; }, locais: ['./lib/jszip.min.js'], srcs: ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'] }
   };
   var libPromises = {};
   function loadScript(src) {
@@ -4300,7 +4300,12 @@ function iaUsuarioAjuste(d) {
     var L = LIBS[name];
     if (L.ok()) { return Promise.resolve(true); }
     if (!libPromises[name]) {
-      libPromises[name] = Promise.all(L.srcs.map(loadScript)).then(function () { return L.ok(); }).catch(function () { libPromises[name] = null; return false; });
+      libPromises[name] = (async function () {
+        /* primeiro a cópia que vai junto com o app; só se faltar, a biblioteca da internet */
+        for (var q = 0; q < (L.locais || []).length; q++) { try { await loadScript(L.locais[q]); if (L.ok()) { return true; } } catch (e) { /* tenta a próxima */ } }
+        await Promise.all(L.srcs.map(loadScript));
+        return L.ok();
+      })().catch(function () { libPromises[name] = null; return false; });
     }
     return libPromises[name];
   }
@@ -5388,7 +5393,7 @@ function iaUsuarioAjuste(d) {
       '<div class="actions"><button class="btn small" id="meMsgVer">Ver como fica</button><button class="btn small ghost" id="meMsgPad">Voltar ao texto padrão</button></div>' +
       '<pre id="meMsgPrev" class="note" style="white-space:pre-wrap" hidden></pre>' +
       '<label class="f" for="meAn">Texto do botão “Documentos em análise”</label><input type="text" id="meAn" value="' + esc(state.cfg.msgAnalise || 'Documentos em análise.') + '" autocomplete="off">' +
-      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="meJuri">Dias de júri</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Lista telefônica</button><button class="btn" id="meRecado">Modelo do recado</button><button class="btn" id="meBloq">Bloqueio e Face ID</button></div>' +
+      '<div class="actions"><button class="btn" id="meCusBtn" type="button">Custas e transporte: valores e regras</button></div><div class="actions"><button class="btn" id="meIAbtn"><span class="iabot esc"></span> IA (opcional)</button><button class="btn" id="meRegras">Exceções: quem não recebe mensagem</button><button class="btn" id="meComarca">Comarca e cidades</button><button class="btn" id="meValores">Transporte e custas</button><button class="btn" id="meModelos">Meus modelos de certidão</button><button class="btn" id="meJuri">Dias de júri</button><button class="btn primary" id="meRota">Minha rota (meu endereço, zonas)</button><button class="btn" id="meAgenda">Agenda de contatos</button><button class="btn" id="mePessoas">Lista telefônica</button><button class="btn" id="meRecado">Modelo do recado</button><button class="btn" id="meBloq">Bloqueio e Face ID</button><button class="btn ghost" id="meApagaTudo" style="color:#E5484D">Apagar todos os dados deste aparelho</button></div>' +
       '<p class="note">Toque em Salvar antes de abrir essas telas.</p>' +
       '<div class="actions"><button class="btn primary" id="meSave">Salvar</button></div>' +
       painelAtalho() + painelBackup());
@@ -5437,6 +5442,14 @@ function iaUsuarioAjuste(d) {
     document.getElementById('meRota').onclick = function () { abrirMinhaRota(); };
     document.getElementById('meRecado').onclick = function () { abrirRecadoModelo(); };
     document.getElementById('meBloq').onclick = function () { abrirBloqueio(); };
+    document.getElementById('meApagaTudo').onclick = function () {
+      openModal('Apagar todos os dados',
+        '<p><strong>Isso apaga tudo deste aparelho:</strong> mandados, certidões, PDFs, fotos, lista telefônica, ajustes, chave da IA e o bloqueio. <strong>Não dá para desfazer.</strong> Se quiser guardar algo, faça antes o backup.</p>' +
+        '<label class="f" for="apTxt">Para confirmar, escreva APAGAR</label><input type="text" id="apTxt" autocomplete="off" autocapitalize="characters">' +
+        '<div class="actions"><button class="btn primary" id="apSim" style="background:#E5484D;border-color:#E5484D">Apagar tudo</button><button class="btn" id="apNao">Cancelar</button></div>');
+      document.getElementById('apNao').onclick = closeModal;
+      document.getElementById('apSim').onclick = function () { if (String(document.getElementById('apTxt').value || '').trim().toUpperCase() !== 'APAGAR') { toast('Escreva APAGAR para confirmar.'); return; } window.__bloqueio.apagarTudo(); };
+    };
     document.getElementById('meMsgVer').onclick = function () {
       var pv = document.getElementById('meMsgPrev');
       pv.textContent = montarMensagem(document.getElementById('meMsg').value, 'Maria da Silva', document.getElementById('meNome').value.trim(), document.getElementById('meMat').value.trim());
@@ -6310,6 +6323,7 @@ function iaUsuarioAjuste(d) {
       var fora = state.items.filter(function (i) { return i.fileId === id && i.status === 'pendente'; });
       fora.forEach(function (i) { state.apagados.push(i.id); delete sel[i.id]; });
       arquivarEstat(fora); state.items = state.items.filter(function (i) { return fora.indexOf(i) === -1; });
+      limparRestos(fora);
       n = fora.length;
     }
     state.files = state.files.filter(function (f) { return f.id !== id; });
@@ -6877,6 +6891,7 @@ function iaUsuarioAjuste(d) {
       var ids = alvo.map(function (i) { return i.id; });
       alvo.forEach(function (it) { ((it.certidao && it.certidao.prints) || []).forEach(function (pid) { idbDel(pid).catch(function () {}); }); state.apagados.push(it.id); delete sel[it.id]; });
       arquivarEstat(alvo); state.items = state.items.filter(function (x) { return ids.indexOf(x.id) === -1; });
+      limparRestos(alvo);
       save(); closeModal(); render(); toast(ids.length + (ids.length === 1 ? ' certidão excluída' : ' certidões excluídas') + ' definitivamente');
     };
   }
@@ -8680,15 +8695,30 @@ function shrinkImage(file, maxSide, qual) {
       if (document.getElementById('vcCp')) { document.getElementById('vcCp').onclick = function () { copyText(it.certidao.texto).then(function (ok) { toast(ok ? 'Certidão copiada' : 'Não foi possível copiar'); }); }; }
     } catch (e) { closeModal(); viewCertTexto(it); }
   }
+  /* Depois de excluir mandados: some também o PDF de origem (se nenhum outro mandado usa) e o endereço guardado no cache de mapas */
+  function limparRestos(removidos) {
+    var fids = {}, geos = {};
+    removidos.forEach(function (i) { if (i.fileId) { fids[i.fileId] = 1; } geos[chaveGeo(i)] = 1; });
+    Object.keys(fids).forEach(function (fid) {
+      if (!state.items.some(function (x) { return x.fileId === fid; })) { state.files = state.files.filter(function (f) { return f.id !== fid; }); idbDel(fid).catch(function () {}); }
+    });
+    var g = state.cfg && state.cfg.geoGoogle;
+    if (g) { Object.keys(geos).forEach(function (k) { if (!state.items.some(function (x) { return chaveGeo(x) === k; })) { delete g[k]; } }); definirGeoGoogle(g); }
+  }
+  window.__mandadosTeste = window.__mandadosTeste || {}; window.__mandadosTeste.restos = limparRestos;
   function purge(it) {
     openModal('Excluir definitivamente',
-      '<p>Isso apaga o mandado de <strong>' + esc(it.nome) + '</strong> e a certidão deste aparelho Não dá para desfazer.</p>' +
+      '<p>Isso apaga o mandado de <strong>' + esc(it.nome) + '</strong> e a certidão deste aparelho, e também o PDF de origem se nenhum outro mandado usar. Não dá para desfazer.</p>' +
+      (acharPessoa(it, pessoasLista()) ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pgLista" checked style="width:24px;height:24px"> Apagar também esta pessoa da lista telefônica</label>' : '') +
       '<div class="actions"><button class="btn" id="pgNo">Cancelar</button><button class="btn primary" id="pgYes">Excluir definitivamente</button></div>');
     document.getElementById('pgNo').onclick = closeModal;
     document.getElementById('pgYes').onclick = function () {
       ((it.certidao && it.certidao.prints) || []).forEach(function (pid) { idbDel(pid).catch(function () {}); });
       state.apagados.push(it.id);
+      var pgL = document.getElementById('pgLista'), pePg = pgL && pgL.checked ? acharPessoa(it, pessoasLista()) : null;
+      if (pePg) { state.cfg.pessoas = pessoasLista().filter(function (p) { return p.id !== pePg.id; }); }
       arquivarEstat([it]); state.items = state.items.filter(function (x) { return x.id !== it.id; });
+      limparRestos([it]);
       delete sel[it.id]; save(); closeModal(); render(); toast('Excluído definitivamente');
     };
   }
@@ -10619,12 +10649,6 @@ function shrinkImage(file, maxSide, qual) {
 
   /* Depois que a página abriu: fonte e bibliotecas em segundo plano */
   setTimeout(function () {
-    try {
-      var lk = document.createElement('link');
-      lk.rel = 'stylesheet';
-      lk.href = 'https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap';
-      document.head.appendChild(lk);
-    } catch (e) {}
     try { ensureLib('pdflib'); ensureLib('pdfjs'); } catch (e) {}
   }, 3500);
 
