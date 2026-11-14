@@ -9572,14 +9572,18 @@ function shrinkImage(file, maxSide, qual) {
       (com.some(function (i) { return sistemaDe(i) === 'eproc'; }) ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcEp" checked style="width:24px;height:24px"> eproc: imprimir só a página principal do mandado, em 2 vias</label>' : '') +
       (com.some(temAuto) ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcAuto" checked style="width:24px;height:24px"> Incluir o auto preenchido (busca e apreensão, penhora, remoção ou avaliação) (' + com.filter(temAuto).length + ')</label>' +
         '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="pcHoje" style="width:24px;height:24px"> Escrever a data de hoje no auto (senão o dia e o mês ficam em branco)</label>' : '') +
-      '<div class="actions"><button class="btn primary" id="pcGo"' + (com.length ? '' : ' disabled') + '>Gerar PDF</button><button class="btn" id="pcNo">Cancelar</button></div>' +
-      '<p class="note">Depois de gerar, você pode <strong>visualizar</strong> o arquivo antes de imprimir.</p>');
+      '<div class="actions"><button class="btn primary" id="pcImp"' + (com.length ? '' : ' disabled') + '>Imprimir</button><button class="btn primary" id="pcSalvar"' + (com.length ? '' : ' disabled') + '>Salvar PDF</button><button class="btn" id="pcComp" aria-label="Compartilhar" title="Compartilhar"' + (com.length ? '' : ' disabled') + ' style="min-width:52px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg></button><button class="btn" id="pcNo">Fechar</button></div>' +
+      '<p class="note"><strong>Imprimir</strong> abre direto a janela de impressão do iPhone (escolha a impressora). <strong>Salvar PDF</strong> baixa o arquivo para o aparelho. O ícone de seta abre a folha de compartilhar.</p><p class="note" id="pcAviso"></p>');
     document.getElementById('pcNo').onclick = closeModal;
-    document.getElementById('pcGo').onclick = async function () {
+    var cachePdf = null;
+    function travar(v) { ['pcImp', 'pcSalvar', 'pcComp'].forEach(function (id) { var e = document.getElementById(id); if (e) { e.disabled = v || !com.length; } }); }
+    async function executar(acao) {
       var incl = document.getElementById('pcCf').checked, incRec = !!(document.getElementById('pcRec') && document.getElementById('pcRec').checked), fontesRec = null;
       var incAuto = !!(document.getElementById('pcAuto') && document.getElementById('pcAuto').checked), hojeAuto = !!(document.getElementById('pcHoje') && document.getElementById('pcHoje').checked), avisosAuto = [];
       var soPrinc = !!(document.getElementById('pcEp') && document.getElementById('pcEp').checked);
-      this.disabled = true;
+      travar(true);
+      var chave = JSON.stringify([incl, incRec, incAuto, hojeAuto, soPrinc]);
+      if (cachePdf && cachePdf.chave === chave) { try { await depois(acao, cachePdf); } catch (e) { toast('Não consegui concluir. Tente de novo.'); } travar(false); return; }
       var marcas = [];
       try {
         var out = await PDFLib.PDFDocument.create(), docs = {};
@@ -9613,9 +9617,21 @@ function shrinkImage(file, maxSide, qual) {
         }
         var bytes = await out.save(), total = out.getPageCount();
         marcas.forEach(function (m, k) { m.fim = k + 1 < marcas.length ? marcas[k + 1].ini - 1 : total; });
-        prontoImpressao(bytes, 'Mandados para imprimir ' + stampHoje() + '.pdf', marcas, avisosAuto, total);
-      } catch (e) { toast('Não consegui montar o PDF para imprimir'); var g = document.getElementById('pcGo'); if (g) { g.disabled = false; } }
-    };
+        cachePdf = { chave: chave, bytes: bytes, nome: 'Mandados para imprimir ' + stampHoje() + '.pdf', avisos: avisosAuto, total: total, n: marcas.length };
+        await depois(acao, cachePdf);
+      } catch (e) { toast('Não consegui montar o PDF para imprimir'); }
+      travar(false);
+    }
+    async function depois(acao, c) {
+      var av = document.getElementById('pcAviso');
+      if (av) { av.innerHTML = c.n + (c.n === 1 ? ' mandado, ' : ' mandados, ') + c.total + (c.total === 1 ? ' página.' : ' páginas.') + (c.avisos.length ? ' <strong>Confira o auto de busca e apreensão:</strong> faltou algum dado e o campo ficou em branco para escrever à mão: ' + esc(c.avisos.join(' | ')) + '.' : ''); }
+      if (acao === 'imprimir') { var ok = false; try { ok = await imprimirDireto(c.bytes); } catch (e) { ok = false; } if (!ok) { toast('Não consegui abrir a impressão aqui. Abrindo o compartilhar.'); await savePdf(c.nome, c.bytes); } }
+      else if (acao === 'salvar') { baixarDireto(c.nome, c.bytes); }
+      else { await savePdf(c.nome, c.bytes); }
+    }
+    document.getElementById('pcImp').onclick = function () { executar('imprimir'); };
+    document.getElementById('pcSalvar').onclick = function () { executar('salvar'); };
+    document.getElementById('pcComp').onclick = function () { executar('compartilhar'); };
   }
   async function pdfParaImagens(bytes, de, ate) {
     if (!(await ensureLib('pdfjs'))) { return null; }
