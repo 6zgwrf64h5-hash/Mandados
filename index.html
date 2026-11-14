@@ -5184,6 +5184,7 @@ window.__iniciarApp = function () {
       '<button type="button" class="iniselect' + (rotaFimAberta ? ' aberto' : '') + '" data-sd="abrirfim" aria-haspopup="listbox" aria-expanded="' + rotaFimAberta + '">' + textoF + '<span class="iniseta" aria-hidden="true"></span></button>' +
       listaF +
       '<div class="actions"><button class="btn small" type="button" data-sd="gps">Usar minha localização atual</button>' + (g ? '<button class="btn small ghost" type="button" data-sd="atualizar">Atualizar posição</button>' : '') + '</div>' +
+      '<div class="actions"><button class="btn small" type="button" data-rotimiza="1">Otimizar rota</button></div>' +
       (g ? '<p class="note">' + (f ? 'Posição lida às ' + pad(f.getHours()) + ':' + pad(f.getMinutes()) + '. A rota começa pela parada mais perto de você e segue sempre para a mais próxima. A posição fica só neste aparelho.' : 'Lendo a sua posição…') + '</p>'
         : '<p class="note">' + (marc ? 'Rota refeita a partir dessa rua: cada parada é a mais perto da anterior. Para voltar ao automático, abra a lista e toque na rua marcada. Depois você ainda pode reorganizar com o dedo.' : 'Escolha a rua e a rota é refeita: a 1ª é a que você escolher, a 2ª a mais perto dela, a 3ª a mais perto da 2ª, e assim por diante.') + '</p>') +
       '</div>';
@@ -9810,7 +9811,7 @@ function shrinkImage(file, maxSide, qual) {
     var perto = pertoDaCasa(arr, fimEf(), zonasAtivas() ? raioCasa() : 0);
     var modo = modoRota(), bg = modo === 'bairro' ? agruparBairros(arr) : null, num = 0;
     var bgx = bg || agruparBairros(arr);
-    out += '<div class="actions rtodos"><button class="btn small" data-rtodos="1">' + (marcadasRota().length ? 'Limpar todos' : 'Selecionar todos') + '</button><button class="btn small" data-rotimiza="1">Otimizar</button><button class="btn small ghost" data-rmin="1">Minimizar</button></div>' + resumoPrimUlt();
+    out += '<div class="actions rtodos"><button class="btn small" data-rtodos="1">' + (marcadasRota().length ? 'Limpar todos' : 'Selecionar todos') + '</button><button class="btn small ghost" data-rmin="1">Minimizar</button></div>' + resumoPrimUlt();
     var susp = arr.filter(function (c) { return !pontoOverride(c) && (!ruaNoMapa(c) || (bgx.longe && bgx.longe[c.id])); });
     if (susp.length) { out += '<div class="suspbox">⚠ <strong>' + susp.length + (susp.length === 1 ? ' parada com ponto duvidoso' : ' paradas com ponto duvidoso') + '</strong> (rua não achada ou longe do resto do bairro): ' + esc(susp.map(function (c) { return c.nome; }).join(', ')) + '. Toque em <em>ver no mapa</em> para conferir ou em <em>Corrigir</em> antes de sair.</div>'; }
     if (MODO_ATALHO) {
