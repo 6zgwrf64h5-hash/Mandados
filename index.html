@@ -9630,12 +9630,52 @@ function shrinkImage(file, maxSide, qual) {
     try { doc.destroy(); } catch (e) {}
     return out;
   }
+  /* Salvar PDF direto: baixa o arquivo, sem folha de compartilhar */
+  function baixarDireto(nome, bytes) {
+    try {
+      var url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })), a = document.createElement('a');
+      a.href = url; a.download = nome; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+      toast('PDF salvo em Downloads (app Arquivos).');
+      return true;
+    } catch (e) { toast('Não consegui salvar direto.'); return false; }
+  }
+  /* Imprimir direto: desenha as páginas numa área só de impressão e chama a janela de impressão do aparelho */
+  var urlsImp = [];
+  async function imprimirDireto(bytes) {
+    if (typeof window.print !== 'function') { return false; }
+    if (!(await ensureLib('pdfjs'))) { return false; }
+    var area = document.getElementById('pcPrintArea');
+    if (!area) {
+      area = document.createElement('div'); area.id = 'pcPrintArea'; document.body.appendChild(area);
+      var st = document.createElement('style');
+      st.textContent = '#pcPrintArea{display:none}@media print{body>*:not(#pcPrintArea){display:none!important}#pcPrintArea{display:block!important}@page{size:A4;margin:0}html,body{background:#fff!important;margin:0!important;padding:0!important;overflow:visible!important}#pcPrintArea img{display:block;width:100%;height:auto;max-height:100vh;object-fit:contain;page-break-after:always;break-after:page}#pcPrintArea img:last-child{page-break-after:auto;break-after:auto}}';
+      document.head.appendChild(st);
+    }
+    urlsImp.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { /* já liberada */ } }); urlsImp = []; area.innerHTML = '';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
+    var doc = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise, imgs = [];
+    for (var p = 1; p <= doc.numPages; p++) {
+      var pg = await doc.getPage(p), vp = pg.getViewport({ scale: 2.1 }), c = document.createElement('canvas');
+      c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+      await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      var blob = await new Promise(function (res) { c.toBlob(res, 'image/jpeg', 0.9); });
+      c.width = 1; c.height = 1;
+      if (!blob) { try { doc.destroy(); } catch (e) { /* sem acesso */ } return false; }
+      var u = URL.createObjectURL(blob), im = document.createElement('img'); urlsImp.push(u); im.src = u; im.alt = 'Página ' + p; area.appendChild(im); imgs.push(im);
+      if (doc.numPages > 8) { toast('Preparando a impressão: página ' + p + ' de ' + doc.numPages); }
+    }
+    try { doc.destroy(); } catch (e) { /* sem acesso */ }
+    await Promise.all(imgs.map(function (im) { return im.decode ? im.decode().catch(function () {}) : Promise.resolve(); }));
+    window.print();
+    return true;
+  }
   function prontoImpressao(bytes, nomeArq, marcas, avisosAuto, total) {
     var LOTE = 6, mostradas = 0;
     openModal('Arquivo pronto para imprimir',
       '<p><strong>' + marcas.length + '</strong> ' + (marcas.length === 1 ? 'mandado' : 'mandados') + ', <strong>' + total + '</strong> ' + (total === 1 ? 'página' : 'páginas') + ', na ordem da rota.</p>' +
-      '<div class="actions"><button class="btn primary" id="pvVer">Visualizar</button><button class="btn primary" id="pvImp">Imprimir</button><button class="btn ghost" id="pvFecha">Fechar</button></div>' +
-      '<p class="note">“Imprimir” abre a folha de compartilhar do iPhone: toque em <strong>Imprimir</strong> e escolha a impressora. A página não imprime direto.</p>' +
+      '<div class="actions"><button class="btn primary" id="pvImp">Imprimir</button><button class="btn primary" id="pvSalvar">Salvar PDF</button><button class="btn" id="pvVer">Visualizar</button><button class="btn ghost" id="pvFecha">Fechar</button></div>' +
+      '<p class="note"><strong>Imprimir</strong> abre direto a janela de impressão do iPhone (AirPrint): é só escolher a impressora. <strong>Salvar PDF</strong> baixa o arquivo para o aparelho (pasta Downloads, no app Arquivos), sem abrir a folha de compartilhar; o iPhone pode pedir uma confirmação própria de download.</p>' +
       (avisosAuto.length ? '<p class="note"><strong>Confira o auto de busca e apreensão:</strong> faltou algum dado e o campo ficou em branco para escrever à mão: ' + esc(avisosAuto.join(' | ')) + '.</p>' : '') +
       '<ol class="ordem">' + marcas.map(function (m) { return '<li>' + esc(m.nome) + ' <span class="note">- página' + (m.fim > m.ini ? 's ' + m.ini + ' a ' + m.fim : ' ' + m.ini) + '</span></li>'; }).join('') + '</ol>' +
       '<div id="pvBox"></div>');
@@ -9660,7 +9700,13 @@ function shrinkImage(file, maxSide, qual) {
       $('pvVer').textContent = 'Visualizar de novo';
     }
     $('pvVer').onclick = function () { mostradas = 0; $('pvBox').setAttribute('data-h', ''); carregar(); };
-    $('pvImp').onclick = async function () { await savePdf(nomeArq, bytes); };
+    $('pvSalvar').onclick = function () { baixarDireto(nomeArq, bytes); };
+    $('pvImp').onclick = async function () {
+      var bt = $('pvImp'); bt.disabled = true; var tx = bt.textContent; bt.textContent = 'Preparando…';
+      try { var ok = await imprimirDireto(bytes); if (!ok) { await savePdf(nomeArq, bytes); } }
+      catch (e) { toast('Não consegui abrir a impressão aqui. Use Salvar PDF.'); }
+      bt.disabled = false; bt.textContent = tx;
+    };
     $('pvFecha').onclick = closeModal;
   }
   document.getElementById('btnPrint').onclick = function () { imprimir(sortedSel()); };
