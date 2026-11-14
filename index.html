@@ -9818,19 +9818,23 @@ function shrinkImage(file, maxSide, qual) {
     return enderecoSimples(i.endereco).texto + ', ' + cidadeNome(i);
   }
   function textoParadaB(i) { return (typeof RUAS_OSM !== 'undefined' && (pontoTexto(i))) || textoParada(i); }
-  function mapsUrlB(origin, stops) {
+  function mapsUrlB(origin, stops, direto) {
+    if (direto) { origin = ''; }
     var dest = stops[stops.length - 1], wps = stops.slice(0, -1);
     var u = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(textoParadaB(dest));
     if (origin) { u += '&origin=' + encodeURIComponent(origin); }
     if (wps.length) { u += '&waypoints=' + wps.map(function (w) { return encodeURIComponent(textoParadaB(w)); }).join('%7C'); }
+    if (direto) { u += '&dir_action=navigate'; }
     return u;
   }
-  function mapsUrl(origin, stops) {
+  function mapsUrl(origin, stops, direto) {
+    if (direto) { origin = ''; }
     var dest = stops[stops.length - 1];
     var wps = stops.slice(0, -1);
     var u = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(textoParada(dest));
     if (origin) { u += '&origin=' + encodeURIComponent(origin); }
     if (wps.length) { u += '&waypoints=' + wps.map(function (w) { return encodeURIComponent(textoParada(w)); }).join('%7C'); }
+    if (direto) { u += '&dir_action=navigate'; }
     return u;
   }
   function rotaSel() { return sortedSel().filter(function (i) { return etipo(i) === 'local'; }); }
@@ -9945,10 +9949,10 @@ function shrinkImage(file, maxSide, qual) {
   var MAX_MARCA = 10;
   function selRotaDados() {
     var m = marcadasRota().slice(0, MAX_MARCA), origin = saidaGpsOn() ? '' : String(state.origin || '').trim(), prev = origin, prevB = origin;
-    var blocos = m.length ? quebrarBlocos(m, MAX_MARCA, function () { return 0; }) : [], links = [], linksB = [];
-    blocos.forEach(function (ch) { links.push(mapsUrl(prev, ch)); linksB.push(mapsUrlB(prevB, ch)); prev = textoParada(ch[ch.length - 1]); prevB = textoParadaB(ch[ch.length - 1]); });
+    var blocos = m.length ? quebrarBlocos(m, MAX_MARCA, function () { return 0; }) : [], links = [], linksB = [], diretos = [];
+    blocos.forEach(function (ch) { links.push(mapsUrl(prev, ch)); linksB.push(mapsUrlB(prevB, ch)); diretos.push(mapsUrl('', ch, true)); prev = textoParada(ch[ch.length - 1]); prevB = textoParadaB(ch[ch.length - 1]); });
     var txt = links.length === 1 ? 'Rota selecionada: ' + links[0] : links.map(function (u, k) { return 'Rota selecionada ' + (k + 1) + ': ' + u; }).join('\n');
-    return { m: m, blocos: blocos, links: links, linksB: linksB, txt: txt };
+    return { m: m, blocos: blocos, links: links, linksB: linksB, diretos: diretos, txt: txt };
   }
   function sincMarcas() {
     var mk = state.cfg.rotaMarcadas || {};
@@ -9971,7 +9975,7 @@ function shrinkImage(file, maxSide, qual) {
     function dis(rot) { return '<span class="btn dis" role="button" aria-disabled="true">' + rot + '</span>'; }
     var wa = temZap ? (n ? '<a class="btn primary" style="text-decoration:none" id="rSelWa" href="' + zapHref(d.txt) + '">WhatsApp' + esc(zapRotulo()) + '</a>' : dis('WhatsApp')) : '';
     var sms = n ? '<button class="btn" id="rSelZap" data-smssel="1">' + esc(smsBotao()) + '</button>' : dis(esc(smsBotao()));
-    var mp = n ? '<a class="btn" style="text-decoration:none" id="rSelMaps" href="' + d.links[0] + '">Abrir no Maps</a>' : dis('Abrir no Maps');
+    var mp = n ? '<a class="btn" style="text-decoration:none" id="rSelMaps" href="' + d.diretos[0] + '">Abrir no Maps</a>' : dis('Abrir no Maps');
     return '<div class="rselbar' + (n ? '' : ' vazia') + '"><div class="rselhead"><span><strong>' + n + ' de ' + MAX_MARCA + '</strong> ' + (n ? (n === 1 ? 'marcada: rota só com ela' : 'marcadas: rota só com elas') : 'marque as paradas que vão agora') + '</span><span class="rselbtns"><button class="btn small ghost" data-rnext="1">Próximas ' + MAX_MARCA + '</button><button class="btn small ghost" data-rselclear="1"' + (n ? '' : ' disabled') + '>Limpar</button></span></div>' +
       '<div class="actions">' + wa + sms + mp + '</div>' +
       (n ? '<details class="rselmais"><summary>Mais opções</summary><div class="actions"><button class="btn small" data-rselcopy="1">Copiar link</button><button class="btn small" data-rseladdr="1">Copiar endereços</button><button class="btn small" data-rselprint="1">Imprimir só as marcadas</button></div><div class="actions"><a class="btn small" style="text-decoration:none" href="' + d.linksB[0] + '">Deu erro? Abrir pelas coordenadas das ruas</a><a class="btn small ghost" style="text-decoration:none" href="' + smsHref(d.txt) + '">Tentar abrir direto no Mensagens</a></div></details>' : '') + '</div>';
@@ -10523,7 +10527,7 @@ function shrinkImage(file, maxSide, qual) {
       var ant = ra.ids.slice(0, g * 10).map(byId).filter(Boolean);
       if (ant.length) { origin = textoParada(ant[ant.length - 1]); }
     } else { origin = saidaGpsOn() ? '' : String(state.origin || '').trim(); }
-    return { ch: ch, a: mapsUrl(origin, ch), b: mapsUrlB(origin, ch) };
+    return { ch: ch, a: mapsUrl(origin, ch, true), b: mapsUrlB(origin, ch, true) };
   }
   function cumprGrupoHtml(ra, g, comLista) {
     var L = cumprLinksGrupo(ra, g); if (!L) { return ''; }
