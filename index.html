@@ -1345,6 +1345,34 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
     localStorage.setItem(LK, JSON.stringify(o));
   }
   function faceRemover() { var o = ler(); if (!o) { return; } delete o.cred; if (!o.h) { localStorage.removeItem(LK); } else { localStorage.setItem(LK, JSON.stringify(o)); } }
+  /* Diagnóstico: o Face ID deste aparelho consegue gerar uma chave de criptografia (PRF)? Não altera o bloqueio. */
+  async function testarPrf(log) {
+    function hx(b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+    var enc = new TextEncoder(), s1 = enc.encode('mandados-teste-1'), s2 = enc.encode('mandados-teste-2');
+    if (!window.PublicKeyCredential || !window.isSecureContext) { log('bad', 'Sem WebAuthn ou fora de endereço seguro (https).'); return false; }
+    log('info', 'Criando uma chave de teste. Confirme o Face ID.');
+    var cred = await navigator.credentials.create({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), rp: { name: 'Mandados teste', id: location.hostname },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'teste-prf', displayName: 'Mandados teste' }, pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'required' }, extensions: { prf: {} }, timeout: 60000, attestation: 'none' } });
+    var ext = cred.getClientExtensionResults ? cred.getClientExtensionResults() : {};
+    if (!ext.prf || !ext.prf.enabled) { log('bad', 'Este aparelho/navegador não habilitou PRF.'); return false; }
+    log('ok', 'Chave criada com PRF habilitado.');
+    async function pedir(ev) {
+      var r = await navigator.credentials.get({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), rpId: location.hostname, allowCredentials: [{ type: 'public-key', id: cred.rawId }], userVerification: 'required', timeout: 60000, extensions: { prf: { eval: ev } } } });
+      var e = r.getClientExtensionResults ? r.getClientExtensionResults() : {};
+      return e.prf && e.prf.results ? e.prf.results : null;
+    }
+    log('info', 'Pedindo duas chaves de uma vez. Confirme o Face ID.');
+    var a = await pedir({ first: s1, second: s2 });
+    if (!a || !a.first || !a.second) { log('bad', 'O Face ID não devolveu as chaves.'); return false; }
+    var difere = hx(a.first) !== hx(a.second);
+    log(difere ? 'ok' : 'bad', difere ? 'Sais diferentes geraram chaves diferentes.' : 'Sais diferentes geraram a mesma chave.');
+    log('info', 'Pedindo de novo para ver se a chave se repete. Confirme o Face ID.');
+    var b = await pedir({ first: s1 });
+    var estavel = !!(b && b.first) && hx(b.first) === hx(a.first);
+    log(estavel ? 'ok' : 'bad', estavel ? 'A chave se repetiu (estável).' : 'A chave mudou entre as duas vezes.');
+    return difere && estavel;
+  }
   async function faceEntrar() {
     var o = ler();
     if (!o || !o.cred) { return false; }
@@ -1408,7 +1436,7 @@ var RUAS_OSM = {"F":"1=5282 5337;4718 5293;4813 5140|14 marco=5453 5918|15 novem
     else if ((o.seg >= 0 && Date.now() - ocultoEm >= (o.seg || 0) * 1000) || (ov && ov.querySelector && (ov.querySelector('#lkPin') || ov.querySelector('#lkFace')))) { mostra(true); }
     else { esconde(); }
   });
-  window.__bloqueio = { faceDisponivel: faceDisponivel, faceCadastrar: faceCadastrar, faceRemover: faceRemover, faceEntrar: faceEntrar, temFace: function () { var o = ler(); return !!(o && o.cred); }, temPin: function () { var o = ler(); return !!(o && o.h); }, ativo: function () { return !!ler(); }, seg: function () { var o = ler(); return o ? (o.seg === undefined ? 900 : o.seg) : 900; }, definir: definir, mudarTempo: mudarTempo, remover: remover, confere: confere, trancar: function () { mostra(true); }, aberto: function () { return !ov; } };
+  window.__bloqueio = { testarPrf: testarPrf, faceDisponivel: faceDisponivel, faceCadastrar: faceCadastrar, faceRemover: faceRemover, faceEntrar: faceEntrar, temFace: function () { var o = ler(); return !!(o && o.cred); }, temPin: function () { var o = ler(); return !!(o && o.h); }, ativo: function () { return !!ler(); }, seg: function () { var o = ler(); return o ? (o.seg === undefined ? 900 : o.seg) : 900; }, definir: definir, mudarTempo: mudarTempo, remover: remover, confere: confere, trancar: function () { mostra(true); }, aberto: function () { return !ov; } };
   mostra(true);
 })();
 </script>
@@ -9096,8 +9124,22 @@ function shrinkImage(file, maxSide, qual) {
       '<label class="f" for="bqPin2">Repita o PIN</label><input type="password" id="bqPin2" inputmode="numeric" maxlength="12" autocomplete="off">' +
       '<label class="f" for="bqSeg">Pedir de novo depois de</label><select id="bqSeg">' + opt(0, 'Sempre que sair do app') + opt(60, '1 minuto fora') + opt(300, '5 minutos fora') + opt(900, '15 minutos fora') + opt(1800, '30 minutos fora') + opt(3600, '1 hora fora') + opt(21600, '6 horas fora') + opt(-1, 'Só quando eu fechar o app de vez') + '</select>' +
       '<p class="note" id="bqErro" style="color:#C62828;font-weight:700"></p>' +
+      '<div id="bqPrfRow" hidden><p class="note" style="margin-top:12px">Diagnóstico: testa se o Face ID deste aparelho consegue gerar uma chave de criptografia (para decidir sobre criptografar os dados guardados). Cria uma chave chamada “Mandados teste” no chaveiro; pode apagar depois em Ajustes, Senhas. Não muda o seu bloqueio.</p><div class="actions"><button class="btn" id="bqPrf">Testar chave do Face ID</button></div><div id="bqPrfOut"></div></div>' +
       '<div class="actions"><button class="btn primary" id="bqSalva">' + (on ? 'Salvar' : 'Ligar o bloqueio') + '</button>' + (on ? '<button class="btn ghost" id="bqTira">Desligar</button><button class="btn" id="bqAgora">Bloquear agora</button>' : '') + '<button class="btn" id="bqFecha">Fechar</button></div>');
-    B.faceDisponivel().then(function (ok) { if (ok && $('bqFaceRow')) { $('bqFaceRow').hidden = false; } });
+    B.faceDisponivel().then(function (ok) { if (ok && $('bqFaceRow')) { $('bqFaceRow').hidden = false; $('bqPrfRow').hidden = false; } });
+    $('bqPrf').onclick = async function () {
+      var out = $('bqPrfOut'), rel = [];
+      out.innerHTML = '';
+      function log(c, t) { var d = document.createElement('p'); d.className = 'note'; d.innerHTML = (c === 'ok' ? '✔ ' : c === 'bad' ? '✘ ' : '• ') + esc(t); out.appendChild(d); rel.push((c === 'ok' ? 'OK: ' : c === 'bad' ? 'FALHA: ' : 'INFO: ') + t); }
+      $('bqPrf').disabled = true;
+      var ok = false;
+      try { ok = await B.testarPrf(log); } catch (e) { log('bad', 'Erro: ' + (e && e.name ? e.name : '') + ' ' + (e && e.message ? e.message : e)); }
+      var f = document.createElement('p'); f.innerHTML = ok ? '<strong style="color:#15803D">RESULTADO: este app instalado consegue gerar chave pelo Face ID.</strong>' : '<strong style="color:#B91C1C">RESULTADO: não deu para gerar chave pelo Face ID aqui.</strong>'; out.appendChild(f);
+      rel.push(ok ? 'RESULTADO: PRF FUNCIONA NO APP' : 'RESULTADO: PRF NAO FUNCIONOU NO APP');
+      var cp = document.createElement('div'); cp.className = 'actions'; cp.innerHTML = '<button class="btn" id="bqPrfCopia">Copiar o relatório</button>'; out.appendChild(cp);
+      $('bqPrfCopia').onclick = function () { try { navigator.clipboard.writeText('standalone=' + (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) + '\n' + rel.join('\n') + '\n' + navigator.userAgent); toast('Relatório copiado.'); } catch (e) { toast('Não consegui copiar.'); } };
+      $('bqPrf').disabled = false;
+    };
     $('bqFecha').onclick = closeModal;
     $('bqSalva').onclick = async function () {
       var a = $('bqPin').value.trim(), b2 = $('bqPin2').value.trim(), seg = parseInt($('bqSeg').value, 10), quer = !$('bqFaceRow').hidden && $('bqFace').checked;
