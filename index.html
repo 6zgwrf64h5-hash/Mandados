@@ -250,6 +250,11 @@ textarea { min-height: 120px; resize: vertical; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 0; }
 .seg .btn { padding: 10px 6px; font-size: 15px; }
+.seg.pper { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.seg.pper .btn { padding: 10px 2px; font-size: 14px; }
+.pdatas { display: flex; gap: 8px; margin: 8px 0 0; }
+.pdatas label { flex: 1; font-size: 12px; color: var(--muted); display: block; }
+.pdatas input { width: 100%; min-height: 38px; height: 38px; padding: 4px 8px; font-size: 15px; margin: 2px 0 0; box-sizing: border-box; }
 .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .thumbs img { width: 92px; height: 124px; object-fit: cover; border-radius: 8px; border: 1.5px solid var(--line); background: #fff; }
 .pv { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
@@ -749,7 +754,9 @@ header .bar .btn::before { content: ""; flex: none; width: 21px; height: 21px; b
 .bkpbar .actions { flex: 0 0 auto; display: flex; gap: 6px; margin: 0; }
 .bkpbar .actions .btn { flex: 0 0 auto; min-height: 40px; padding: 0 12px; font-size: 13px; white-space: nowrap; }
 @media (max-width: 395px) { .bkpbar { flex-wrap: wrap; } .bkpbar .actions { flex: 1 1 100%; } .bkpbar .actions .btn { flex: 1 1 auto; } }
-/* Hoje e amanhã */
+/* Urgentes (recolhida) e, separado, o botão de todas as audiências */
+.hoje.hojeaud { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.hojeaud .actions { margin: 0; }
 .hoje { background: var(--surface); border: 2px solid #E7C462; border-radius: 22px; padding: 12px 14px; }
 .hoje summary { display: flex; align-items: center; gap: 10px; list-style: none; font-size: 18px; cursor: pointer; }
 .hoje summary::-webkit-details-marker { display: none; }
@@ -1261,6 +1268,7 @@ body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !
 
   <section class="rota-banner" id="rotaBanner" hidden></section>
   <section class="hoje" id="hoje" hidden></section>
+  <section class="hoje hojeaud" id="hojeAud" hidden></section>
 
   <nav class="tabs" id="tabs" aria-label="Listas">
     <button class="tab" data-tab="enviar" aria-pressed="true">Mandados <span class="count" data-c="enviar"></span></button>
@@ -5149,6 +5157,13 @@ window.__iniciarApp = function () {
     var hoje = new Date(), fim = dayKey(hoje.getTime()), ini;
     if (per === 'mes') { ini = hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-01'; }
     else if (per === '30') { ini = dayKey(hoje.getTime() - 29 * 86400000); }
+    else if (per === 'per') {
+      var ok = function (v) { return /^\d{4}-\d{2}-\d{2}$/.test(v || ''); }, cf = state.cfg || {};
+      ini = ok(cf.painelDe) ? cf.painelDe : hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-01';
+      var f2 = ok(cf.painelAte) ? cf.painelAte : fim;
+      if (ini > f2) { var tmp = ini; ini = f2; f2 = tmp; }
+      return { de: ini, ate: f2 };
+    }
     else { ini = fim; }
     return { de: ini, ate: fim };
   }
@@ -5169,7 +5184,8 @@ window.__iniciarApp = function () {
   function abrirPainel() {
     var per = (state.cfg && state.cfg.painelPer) || 'hoje', lim = limitesPeriodo(per), E = estatPeriodo(lim.de, lim.ate), d = painelDados();
     var tot = E.p + E.n + E.o, pp = tot ? Math.round(E.p / tot * 100) : 0, pn = tot ? Math.round(E.n / tot * 100) : 0;
-    var rot = { hoje: 'Hoje', mes: 'Este mês', '30': 'Últimos 30 dias' }[per] || 'Hoje';
+    var rot = { hoje: 'Hoje', mes: 'Este mês', '30': 'Últimos 30 dias', per: 'Período' }[per] || 'Hoje';
+    function br(v) { return v.split('-').reverse().join('/'); }
     var pct = d.total ? Math.round(d.cert / d.total * 100) : 0;
     var sa = state.seqAtiva && state.seqAtiva.ents && Date.now() - state.seqAtiva.t0 <= 12 * 3600000 ? state.seqAtiva : null;
     var ra = state.rotaAtiva, restRota = ra ? rotaRestantes().length : 0, hdP = hojeDados(), totAudP = hdP.perdidas.length + hdP.futuras;
@@ -5179,8 +5195,9 @@ window.__iniciarApp = function () {
     if (sa) { retomar += '<button class="btn primary wide" type="button" data-pn="fila">Continuar a fila de mensagens</button>'; }
     if (ra && restRota) { retomar += '<button class="btn primary wide" type="button" data-pn="rota">Continuar a rota (parada ' + (ra.ids.length - restRota + 1) + ' de ' + ra.ids.length + ')</button>'; }
     openModal('Painel do dia',
-      '<div class="seg pper">' + seg('hoje', 'Hoje') + seg('mes', 'Este mês') + seg('30', '30 dias') + '</div>' +
-      '<p class="note">' + rot + ': ' + (per === 'hoje' ? 'só hoje' : 'de ' + lim.de.split('-').reverse().slice(0, 2).join('/') + ' até hoje') + '.</p>' +
+      '<div class="seg pper">' + seg('hoje', 'Hoje') + seg('mes', 'Este mês') + seg('30', '30 dias') + seg('per', 'Datas') + '</div>' +
+      (per === 'per' ? '<div class="pdatas"><label for="pnDe">De<input type="date" id="pnDe" value="' + lim.de + '" max="' + dayKey(Date.now()) + '"></label><label for="pnAte">Até<input type="date" id="pnAte" value="' + lim.ate + '" max="' + dayKey(Date.now()) + '"></label></div>' : '') +
+      '<p class="note">' + rot + ': ' + (per === 'hoje' ? 'só hoje' : (per === 'per' ? 'de ' + br(lim.de) + ' até ' + br(lim.ate) : 'de ' + lim.de.split('-').reverse().slice(0, 2).join('/') + ' até hoje')) + '.</p>' +
       '<div class="pgrid">' + card(tot, 'Certidões feitas', '', '') + card(E.z, 'Intimados por WhatsApp', 'zap', '') + card(E.p + ' <small>' + pp + '%</small>', 'Positivas (cumpridos)', 'ok', '') + card(E.n + ' <small>' + pn + '%</small>', 'Negativas', 'neg', '') + card(fmtReais(E.cu), 'Custas das certidões', 'val', '') + card(fmtReais(E.tr), 'Indenização de transporte', 'val', '') + card(E.r, 'Mandados recebidos', '', '') + card(E.m, 'Mensagens abertas', '', '') + '</div>' + temposHtml() +
       (tot ? '<div class="pbar" role="img" aria-label="Positivas ' + pp + '%, negativas ' + pn + '%"><div class="pb-p" style="width:' + (E.p / tot * 100) + '%"></div><div class="pb-n" style="width:' + (E.n / tot * 100) + '%"></div></div><p class="note pleg"><span class="pk ok"></span>Positivas ' + E.p + ' <span class="pk neg"></span>Negativas ' + E.n + (E.o ? ' <span class="pk"></span>Outro meio ' + E.o : '') + '</p>' : '<p class="note">Nenhuma certidão neste período.</p>') +
       '<p class="note" style="margin:12px 0 4px"><strong>Agora</strong> · ' + d.cert + ' de ' + d.total + (d.total === 1 ? ' mandado' : ' mandados') + ' com certidão (' + pct + '%)</p><div class="seqbar"><div style="width:' + pct + '%"></div></div>' +
@@ -5190,6 +5207,16 @@ window.__iniciarApp = function () {
       (retomar ? '<p class="note" style="margin:10px 0 4px"><strong>Retomar de onde parei</strong></p><div class="actions">' + retomar + '</div>' : '<p class="note">Nada em andamento: nenhuma fila nem rota aberta.</p>') +
       '<div class="actions"><button class="btn ghost" type="button" id="pnFecha">Fechar</button></div>');
     document.getElementById('pnFecha').onclick = closeModal;
+    ['pnDe', 'pnAte'].forEach(function (id) {
+      var inp = document.getElementById(id);
+      if (!inp) { return; }
+      inp.onchange = function () {
+        var a = document.getElementById('pnDe').value, b = document.getElementById('pnAte').value;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) { return; }
+        if (a > b) { if (id === 'pnDe') { b = a; } else { a = b; } }   /* a data que você mexeu manda; a outra acompanha */
+        state.cfg.painelDe = a; state.cfg.painelAte = b; save(); abrirPainel();
+      };
+    });
     document.getElementById('mbody').onclick = function (e) {
       var pb = e.target.closest ? e.target.closest('[data-pp]') : null;
       if (pb) { state.cfg.painelPer = pb.getAttribute('data-pp'); save(); abrirPainel(); return; }
@@ -10473,11 +10500,11 @@ function shrinkImage(file, maxSide, qual) {
     });
     aud.sort(function (x, y) { return (x.data + ' ' + (x.hora || '99:99')).localeCompare(y.data + ' ' + (y.hora || '99:99')); });
     var perdidas = audLista(state.items, agora).perdidas;
-    /* pisca: audiência hoje ou que já passou sem certificar; medida protetiva com mais de 5 dias; liminar de saúde com mais de 24 horas */
-    var pisca = perdidas.length > 0 || aud.some(function (x) { return x.df <= 0; }) || urgs.some(function (x) { return x.venc; });
+    /* pisca: audiência amanhã, hoje ou que já passou sem certificar; medida protetiva com mais de 5 dias; liminar de saúde com mais de 24 horas */
+    var pisca = perdidas.length > 0 || aud.some(function (x) { return x.df <= 1; }) || urgs.some(function (x) { return x.venc; });
     return { aud: aud, urgs: urgs, futuras: futuras, perdidas: perdidas, pisca: pisca };
   }
-  /* aviso roxo: mandado de condução com audiência amanhã (fixo) ou hoje / já passou (pisca); aviso laranja: dia de júri cadastrado, amanhã e hoje (pisca) */
+  /* aviso roxo: mandado de condução com audiência amanhã, hoje ou que já passou (pisca); aviso laranja: dia de júri cadastrado, amanhã e hoje (pisca) */
   function diasCal(d) { var a = new Date(d + 'T00:00:00'), h = new Date(); h.setHours(0, 0, 0, 0); return Math.round((a - h) / 86400000); }
   function caixaAviso(id, cls, titulo, linhas, pisca, depoisDe) {
     var el = document.getElementById(id);
@@ -10495,7 +10522,7 @@ function shrinkImage(file, maxSide, qual) {
         if (i.status !== 'pendente' || !ehConducao(i)) { return; }
         var df = audDiasAte(i, agora), a = audDe(i), hora = a && a.hora ? ' às ' + esc(a.hora) : '';
         if (perd[i.id]) { lc.push('<li><strong>Condução</strong> · ' + esc(i.nome) + ' · <strong class="urgtxt">a audiência já passou: devolva o mandado</strong></li>'); pc = true; }
-        else if (df !== null && df <= 1) { lc.push('<li><strong>Condução</strong> · ' + esc(i.nome) + ' · ' + (df <= 0 ? 'audiência <strong>hoje</strong>' : 'audiência amanhã') + hora + '</li>'); if (df <= 0) { pc = true; } }
+        else if (df !== null && df <= 1) { lc.push('<li><strong>Condução</strong> · ' + esc(i.nome) + ' · ' + (df <= 0 ? 'audiência <strong>hoje</strong>' : 'audiência amanhã') + hora + '</li>'); pc = true; }
       });
       (state.cfg.juris || []).forEach(function (j) {
         var df = diasCal(j.d);
@@ -10525,22 +10552,25 @@ function shrinkImage(file, maxSide, qual) {
       state.cfg.juris.splice(+b.getAttribute('data-jrdel'), 1); save(); render(); abrirJuris();
     };
   }
+  var hojeAberto = false;   /* a caixa "Urgentes" começa recolhida; lembra se você abriu enquanto o app está aberto */
   function renderHoje() {
-    var el = document.getElementById('hoje');
-    if (tab !== 'enviar') { el.hidden = true; return; }
-    var d = hojeDados(), qtd = d.aud.length + d.urgs.length + d.perdidas.length;
+    var el = document.getElementById('hoje'), ea = document.getElementById('hojeAud');
+    if (tab !== 'enviar') { el.hidden = true; if (ea) { ea.hidden = true; } return; }
+    var d = hojeDados(), qtd = d.aud.length + d.urgs.length + d.perdidas.length, totAud = d.perdidas.length + d.futuras;
+    if (ea) {
+      ea.hidden = !totAud;
+      ea.innerHTML = totAud ? '<div class="actions"><button class="btn small" data-hjlista="1">Ver todas as audiências (' + totAud + ')</button></div>' : '';
+    }
     if (!qtd) { el.hidden = true; el.classList.remove('pisca'); return; }
     function dm(x) { var p = x.data.split('-'); return p[2] + '/' + p[1] + (x.hora ? ' ' + x.hora : ''); }
     var perd = d.perdidas.map(function (x) { return '<li><strong class="urgtxt">Audiência já passou (' + esc(dm(x)) + ')</strong> · ' + esc(x.it.nome) + ' — devolva o mandado imediatamente</li>'; });
     var itens = perd.concat(d.aud.map(function (x) { return '<li><strong>' + (x.df <= 0 ? 'Hoje' : (x.df === 1 ? 'Amanhã' : 'Em ' + x.df + ' dias')) + (x.hora ? ' ' + esc(x.hora) : '') + '</strong> · audiência de ' + esc(x.it.nome) + (x.it.vara ? '<br><span class="note">' + esc(varaCurta(x.it.vara)) + '</span>' : '') + '</li>'; }))
       .concat(d.urgs.map(function (x) { return '<li><strong class="urgtxt">' + (x.tipo === 'saude' ? 'Liminar de saúde' : (x.tipo === 'medida' ? 'Medida protetiva' : 'Afastamento do lar')) + '</strong> · ' + esc(x.it.nome) + (x.venc ? ' <strong class="urgtxt">— prazo vencido (' + (x.tipo === 'saude' ? 'mais de 24 h' : 'mais de 5 dias') + ')</strong>' : '') + '</li>'; })).join('');
-    var totAud = d.perdidas.length + d.futuras;
     el.hidden = false; el.classList.add('hjred'); el.classList.toggle('pisca', !!d.pisca);
-    el.innerHTML = '<details class="chk" open><summary><span class="hjico" aria-hidden="true"></span><strong>' + (d.aud.some(function (x) { return x.df >= 2; }) ? 'Próximos 3 dias' : 'Hoje e amanhã') + '</strong>' + (qtd ? ' (' + qtd + ')' : '') + '</summary>' + (itens ? '<ul>' + itens + '</ul>' : '<p class="note">Nada para hoje nem amanhã.</p>') +
-      '<div class="actions">' + (totAud ? '<button class="btn small" data-hjlista="1">Ver todas as audiências (' + totAud + ')</button>' : '') +
-      '</div>' +
-      '</details>';
+    el.innerHTML = '<details class="chk"' + (hojeAberto ? ' open' : '') + '><summary><span class="hjico" aria-hidden="true"></span><strong>Urgentes</strong> (' + qtd + ')</summary><ul>' + itens + '</ul></details>';
   }
+  document.getElementById('hoje').addEventListener('toggle', function (e) { if (e.target && e.target.tagName === 'DETAILS') { hojeAberto = e.target.open; } }, true);
+  document.getElementById('hojeAud').addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-hjlista]')) { abrirListaAudiencias(); } });
   /* Lista de todas as audiências: primeiro as que já passaram (devolver já), depois as próximas, da mais próxima para a mais distante */
   function abrirListaAudiencias() {
     var Lz = audLista(state.items, Date.now()), tot = Lz.perdidas.length + Lz.proximas.length;
