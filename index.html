@@ -1784,6 +1784,23 @@ function pageKind(text) {
   if (/mandado\s+d[eo]\s+\w+|\bmanda\s+ao/.test(x)) { return 'mandado'; }
   return '';
 }
+/* Páginas que são o mandado em si (tem "MANDA ao Sr(a). Oficial" ou "Cumprimento n.: <processo>"), para a impressão pôr o mandado antes da decisão.
+   Páginas com a mesma referência de movimentação do mandado ("Ref. mov. 22.2") também contam como mandado. Sem achar nada, devolve [] e a ordem não muda. */
+function pagsDoMandado(pages) {
+  var refs = {}, hit = {}, refDe = {};
+  (pages || []).forEach(function (p) {
+    var x = norm(p.text || '').replace(/\s+/g, ' '), r = /ref\.\s*mov\.\s*(\d+\.\d+)/.exec(x.slice(0, 400));
+    refDe[p.n] = r ? r[1] : '';
+    if (/\bmanda\s+ao\s*\(?a?\)?\s*sr/.test(x) || /cumprimento\s+n\.\s*:?\s*\d{7}-\d{2}/.test(x)) { hit[p.n] = 1; if (refDe[p.n]) { refs[refDe[p.n]] = 1; } }
+  });
+  return (pages || []).filter(function (p) { return hit[p.n] || (refDe[p.n] && refs[refDe[p.n]]); }).map(function (p) { return p.n; }).sort(function (a, b) { return a - b; });
+}
+/* Ordem de impressão: primeiro o mandado, depois a decisão (e o resto), cada grupo na ordem do PDF; a contrafé e o recado vêm depois */
+function ordemMandadoPrimeiro(nums, mand) {
+  if (!mand || !mand.length) { return nums; }
+  var a = nums.filter(function (n) { return mand.indexOf(n) !== -1; }), b = nums.filter(function (n) { return mand.indexOf(n) === -1; });
+  return a.length && b.length ? a.concat(b) : nums;
+}
 function pageProcs(text) {
   return (String(text).match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/g) || []).map(function (m) { return m.replace(/\D/g, ''); });
 }
@@ -7001,7 +7018,7 @@ window.__iniciarApp = function () {
     arr.forEach(function (m) {
       if (!m || !m.nome) { return; }
       var it = toItem(m, fileId);
-      if (pages) { var fx = fixPages(it, pages); it.paginas = fx.paginas; it.contrafe = fx.contrafe; }
+      if (pages) { var fx = fixPages(it, pages); it.paginas = fx.paginas; it.contrafe = fx.contrafe; try { it.pagMand = pagsDoMandado(pages.filter(function (pp) { return it.paginas.indexOf(pp.n) !== -1; })); } catch (e) { /* só não reordena */ } }
       n += putItem(it, fileId);
     });
     return n;
@@ -7137,6 +7154,7 @@ window.__iniciarApp = function () {
       if (x.generico) { it.generico = true; rs.generico = (rs.generico || 0) + 1; if (it.cls === 'enviar') { it.cls = 'conferir'; it.motivo = 'Leitura genérica: confira nome, endereço e telefone'; } }
       it.sist = x.generico ? x.sistema : x.eproc ? 'eproc' : (/seeu\.pje\.jus\.br|SEEU\s*-\s*Processo/i.test(txtM + ' ' + pages[x.cf].text) ? 'seeu' : 'projudi');
       if (x.eproc) { it.pagPrincipal = pages[x.cf].n; }
+      try { it.pagMand = pagsDoMandado(x.pags.map(function (i) { return pages[i]; })); } catch (e) { /* só não reordena */ }
       it.ident = l.ident; it.ctipo = l.tipo; it.gratuito = /\bgratuito\b/i.test(txtM);
       var au = parseAudiencia(txtM); if (au) { it.audData = au.data; it.audHora = au.hora; if (!it.audTrecho) { it.audTrecho = au.trecho; } }
       it.saudeLiminar = ehSaudeLiminar(txtM, state.cfg.saudeWords, state.cfg.liminarWords);
@@ -9512,7 +9530,9 @@ function shrinkImage(file, maxSide, qual) {
     solta();
     return runs;
   }
+  var RECADO_FS = 9.5;   /* tamanho único da letra do recado (pt) */
   async function desenharRecado(out, fontes, campos, nome, mes, ano, comZap) {
+    var FS = RECADO_FS;
     var W = 841.92, H = 595.32, pg = out.addPage([H, W]), X0 = 30, X1 = 418, rgb = PDFLib.rgb;
     pg.translateContent(H / 2 - 220, W / 2 - 298.82);   /* folha em pé: o recado (caixa de 412 x 577) fica centralizado */
     pg.drawRectangle({ x: 14, y: H - 585, width: 412, height: 577, borderWidth: 1.4, borderColor: rgb(0, 0, 0) });
@@ -9557,30 +9577,30 @@ function shrinkImage(file, maxSide, qual) {
     }
     function sub(t) { return t.replace(/\{DIA\}/g, '\u0001').replace(/\{MES\}/g, ('0' + mes).slice(-2)).replace(/\{ANO\}/g, String(ano)); }
     /* cabeçalho */
-    campos.cab.split('\n').forEach(function (l) { paragrafo(l, { size: 10.5, lh: 11.3, x: 35, largura: 330 }); });
+    campos.cab.split('\n').forEach(function (l) { paragrafo(l, { size: FS, lh: FS * 1.15, x: 35, largura: 330 }); });
     topo = Math.max(topo, 60) + 13;
     /* SR.(A). nome */
-    var rot = 'SR.(A). ', nm = String(nome || '').toUpperCase(), sz = 14, fR = fontes.n, fN = fontes.b;
+    var rot = 'SR.(A). ', nm = String(nome || '').toUpperCase(), sz = FS, fR = fontes.n, fN = fontes.b;
     var wr = fR.widthOfTextAtSize(rot, sz), ate = 349, disp = ate - 35 - wr - 6;
     while (sz > 7 && fN.widthOfTextAtSize(nm, sz) > disp) { sz -= 0.5; }
-    var base0 = H - (topo + 14 * 0.85);
-    pg.drawText(rot, { x: 35, y: base0, size: 14, font: fR, color: rgb(0, 0, 0) });
+    var base0 = H - (topo + FS * 0.85);
+    pg.drawText(rot, { x: 35, y: base0, size: FS, font: fR, color: rgb(0, 0, 0) });
     pg.drawText(nm, { x: 35 + wr, y: base0, size: sz, font: fN, color: rgb(0, 0, 0) });
     pg.drawLine({ start: { x: 35 + wr, y: base0 - 2 }, end: { x: ate, y: base0 - 2 }, thickness: 0.7, color: rgb(0, 0, 0) });
-    pg.drawText('.', { x: ate + 1, y: base0, size: 14, font: fR, color: rgb(0, 0, 0) });
-    topo += 26;
-    paragrafo(sub(campos.corpo), { size: 11.7, lh: 12, x: 35, largura: 383, just: true });
-    topo += 14;
-    paragrafo(sub(campos.ident), { size: 9, lh: 11.2, x: 27, largura: 391, just: true });
-    topo += 14;
-    campos.arts.split(/\n\s*\n/).forEach(function (p) { paragrafo(sub(p), { size: 7.4, lh: 9.3, x: 27, largura: 391, just: true, indent: 26 }); topo += 12.5; });
+    pg.drawText('.', { x: ate + 1, y: base0, size: FS, font: fR, color: rgb(0, 0, 0) });
+    topo += FS * 1.9;
+    paragrafo(sub(campos.corpo), { size: FS, lh: FS * 1.25, x: 35, largura: 383, just: true });
+    topo += FS * 1.4;
+    paragrafo(sub(campos.ident), { size: FS, lh: FS * 1.25, x: 27, largura: 391, just: true });
+    topo += FS * 1.4;
+    campos.arts.split(/\n\s*\n/).forEach(function (p) { paragrafo(sub(p), { size: FS, lh: FS * 1.2, x: 27, largura: 391, just: true, indent: 26 }); topo += FS * 1.15; });
     topo = Math.max(topo, 452);
-    campos.assin.split('\n').forEach(function (l, k) { paragrafo(l, { size: k ? 10.5 : 12.9, lh: k ? 11 : 13, x: 27, largura: 391, centro: true }); });
+    campos.assin.split('\n').forEach(function (l, k) { paragrafo(l, { size: FS, lh: FS * 1.2, x: 27, largura: 391, centro: true }); });
     if (comZap) {
       topo = Math.max(topo + 14, 494);
-      paragrafo(campos.morador, { size: 9, lh: 11.2, x: 35, largura: 383, just: true });
+      paragrafo(campos.morador, { size: FS, lh: FS * 1.25, x: 35, largura: 383, just: true });
       topo = Math.max(topo + 6, 534);
-      campos.zap.split('\n').forEach(function (l) { paragrafo(sub(l), { size: 10.5, lh: 12, x: 27, largura: 391, centro: true }); });
+      campos.zap.split('\n').forEach(function (l) { paragrafo(sub(l), { size: FS, lh: FS * 1.25, x: 27, largura: 391, centro: true }); });
     }
   }
   function semRecado(i) { var t = norm(i.tipo || ''); return !!atoPalavras(i.tipo).bem && /busca|apreens|penhor|remo[cç]|remocao|remover/.test(t); }
@@ -9596,6 +9616,7 @@ function shrinkImage(file, maxSide, qual) {
     return c.copias;
   }
   window.__mandadosTeste = window.__mandadosTeste || {};
+  window.__mandadosTeste.imprimir = imprimir;
   window.__mandadosTeste.semRecado = semRecado; window.__mandadosTeste.levaRecado = levaRecado;
   window.__mandadosTeste.recado = { meses: recadoMeses, pdf: async function (nome, agora) { await ensureLib('pdflib'); var out = await PDFLib.PDFDocument.create(); await desenharRecados(out, nome, agora); return Array.from(await out.save()); } };
   function abrirBloqueio() {
@@ -9703,7 +9724,17 @@ function shrinkImage(file, maxSide, qual) {
       travar(true);
       var chave = JSON.stringify([incl, incRec, incAuto, hojeAuto, soPrinc]);
       if (cachePdf && cachePdf.chave === chave) { try { await depois(acao, cachePdf); } catch (e) { toast('Não consegui concluir. Tente de novo.'); } travar(false); return; }
-      var marcas = [];
+      var marcas = [], jsDocs = {}, mudouMand = false;
+      async function pagMandDe(it, nums) {
+        try {
+          if (!(await ensureLib('pdfjs'))) { return null; }
+          pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl();
+          if (!jsDocs[it.fileId]) { var ff = await idbGet(it.fileId); if (!ff) { return null; } jsDocs[it.fileId] = await pdfjsLib.getDocument({ data: new Uint8Array(await ff.arrayBuffer()) }).promise; }
+          var pg = [];
+          for (var q = 0; q < nums.length; q++) { var pp = await jsDocs[it.fileId].getPage(nums[q]); pg.push({ n: nums[q], text: lineify((await pp.getTextContent()).items) }); }
+          return pagsDoMandado(pg);
+        } catch (e) { return null; }
+      }
       try {
         var out = await PDFLib.PDFDocument.create(), docs = {};
         for (var k = 0; k < com.length; k++) {
@@ -9716,6 +9747,10 @@ function shrinkImage(file, maxSide, qual) {
           if (!src) { continue; }
           var okP = function (n, i, a) { return a.indexOf(n) === i && n >= 1 && n <= src.getPageCount(); }, asc2 = function (a, b) { return a - b; };
           var pagsM = (it.paginas || []).filter(okP).sort(asc2), pagsC = incl ? (it.contrafe || []).filter(function (n, i, a) { return okP(n, i, a) && pagsM.indexOf(n) === -1; }).sort(asc2) : [];
+          if (pagsM.length > 1) {
+            if (it.pagMand === undefined) { var pmd = await pagMandDe(it, pagsM); if (pmd) { it.pagMand = pmd; mudouMand = true; } }
+            pagsM = ordemMandadoPrimeiro(pagsM, it.pagMand);   /* mandado, depois a decisão */
+          }
           if (soPrinc && sistemaDe(it) === 'eproc') { var pp = it.pagPrincipal || pagsM[0]; if (pp && okP(pp, 0, [pp])) { pagsM = [pp, pp]; pagsC = []; } }
           var nums = pagsM.concat(pagsC);      /* a contrafé vai depois do conteúdo do mandado */
           if (!nums.length) { continue; }
@@ -9734,6 +9769,8 @@ function shrinkImage(file, maxSide, qual) {
             await desenharRecados(out, it.nome, Date.now(), fontesRec);
           }
         }
+        Object.keys(jsDocs).forEach(function (k) { try { jsDocs[k].destroy(); } catch (e) {} });
+        if (mudouMand) { save(); }
         var bytes = await out.save(), total = out.getPageCount();
         marcas.forEach(function (m, k) { m.fim = k + 1 < marcas.length ? marcas[k + 1].ini - 1 : total; });
         cachePdf = { chave: chave, bytes: bytes, nome: 'Mandados para imprimir ' + stampHoje() + '.pdf', avisos: avisosAuto, total: total, n: marcas.length };
