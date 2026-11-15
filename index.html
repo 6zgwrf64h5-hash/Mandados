@@ -1183,6 +1183,10 @@ html.cumpr, html.cumpr body { overflow-x: hidden; max-width: 100%; }
 
 #qWrap { width: 100%; }
 #qWrap.qinlist { margin: 6px 0 12px; }
+#qAviso { margin-top: 6px; font-size: 14px; }
+#qAviso .qa-l { margin: 4px 0; color: var(--muted, #5a6480); }
+#qAviso .qa-b { display: inline-block; margin: 2px 6px 2px 0; padding: 6px 12px; border-radius: 999px; border: 1.5px solid #9db4ff; background: #eef3ff; color: #1d3fb3; font-weight: 700; font-size: 14px; }
+#qAviso .qa-c { margin: 4px 0; padding: 6px 10px; border-radius: 10px; background: #fff7e0; border: 1px solid #f0c24b; color: #5c4400; font-size: 13.5px; }
 
 /* v64: com o modo cumprimento aberto, as janelas (certificar etc.) começam abaixo do cabeçalho */
 body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !important; max-height: calc(100dvh - var(--cumprBottom, 0px) - 12px) !important; }
@@ -1268,7 +1272,7 @@ body.cumprOn .sheet { max-height: calc(100vh - var(--cumprBottom, 0px) - 12px) !
   <p class="legend" id="legend"></p>
 
   <div class="tools" id="tools">
-    <div id="qHome"><div id="qWrap"><input type="text" id="q" placeholder="Buscar pelo nome" aria-label="Buscar pelo nome" autocomplete="off"></div></div>
+    <div id="qHome"><div id="qWrap"><input type="text" id="q" placeholder="Buscar pelo nome" aria-label="Buscar pelo nome" autocomplete="off"><div id="qAviso" hidden></div></div></div>
     <select id="ordSel" aria-label="Ordem da lista"><option value="cor">Ordem: por telefone e cor</option><option value="rota">Ordem: por rota</option></select>
     <select id="clsSel" aria-label="Mostrar"><option value="">Mostrar todos</option><option value="enviar">Só com telefone e posso enviar (verde)</option><option value="conferir">Só com telefone e em dúvida (amarelo)</option><option value="nao_enviar">Só com telefone e não envio (vermelho)</option><option value="semcel">Só sem telefone</option></select>
     <div class="actions" id="selTools">
@@ -2954,6 +2958,14 @@ function motivoPronto(it, agora, cidades) {
   if (loc && fisicaFeita(it) && !onlinePossivel(it)) { return 'física certificada e não há WhatsApp para tentar'; }
   if (temOn && fisOk && st.todos) { return 'todos os WhatsApp já têm resultado' + (loc ? ' e a física está certificada' : ''); }
   if (temOn && fisOk && oi.n >= 2 && oi.horas >= 24) { return 'duas mensagens enviadas e já passaram 24 h da última' + (loc ? '; física certificada' : ''); }
+  /* mandado de busca: depois de 8 dias no app vai sozinho para Pronto para certificar */
+  if (/busca/.test(norm(it.tipo || '')) && (agora - (it.added || agora)) / 86400000 >= 8) { return 'mandado de busca com 8 dias ou mais no app'; }
+  /* audiência: a 2 dias (ou menos) dela, com a 1ª diligência já registrada */
+  var adz = audDe(it);
+  if (adz && adz.data && ((it.visitas || []).length >= 1 || fisicaFeita(it))) {
+    var pz = adz.data.split('-'), d0z = new Date(agora); d0z.setHours(0, 0, 0, 0);
+    if (Math.round((new Date(+pz[0], +pz[1] - 1, +pz[2]).getTime() - d0z.getTime()) / 86400000) <= 2) { return 'audiência em até 2 dias e a 1ª diligência já foi feita'; }
+  }
   var dias = (agora - (it.added || agora)) / 86400000, df = audDiasAte(it, agora), longe = df !== null && df > 7, nv = (it.visitas || []).length;
   if (!longe && nv >= 2 && dias >= 15) { return nv + ' diligências físicas e mais de 15 dias no app'; }
   if (!longe && dias >= 30) { return 'mais de 30 dias no app'; }
@@ -5370,6 +5382,38 @@ window.__iniciarApp = function () {
     if (t === 'aguardando') { return i.status === 'pendente' && pronto(i); }      /* a aba "aguardando" agora é a dos PRONTOS PARA CERTIFICAR */
     return i.status === 'pendente' && i.cls === t;
   }
+  /* Aviso na busca: o mesmo nome em outra aba (Pronto para certificar, Certidões, Mandados) */
+  function avisoBusca() {
+    var el = document.getElementById('qAviso'); if (!el) { return; }
+    var n = norm(q || '');
+    if (n.length < 3 || tab === 'arquivos' || tab === 'lista' || cumprAtivo()) { el.hidden = true; el.innerHTML = ''; return; }
+    var NOMES = { enviar: 'Mandados', aguardando: 'Prontos para certificar', devolver: 'Certidões' }, h = '', cert = [];
+    ['enviar', 'aguardando', 'devolver'].forEach(function (t) {
+      if (t === tab) { return; }
+      var l = state.items.filter(function (i) { return inTab(i, t) && norm(i.nome).indexOf(n) !== -1; });
+      if (!l.length) { return; }
+      h += '<button class="qa-b" data-qa="' + t + '">' + NOMES[t] + ' (' + l.length + ')</button>';
+      if (t === 'devolver') { cert = l; }
+    });
+    var lt = []; try { lt = listaTelTodos().filter(function (p) { return norm(p.nome).indexOf(n) !== -1; }); } catch (e) { lt = []; }
+    if (lt.length) { h += '<button class="qa-b" data-qa="lista">Lista telefônica (' + lt.length + ')</button>'; }
+    if (!h) { el.hidden = true; el.innerHTML = ''; return; }
+    var ll = lt.slice(0, 3).map(function (p) {
+      return '<div class="qa-c" style="background:#eaf8ee;border-color:#7bd08f;color:#14532d">Na lista telefônica: <strong>' + esc(p.nome) + '</strong> · ' + (p.tels.length ? p.tels.map(function (t) { return listaTelTelHtml(t, p.nome); }).join(' · ') : 'sem número') + '</div>';
+    }).join('') + (lt.length > 3 ? '<div class="qa-l">e mais ' + (lt.length - 3) + ' na lista telefônica.</div>' : '');
+    var cc = cert.slice(0, 3).map(function (i) {
+      var c = i.certidao || {}, d = c.t ? new Date(c.t) : null, dt = d ? pad(d.getDate()) + '/' + pad(d.getMonth() + 1) : '';
+      return '<div class="qa-c">Certidão já feita: <strong>' + esc(i.nome) + '</strong> · ' + esc(String(i.tipo || '').toLowerCase() || 'mandado') + ' · <strong>' + (c.tipo === 'negativa' ? 'negativa' : (c.tipo === 'positiva' ? 'positiva' : 'sem resultado')) + '</strong>' + (dt ? ' em ' + dt : '') + (i.processo ? ' · proc. ' + esc(i.processo) : '') + '</div>';
+    }).join('') + (cert.length > 3 ? '<div class="qa-l">e mais ' + (cert.length - 3) + ' em Certidões.</div>' : '');
+    el.innerHTML = '<div class="qa-l">Esse nome também aparece em:</div>' + h + cc + ll;
+    el.hidden = false;
+  }
+  document.getElementById('qAviso').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-qa]') : null; if (!b) { return; }
+    tab = b.getAttribute('data-qa'); if (tab === 'lista') { listaTelFiltro = q; } render();
+    if (tab === 'lista') { window.scrollTo(0, 0); return; }
+    var c = document.querySelector('#list article.card'); if (c && c.scrollIntoView) { c.scrollIntoView({ block: 'center' }); }
+  });
   var repOnly = false;
   function precisaRepetir(i) { return i.status === 'pendente' && (i.cls === 'enviar' || onlinePossivel(i)) && msgResumo(i, Date.now()).repetir; }
   var clsF = '';
@@ -5545,6 +5589,7 @@ window.__iniciarApp = function () {
     document.getElementById('list').innerHTML = html;
     if (tab !== 'arquivos' && tab !== 'lista' && !cumprAtivo()) { var qPrim = document.querySelector('#list article.card'); if (qPrim) { qPrim.parentNode.insertBefore(qW, qPrim); } }
     qW.classList.toggle('qinlist', qW.parentNode !== qHome);
+    avisoBusca();
     if (qFoco) { qI.focus(); try { qI.setSelectionRange(qA, qB); } catch (e) { /* sem seleção */ } }
     cumprBarra();
     ajustarNumeros();
@@ -8486,7 +8531,7 @@ function shrinkImage(file, maxSide, qual) {
       (par ? '<label class="f" for="ptPar">Quem é</label><select id="ptPar" class="sel"><option value="atual">Só o atual morador</option><option value="pai">Pai</option><option value="mae">Mãe</option><option value="irmao">Irmão(ã)</option><option value="filho">Filho(a)</option><option value="conjuge">Cônjuge ou companheiro(a)</option><option value="genro">Genro/nora</option><option value="sogro">Sogro(a)</option><option value="tio">Tio(a)</option><option value="sobrinho">Sobrinho(a)</option><option value="portaria">Funcionário(a) da portaria</option><option value="vizinho">Vizinho(a)</option><option value="outro">Outro parentesco (escrever)</option></select><div id="ptOutBox" hidden><input type="text" id="ptOut" placeholder="Ex.: tio(a), avô(ó), sogro(a)" autocomplete="off"></div>' : '') +
       (vis ? '<label class="f" for="ptVis">Dias e horários das visitas (uma por linha)</label><textarea id="ptVis" style="min-height:90px">' + esc(visIni.join('\n')) + '</textarea>' : '') +
       ((!fis && val === 'pos') || (fis && val === 'pospres') || (tpl && /\{DATA\}/.test(tpl.texto)) ? '<label class="f" for="ptData">Dia ' + (fis ? 'da diligência' : 'do contato por WhatsApp') + '</label><input type="date" id="ptData" value="' + diaCont + '">' + (!fis && (val === 'pos' || (tpl && tpl.tipo === 'positiva')) ? '<p class="note">A frase “a identidade foi confirmada previamente” entra sempre na certidão por WhatsApp.</p>' : '') : '') +
-      (!tpl && !fis && val === 'pos' ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptFis" style="width:24px;height:24px"' + ((etipo(it) === 'local' || (it.fisica && it.fisica.feita)) ? ' checked' : '') + '> Houve diligência no endereço físico: fui ao local e não encontrei (isso entra no começo da certidão; desmarque se não foi lá)</label>' : '') +
+      (!tpl && !fis && val === 'pos' ? '<label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptFis" style="width:24px;height:24px"' + ((fisicaFeita(it) || (it.visitas || []).length >= 1 || (it.fisica && it.fisica.feita)) ? ' checked' : '') + '> Houve diligência no endereço físico: fui ao local e não encontrei (isso entra no começo da certidão; desmarque se não foi lá)</label>' : '') +
       (!tpl && !fis && val === 'neg' ? '<label class="f" for="ptJus">O que aconteceu na tentativa</label><select id="ptJus" class="sel"><option value="documento">A pessoa não apresentou documento</option><option value="inativo">O telefone está inativo</option><option value="semzap">O número não tem WhatsApp</option><option value="semretorno">Sem retorno até agora</option></select>' : '') +
       (waBox ? '<div class="grp" id="ptWaBox"><label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="ptWa" style="width:26px;height:26px"' + (waPadrao ? ' checked' : '') + '> <span>Incluir na certidão o que aconteceu no WhatsApp</span></label>' +
         '<div id="ptWaOp"><label class="f" for="ptWaModo">Como escrever</label><select id="ptWaModo" class="sel"><option value="geral">Resumo geral</option><option value="numeros">Número a número, com dia e hora</option></select>' +
@@ -10266,7 +10311,7 @@ function shrinkImage(file, maxSide, qual) {
   }
   /* ---- Lista telefônica: pessoas guardadas (intimadas por WhatsApp) + as que você cadastrar + agenda; só consulta, nunca puxa número sozinho ---- */
   function listaTelTodos() {
-    var l = pessoasLista().map(function (p) { return { id: p.id, nome: p.nome, tels: p.tels || [], origem: p.manual ? 'manual' : 'pessoa', proc: p.proc, quando: p.quando, obs: p.obs || '' }; });
+    var l = pessoasLista().map(function (p) { return { id: p.id, nome: p.nome, tels: p.tels || [], origem: p.manual ? 'manual' : 'pessoa', proc: p.proc, docFim: p.docFim || '', quando: p.quando, obs: p.obs || '' }; });
     contatosLista().forEach(function (c) { l.push({ id: c.id, nome: c.nome, tels: c.tels || [], origem: 'agenda', obs: '' }); });
     return l.sort(function (a, b) { return norm(a.nome).localeCompare(norm(b.nome), 'pt'); });
   }
@@ -10275,9 +10320,34 @@ function shrinkImage(file, maxSide, qual) {
     if (pe && (pe.tels || []).length) { return { tels: pe.tels }; }
     return null;
   }
-  function listaTelTelHtml(t) {
-    var n = normPhone(t);
-    return n && n.ok && n.wa ? '<a href="https://wa.me/' + esc(n.wa) + '" target="_blank" rel="noopener">' + esc(n.label) + '</a>' : esc(t);
+  function listaTelTelHtml(t, nome) {
+    var n = normPhone(t), txt = '';
+    try { txt = nome ? message(nome) : ''; } catch (e) { txt = ''; }
+    return n && n.ok && n.wa ? '<a href="https://wa.me/' + esc(n.wa) + (txt ? '?text=' + encodeURIComponent(txt) : '') + '" target="_blank" rel="noopener">' + esc(n.label) + '</a>' : esc(t);
+  }
+  /* Mandados ligados a um nome da lista (mesmo nome ou mesmo processo guardado), de qualquer aba */
+  function mandadosDoContato(p) {
+    var nn = norm(p.nome);
+    return state.items.filter(function (i) { return i.status !== 'excluido' && (norm(i.nome) === nn || (p.proc && i.processo === p.proc && norm(i.nome).indexOf(nn.split(' ')[0]) !== -1)); });
+  }
+  var OLHO_SVG = '<svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  function verMandadosContato(id) {
+    var p = listaTelTodos().filter(function (x) { return x.id === id; })[0]; if (!p) { return; }
+    var ms = mandadosDoContato(p);
+    if (!ms.length) { toast('Não há mandado deste nome neste aparelho.'); return; }
+    if (ms.length === 1) { viewMandado(ms[0]); return; }
+    var ST = { pendente: 'pendente', certidao: 'certidão feita' };
+    openModal('Mandados de ' + p.nome,
+      '<p class="note">Toque no olho para abrir o mandado e conferir os dados (processo, CPF, endereço).</p>' +
+      ms.map(function (i) {
+        var c = i.certidao;
+        return '<div class="grp"><strong>' + esc(i.nome) + '</strong><br><span class="note">Proc. ' + esc(i.processo || '-') + ' · ' + esc(i.tipo || '-') + (i.vara ? ' · ' + esc(i.vara) : '') + '<br>' + (ST[i.status] || esc(i.status)) + (c && c.tipo ? ' (' + (c.tipo === 'positiva' ? 'positiva' : (c.tipo === 'negativa' ? 'negativa' : 'sem resultado')) + ')' : '') + (i.docFim ? ' · CPF/doc. final ' + esc(i.docFim) : '') + '</span>' +
+          '<div class="actions"><button class="btn small" data-vm="' + esc(i.id) + '" aria-label="Ver o mandado">' + OLHO_SVG + ' Ver mandado</button></div></div>';
+      }).join(''));
+    document.getElementById('mbody').onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('[data-vm]') : null; if (!b) { return; }
+      var it = byId(b.getAttribute('data-vm')); if (it) { viewMandado(it); }
+    };
   }
   function listaTelHtml() {
     var f = norm(listaTelFiltro), l = listaTelTodos().filter(function (p) { return !f || norm(p.nome).indexOf(f) !== -1 || p.tels.some(function (t) { return String(t).replace(/\D/g, '').indexOf(f.replace(/\D/g, '') || '§') !== -1; }); });
@@ -10292,8 +10362,8 @@ function shrinkImage(file, maxSide, qual) {
       var L = (norm(p.nome).charAt(0) || '#').toUpperCase();
       if (L !== letra) { letra = L; h += '<h3 style="margin:12px 0 2px;font-size:16px">' + esc(L) + '</h3>'; }
       var pe = p.origem !== 'agenda';
-      h += '<div class="grp"><strong>' + esc(p.nome) + '</strong>' + (p.origem === 'agenda' ? ' <span class="note">(agenda)</span>' : '') + '<br>' + (p.tels.length ? p.tels.map(listaTelTelHtml).join(' · ') : '<span class="note">sem número</span>') + (p.proc ? '<br><span class="note">Proc. ' + esc(p.proc) + '</span>' : '') +
-        '<div class="actions">' + (p.origem === 'agenda' ? '<button class="btn small" data-lt="agenda" data-id="' + esc(p.id) + '">Editar na agenda</button>' : '<button class="btn small" data-lt="edit" data-id="' + esc(p.id) + '">Editar</button><button class="btn small ghost" data-lt="del" data-id="' + esc(p.id) + '">Apagar</button>') + '</div></div>';
+      h += '<div class="grp"><strong>' + esc(p.nome) + '</strong>' + (p.origem === 'agenda' ? ' <span class="note">(agenda)</span>' : '') + '<br>' + (p.tels.length ? p.tels.map(function (t) { return listaTelTelHtml(t, p.nome); }).join(' · ') : '<span class="note">sem número</span>') + (p.proc ? '<br><span class="note">Proc. ' + esc(p.proc) + '</span>' : '') + (p.docFim ? '<br><span class="note">CPF/doc. final ' + esc(p.docFim) + '</span>' : '') +
+        '<div class="actions">' + (mandadosDoContato(p).length ? '<button class="btn small" data-lt="ver" data-id="' + esc(p.id) + '" aria-label="Ver o mandado desta pessoa" title="Ver o mandado">' + OLHO_SVG + ' Mandado (' + mandadosDoContato(p).length + ')</button>' : '') + (p.origem === 'agenda' ? '<button class="btn small" data-lt="agenda" data-id="' + esc(p.id) + '">Editar na agenda</button>' : '<button class="btn small" data-lt="edit" data-id="' + esc(p.id) + '">Editar</button><button class="btn small ghost" data-lt="del" data-id="' + esc(p.id) + '">Apagar</button>') + '</div></div>';
     });
     if (!l.length) { h += '<p class="empty">' + (f ? 'Ninguém com esse nome ou número.' : 'A lista está vazia. Quem você intimar por WhatsApp (positiva) entra aqui, e você também pode cadastrar à mão.') + '</p>'; }
     h += '<label class="f" style="display:flex;gap:10px;align-items:center;margin-top:12px"><input type="checkbox" id="ltGuardar" style="width:24px;height:24px"' + (state.cfg.guardarPessoas === false ? '' : ' checked') + '> Guardar quem eu intimar por WhatsApp (positiva)</label>';
@@ -10309,6 +10379,7 @@ function shrinkImage(file, maxSide, qual) {
     if (a === 'novo') { listaTelForm = 'novo'; render(); var n0 = document.getElementById('ltNome'); if (n0) { n0.focus(); } }
     else if (a === 'edit') { listaTelForm = id; render(); }
     else if (a === 'cancelar') { listaTelForm = ''; render(); }
+    else if (a === 'ver') { verMandadosContato(id); }
     else if (a === 'agenda') { abrirAgenda(id); }
     else if (a === 'del') {
       var pe = pessoasLista().filter(function (p) { return p.id === id; })[0];
@@ -10697,7 +10768,7 @@ function shrinkImage(file, maxSide, qual) {
     if (a === 'pulados') { ra.pul = {}; save(); render(); mostrarRota(); return; }
     if (!it) { return; }
     if (a === 'skip') { ra.pul[it.id] = true; save(); render(); mostrarRota(); return; }
-    if (a === 'pos') { openCert(it); var cp = document.getElementById('cPos'); if (cp && cp.click) { cp.click(); } }
+    if (a === 'pos') { var loc0 = etipo(it) === 'local', onl0 = onlinePossivel(it); abrirResposta(it, (loc0 && !(onl0 && it.aguardaOnline && it.partes && it.partes.fis)) ? 'fis' : (onl0 ? 'on' : 'fis'), 'pos'); }
     else if (a === 'neg') { escolherNegativa(it); }
     else if (a === 'voz') { openVoz(it); }
   }
