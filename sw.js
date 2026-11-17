@@ -1,6 +1,6 @@
 /* Mandados do dia: guarda o aplicativo no aparelho para abrir sem sinal.
    Troque o número da versão abaixo a cada atualização para o iPhone pegar a nova. */
-const VERSAO = 'mandados-pwa-v139';
+const VERSAO = 'mandados-pwa-v141';
 const CASCA = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './lib/pdf-lib.min.js', './lib/jszip.min.js', './lib/pdf.min.js', './lib/pdf.worker.min.js'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(CASCA)).then(() => self.skipWaiting()));
@@ -21,7 +21,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   e.respondWith(                                       /* a própria página: tenta a internet (para pegar atualização) e cai no que está guardado */
-    fetch(req).then((r) => { if (r && r.ok) { const copia = r.clone(); caches.open(VERSAO).then((k) => k.put(req, copia)); } return r; })
+    fetch(req, { cache: 'no-cache' }).then((r) => { if (r && r.ok) { const copia = r.clone(); caches.open(VERSAO).then((k) => k.put(req, copia)); } return r; })   /* no-cache: confere com o servidor, sem usar a cópia de até 10 min do navegador */
       .catch(() => caches.match(req).then((c) => c || caches.match('./index.html')))
   );
 });
