@@ -72,6 +72,20 @@ main{max-width:640px;margin:0 auto;padding:16px}
 .rbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rbtns button{height:52px;font-weight:600}
 .rbtns .wide{grid-column:1/-1}
+.tbar{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px 12px;margin:4px 0 10px}
+.tbar .ring{width:66px;height:66px;flex:none}.tbar .tinfo{flex:1;line-height:1}.tbar .big{font-size:46px}
+.tbar>button{min-width:112px;height:54px;font-weight:600}
+.tbar.set .prg{stroke:var(--ok)}.tbar.warn .prg{stroke:var(--warn)}.tbar.paused .big{opacity:.45}
+.ex{padding:12px 14px}.h2s{font:700 23px/1.1 'Barlow Condensed',sans-serif;margin:0}
+.mrow2{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 2px}.mrow2 .dots{margin:0;gap:6px}.mrow2 .dot{width:26px;height:26px;font-size:13px}
+.note.sm{font-size:14px;padding:6px 10px;margin:6px 0}
+.hint{margin-top:6px!important;padding:6px 10px!important;font-size:14px!important}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}.pair small{display:block;margin-bottom:4px}
+.pair .sr{gap:4px}.pair .sr button{min-width:40px;height:50px;font-size:22px}.pair .sr input{height:50px;font-size:30px}
+.fez{margin-bottom:10px}.fez .fb{margin-top:8px}.fez .fb button{height:40px;font-size:15px}
+.reg{height:56px!important;margin-top:10px!important;font-size:19px!important}
+.row3{margin-top:8px}.row3 button{min-height:38px;font-size:13px}
+.done{margin-top:8px;padding-top:4px}.done div{padding:2px 0;font-size:14px}
 .mnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}.mnav b{font:700 24px 'Barlow Condensed',sans-serif;text-transform:capitalize}.mnav button{width:44px;font-size:22px}
 .stats .dl{color:var(--mute);font-size:12px}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-top:6px}
@@ -176,7 +190,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 20h00';
+const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 20h05';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -380,31 +394,28 @@ function vTreino(){
   <div class="dock"><button class="pri" data-a="start" data-v="${t.id}">${db.active&&db.active.tid===t.id?'Continuar treino':'Iniciar treino'}</button></div>`;
 }
 const stR=(id,k,v)=>`<div class="sr"><button data-a="adj" data-v="${k},-1" aria-label="menos uma rep">−</button><input id="${id}" type="number" inputmode="numeric" value="${v}" aria-label="repetições"><button data-a="adj" data-v="${k},1" aria-label="mais uma rep">+</button></div>`;
-const stW=(id,k,v,u)=>{const wb=u==='anilhas'?[1]:[5,1];return `<div class="sr">${wb.map(d=>`<button class="${d>1?'sm':''}" data-a="adj" data-v="${k},${-d}">${d>1?'−'+d:'−'}</button>`).join('')}<input id="${id}" type="number" inputmode="decimal" step="0.5" value="${v}" aria-label="peso">${[...wb].reverse().map(d=>`<button class="${d>1?'sm':''}" data-a="adj" data-v="${k},${d}">${d>1?'+'+d:'+'}</button>`).join('')}</div>`};
+const stW=(id,k,v,u,c)=>{const wb=u==='anilhas'||c?[1]:[5,1];return `<div class="sr">${wb.map(d=>`<button class="${d>1?'sm':''}" data-a="adj" data-v="${k},${-d}">${d>1?'−'+d:'−'}</button>`).join('')}<input id="${id}" type="number" inputmode="decimal" step="0.5" value="${v}" aria-label="peso">${[...wb].reverse().map(d=>`<button class="${d>1?'sm':''}" data-a="adj" data-v="${k},${d}">${d>1?'+'+d:'+'}</button>`).join('')}</div>`};
 const wLab=u=>u==='kg'?'Peso (kg)':u==='anilhas'?'Anilhas':'Carga extra (kg)';
 function vWorkout(){
   const a=db.active,t=T(a.tid),ex=curEx(),len=ex.sets.length,dn=doneCount(a.exi),s=ex.sets[a.seti],over=a.seti>=len,r=a.rest,ph=!r?'idle':r.reg?'rest':'set';
   const chips=`<div class="chips">${t.ex.map((e,i)=>{const d=doneCount(i);return `<button class="chip ${i===a.exi?'on':''} ${d>=e.sets.length?'ok':''}" data-a="jump" data-v="${i}">${i+1}. ${esc(short(e.n))}<i>${d}/${e.sets.length}</i></button>`}).join('')}</div>`;
   let box='';
   if(r){const rem=remOf(r),el=r.dur-rem,pr=ph==='set'?r.exec-el:rem,pd=ph==='set'?r.exec:r.dur-r.exec;
-    box=`<section class="rest ${ph} ${r.paused?'paused':''} ${ph==='rest'&&rem<=10?'warn':''}" id="restbox"><div class="ring"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="54"/><circle class="prg" id="rr" cx="60" cy="60" r="54" stroke-dasharray="${RING}" style="stroke-dashoffset:${RING*(1-pr/pd)}"/></svg><div class="rin"><div class="big" id="rt">${mmss(pr)}</div><small>${r.paused?'pausado':ph==='set'?'fazendo a série':'descanso'}</small></div></div>
-    <div class="rbtns">${ph==='set'
-      ?`<button data-a="radd" data-v="15">+15s</button><button data-a="rp" class="${r.paused?'pri':''}">${r.paused?'Retomar':'Pausar'}</button><button class="pri wide" data-a="reg">Terminei</button>`
-      :`<button data-a="radd" data-v="-15">−15s</button><button data-a="radd" data-v="15">+15s</button><button data-a="rp" class="${r.paused?'pri':''}">${r.paused?'Retomar':'Pausar'}</button><button data-a="rskip">Pular</button>`}</div></section>`}
-  const lt=lastTime(ex.id),mine=a.entries.map((e,i)=>({e,i})).filter(x=>x.e.ex===ex.id);
+    box=`<section class="tbar ${ph} ${r.paused?'paused':''} ${ph==='rest'&&rem<=10?'warn':''}" id="restbox"><div class="ring"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="54"/><circle class="prg" id="rr" cx="60" cy="60" r="54" stroke-dasharray="${RING}" style="stroke-dashoffset:${RING*(1-pr/pd)}"/></svg></div>
+    <div class="tinfo"><div class="big" id="rt">${mmss(pr)}</div><small>${r.paused?'pausado':ph==='set'?'fazendo a série':'descanso'}</small></div>
+    <button data-a="rp" class="${r.paused?'pri':''}">${r.paused?'Retomar':'Pausar'}</button></section>`}
+  const mine=a.entries.map((e,i)=>({e,i})).filter(x=>x.e.ex===ex.id);
   let fez='';
-  if(ph==='rest'){const e=a.entries.at(-1);if(e)fez=`<section class="ex fez"><small class="lab">Você fez · S${e.s+1}</small><h3>${esc(e.n)}</h3>
-    <div class="stp"><small>Repetições que conseguiu</small>${stR('inER','er',e.r)}</div>
-    <div class="stp"><small>${wLab(e.u)}</small>${stW('inEW','ew',e.w,e.u)}</div>
-    <div class="stp"><small>Como estava o peso? (opcional)</small><div class="fb">${Object.entries(FEEL).map(([k,l])=>`<button data-a="feel" data-v="${k}" class="${e.f===k?'on':''}">${l[0].toUpperCase()+l.slice(1)}</button>`).join('')}</div></div></section>`}
+  if(ph==='rest'){const e=a.entries.at(-1);if(e)fez=`<section class="ex fez"><small class="lab">Você fez · S${e.s+1} · ${esc(short(e.n))}</small>
+    <div class="pair"><div><small>Reps feitas</small>${stR('inER','er',e.r)}</div><div><small>${wLab(e.u)}</small>${stW('inEW','ew',e.w,e.u,1)}</div></div>
+    <div class="fb">${Object.entries(FEEL).map(([k,l])=>`<button data-a="feel" data-v="${k}" class="${e.f===k?'on':''}">${l[0].toUpperCase()+l.slice(1)}</button>`).join('')}</div></section>`}
+  const ls=!over&&lastSet(ex.id,a.seti);
   return `${chips}${box}${fez}
-  <section class="ex">${ph==='rest'?'<small class="lab">Próxima</small>':''}<h2>${esc(ex.n)}</h2>${ex.note?`<div class="note">${esc(ex.note)}</div>`:''}
-  <div class="dots">${ex.sets.map((_,i)=>`<span class="dot ${i<dn?'ok':''} ${i===a.seti?'cur':''}">${i+1}</span>`).join('')}</div>
-  <div class="meta">${over?'<b>Séries concluídas.</b> Se quiser, faça uma extra.':`Série <b>${a.seti+1}</b> de ${len} · meta <b>${esc(s.t)}</b> reps`}</div>
-  ${(()=>{const ls=!over&&lastSet(ex.id,a.seti);return ls?`<div class="hint ${ls.f||''}">Última vez nesta série: <b>${one({...ls,f:0})}</b>${ls.f?'<br>'+HINT[ls.f]:''}</div>`:''})()}
-  ${lt?`<div class="prev">Último treino (${dShort(lt.d)}): ${lt.txt}</div>`:''}
-  <div class="stp"><small>Repetições</small>${stR('inR','r',a.cur.r)}</div>
-  <div class="stp"><small>${wLab(ex.u)}</small>${stW('inW','w',a.cur.w,ex.u)}</div>
+  <section class="ex">${ph==='rest'?'<small class="lab">Próxima</small>':''}<h2 class="h2s">${esc(ex.n)}</h2>
+  <div class="mrow2"><div class="dots">${ex.sets.map((_,i)=>`<span class="dot ${i<dn?'ok':''} ${i===a.seti?'cur':''}">${i+1}</span>`).join('')}</div><span class="meta">${over?'Séries concluídas':`meta <b>${esc(s.t)}</b> reps`}</span></div>
+  ${ex.note&&ph!=='rest'?`<div class="note sm">${esc(ex.note)}</div>`:''}
+  ${ls?`<div class="hint ${ls.f||''}">Última vez: <b>${one({...ls,f:0})}</b>${ls.f?' · '+HINT[ls.f]:''}</div>`:''}
+  <div class="pair"><div><small>Repetições</small>${stR('inR','r',a.cur.r)}</div><div><small>${wLab(ex.u)}</small>${stW('inW','w',a.cur.w,ex.u,1)}</div></div>
   ${ph==='idle'?`<button class="pri reg" data-a="go1">Começar série ${a.seti+1}</button>`:ph==='set'?`<button class="pri reg" data-a="reg">Terminei a série</button>`:''}
   <div class="row3"><button data-a="prevex">‹ Anterior</button><button data-a="skipset" ${over?'disabled':''}>Pular série</button><button data-a="nextex">Próximo ›</button></div>
   ${mine.length?`<div class="done">${mine.map(x=>`<div><span>S${x.e.s+1} · ${one(x.e)}</span><button class="ghost" data-a="undo" data-v="${x.i}">desfazer</button></div>`).join('')}</div>`:''}
