@@ -1,6 +1,6 @@
 /* Mandados do dia: guarda o aplicativo no aparelho para abrir sem sinal.
    Troque o número da versão abaixo a cada atualização para o iPhone pegar a nova. */
-const VERSAO = 'mandados-pwa-v237';
+const VERSAO = 'mandados-pwa-v239';
 const CASCA = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './lib/pdf-lib.min.js', './lib/jszip.min.js', './lib/pdf.min.js', './lib/pdf.worker.min.js'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(CASCA)).then(() => self.skipWaiting()));
@@ -15,7 +15,6 @@ self.addEventListener('fetch', (e) => {
   const mesmo = url.origin === self.location.origin;
   const biblioteca = url.hostname === 'cdnjs.cloudflare.com';
   if (mesmo && url.pathname.indexOf('/ruas/') !== -1) { return; }   /* pacotes de ruas: o próprio app guarda no aparelho; não duplicar no cache */
-  if (mesmo && url.pathname.indexOf('/treino/') !== -1) { return; } /* app de treino: é outro app, o Mandados não mexe nele */
   if (!mesmo && !biblioteca) { return; }               /* IA, WhatsApp, Maps: sempre direto da internet */
   if (biblioteca) {                                    /* bibliotecas com versão fixa: guarda e reaproveita */
     e.respondWith(caches.match(req).then((c) => c || fetch(req).then((r) => { if (r && r.ok) { const copia = r.clone(); caches.open(VERSAO).then((k) => k.put(req, copia)); } return r; })));
