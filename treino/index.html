@@ -193,7 +193,7 @@ try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!db||!Array.isArray(db.plan))db=seed();
 db.log=db.log||[];
 if((db.v||1)<2){db.plan.forEach(t=>t.ex.forEach(e=>e.rest=180));db.v=2}
-db.cfg=Object.assign({voice:true,beep:true,wake:false,exec:20},db.cfg||{});
+db.cfg=Object.assign({voice:true,beep:true,wake:false,exec:20,music:false},db.cfg||{});
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
 
 let view={name:db.active?'home':'home'}, edit=null, lastMS='';
@@ -224,14 +224,17 @@ let voice=null;
 function pickVoice(){try{voice=speechSynthesis.getVoices().find(v=>/pt[-_]BR/i.test(v.lang))||null}catch(e){}}
 if('speechSynthesis' in window){pickVoice();try{speechSynthesis.onvoiceschanged=pickVoice}catch(e){}}
 function say(t){if(!db.cfg.voice||!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=1.05;if(voice)u.voice=voice;speechSynthesis.speak(u)}catch(e){}}
-function unlock(){AC();try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}
+function setSession(){try{if(navigator.audioSession)navigator.audioSession.type=db.cfg.music?'ambient':'playback'}catch(e){}}
+function unlock(){setSession();AC();try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}
 function silentWav(sec){const sr=8000,n=sr*sec,b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
   w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
   for(let i=0;i<n;i++)v.setInt16(44+i*2,i%2?1:-1,true);return URL.createObjectURL(new Blob([b],{type:'audio/wav'}))}
 const au=new Audio();au.loop=true;au.setAttribute('playsinline','');
 try{au.src=silentWav(10)}catch(e){}
-au.addEventListener('pause',()=>{if(db.active)setTimeout(()=>{if(db.active&&au.paused)au.play().catch(()=>{})},400)});
-function startKeepAlive(){au.play().catch(()=>{});setupMS();msUpd(true)}
+au.addEventListener('pause',()=>{if(db.active&&!db.cfg.music)setTimeout(()=>{if(db.active&&!db.cfg.music&&au.paused)au.play().catch(()=>{})},400)});
+function startKeepAlive(){setSession();
+  if(db.cfg.music){au.pause();try{const ms=navigator.mediaSession;ms.metadata=null;ms.playbackState='none';['play','pause','nexttrack','previoustrack'].forEach(k=>ms.setActionHandler(k,null))}catch(e){}return}
+  au.play().catch(()=>{});setupMS();msUpd(true)}
 function stopKeepAlive(){const a=db.active;db.active=null;au.pause();db.active=a;try{navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none'}catch(e){}}
 const artC={};
 function art(t){if(artC[t.id])return artC[t.id];try{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle=t.color;x.fillRect(0,0,256,256);x.fillStyle='#fff';x.font='bold 170px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(t.id,128,140);return artC[t.id]=c.toDataURL('image/png')}catch(e){return ''}}
@@ -248,7 +251,7 @@ function setupMS(){
 }
 const short=n=>n.split(' (')[0];
 function msUpd(force){
-  const a=db.active;if(!a||!('mediaSession' in navigator))return;
+  const a=db.active;if(!a||db.cfg.music||!('mediaSession' in navigator))return;
   const t=T(a.tid),ex=curEx();if(!t||!ex)return;const r=a.rest,sn=short(ex.n),P=r&&r.paused?'Pausado · ':'';let title,artist;
   if(!r){title=`Pronto · S${a.seti+1}/${ex.sets.length} · ${a.cur.r} × ${fmtW(a.cur.w,ex.u)}`;artist=`⏯ começa · ${sn}`}
   else if(!r.reg){title=`${P}Série ${a.seti+1}/${ex.sets.length} · ${a.cur.r} × ${fmtW(a.cur.w,ex.u)}`;artist=`${sn} · ⏭ terminei · ⏮ +15s`}
@@ -382,13 +385,14 @@ function vHist(){
 function vCfg(){
   const sw=(k,l,d)=>`<label class="sw" style="margin:0;color:var(--ink)"><span>${l}<br><small>${d}</small></span><input type="checkbox" data-cfg="${k}" ${db.cfg[k]?'checked':''}></label>`;
   return `<label class="sw" style="margin:0;color:var(--ink)"><span>Tempo para fazer a série (s)<br><small>Depois dele a série é registrada sozinha e o descanso começa. Use "Terminei" ou ⏭ se acabar antes.</small></span><input class="num" type="number" inputmode="numeric" data-cfgn="exec" value="${db.cfg.exec}"></label>
+  ${sw('music','Modo com música','Sua música continua tocando e a voz e os bipes saem por cima. Sem botões na tela bloqueada. Com a tela bloqueada o iPhone pode calar os avisos; se acontecer, ligue "Manter tela ligada".')}
   ${sw('voice','Aviso por voz','Fala a série que vem, "faltam 30 segundos" e "10 segundos".')}
   ${sw('beep','Bipes','Bipa quando a série é registrada, aos 30s, 10s e no fim do descanso.')}
   ${sw('wake','Manter tela ligada','Durante o treino a tela não apaga. Deixe desligado se for bloquear o celular.')}
   <button style="width:100%;margin-top:14px" data-a="testvoice">Testar voz e bipe</button>
   <div class="sec">Como funciona</div>
   <ul class="help"><li>Ao iniciar, o ciclo roda sozinho: tempo da série + descanso de 3 min, e emenda na próxima série.</li><li>A série é registrada com as reps e o peso que estão na tela. No descanso você corrige o que realmente fez.</li></ul>
-  <div class="sec">Na tela bloqueada</div>
+  <div class="sec">Na tela bloqueada (sem o modo com música)</div>
   <ul class="help"><li><b>Fazendo a série:</b> ⏭ terminei (registra e começa o descanso), ⏮ +15 s, ⏯ pausa.</li><li><b>No descanso:</b> ⏮ / ⏭ tiram ou põem 1 repetição na série que você acabou de fazer; ⏯ pausa.</li><li>O peso não dá para mudar pela tela bloqueada; mude no app durante o descanso.</li><li>Se você ouvir música em outro app, ele assume o controle de mídia; aí use o app normalmente.</li></ul>
   <div class="sec">Backup</div>
   <small>Os dados ficam só neste aparelho. Copie o backup de vez em quando.</small>
@@ -489,7 +493,7 @@ document.addEventListener('input',e=>{const a=db.active;if(!a)return;const id=e.
   if(last&&(id==='inER'||id==='inEW')){last[id==='inER'?'r':'w']=id==='inER'?Math.round(n):n;syncPlan(last);save()}});
 document.addEventListener('change',e=>{const d=e.target.dataset||{};
   if(d.cfgn){db.cfg[d.cfgn]=Math.max(5,parseInt(e.target.value)||20);e.target.value=db.cfg[d.cfgn];save();return}
-  const k=d.cfg;if(!k)return;db.cfg[k]=e.target.checked;save();if(k==='wake'){e.target.checked?wake():unwake()}if(k==='beep')scheduleBeeps()});
+  const k=d.cfg;if(!k)return;db.cfg[k]=e.target.checked;save();if(k==='wake'){e.target.checked?wake():unwake()}if(k==='beep')scheduleBeeps();if(k==='music'&&db.active){startKeepAlive();scheduleBeeps()}});
 render();
 }
 </script>
