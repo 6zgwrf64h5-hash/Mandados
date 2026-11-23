@@ -170,7 +170,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 19h45';
+const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 19h35';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -324,7 +324,9 @@ function doReg(){
     if(nx<0){a.rest=null;cancelBeeps();setCur();save();render();msUpd(true);say('Treino completo!');finishPrompt();return}
     a.exi=nx;a.seti=doneCount(nx)}
   setCur();if(a.rest)a.rest.reg=true;scheduleBeeps();save();render();msUpd(true);
+  if(a.rest)say(`Descanso de ${falaT(Math.round(a.rest.dur-a.rest.exec))} iniciado`);
 }
+function falaT(sec){const m=Math.floor(sec/60),r=sec%60,M=m?(m===1?'1 minuto':m+' minutos'):'',S=r?r+' segundos':'';return M&&S?M+' e '+S:(M||S)}
 function finishNow(){const a=db.active,r=a&&a.rest;if(!r)return startCycle();if(r.reg)return;
   const left=r.dur-r.exec;if(r.paused)r.left=left;else r.endAt=Date.now()+left*1000;doReg()}
 function cycleEnd(natural){const a=db.active;if(!a)return;a.rest=null;cancelBeeps();
