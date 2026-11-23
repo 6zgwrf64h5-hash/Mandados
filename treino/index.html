@@ -70,6 +70,12 @@ main{max-width:640px;margin:0 auto;padding:16px}
 .big{font:700 48px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}
 .rbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rbtns button{height:52px;font-weight:600}
+.rbtns .wide{grid-column:1/-1}
+.rest.set .prg{stroke:var(--ok)}
+.lab{display:block;font-weight:600;margin-bottom:4px}
+.fez{margin-bottom:12px;background:var(--card2)}
+.fez h3{font:700 22px/1.1 'Barlow Condensed',sans-serif;margin:0}
+.sw input.num{width:84px;height:44px;text-align:center;margin:0}
 .restbtn{width:100%;margin:8px 0 12px;background:transparent;border-style:dashed;color:var(--mute)}
 .ex{background:var(--card);border-radius:18px;padding:16px}
 .ex h2{font:700 30px/1.05 'Barlow Condensed',sans-serif;margin:0 0 8px;text-wrap:balance}
@@ -187,7 +193,7 @@ try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!db||!Array.isArray(db.plan))db=seed();
 db.log=db.log||[];
 if((db.v||1)<2){db.plan.forEach(t=>t.ex.forEach(e=>e.rest=180));db.v=2}
-db.cfg=Object.assign({voice:true,beep:true,wake:false},db.cfg||{});
+db.cfg=Object.assign({voice:true,beep:true,wake:false,exec:20},db.cfg||{});
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
 
 let view={name:db.active?'home':'home'}, edit=null, lastMS='';
@@ -208,8 +214,9 @@ function beepAt(t,f,d){const o=ac.createOscillator(),g=ac.createGain();o.frequen
 function cancelBeeps(){beeps.forEach(g=>{try{g.disconnect()}catch(e){}});beeps=[]}
 function scheduleBeeps(){
   cancelBeeps();const r=db.active?.rest;if(!r||r.paused||!db.cfg.beep)return;const c=AC();if(!c)return;
-  const rem=remOf(r),b=c.currentTime;
-  if(rem>30.3)beepAt(b+rem-30,880,.18);
+  const rem=remOf(r),el=r.dur-rem,b=c.currentTime;
+  if(!r.reg&&r.exec-el>.3)beepAt(b+r.exec-el,660,.2);
+  if(rem>30.3&&r.dur-r.exec>30)beepAt(b+rem-30,880,.18);
   if(rem>10.3){beepAt(b+rem-10,880,.12);beepAt(b+rem-9.8,880,.12)}
   beepAt(b+rem,1320,.25);beepAt(b+rem+.35,1320,.25);beepAt(b+rem+.7,1760,.5);
 }
@@ -230,68 +237,73 @@ const artC={};
 function art(t){if(artC[t.id])return artC[t.id];try{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle=t.color;x.fillRect(0,0,256,256);x.fillStyle='#fff';x.font='bold 170px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(t.id,128,140);return artC[t.id]=c.toDataURL('image/png')}catch(e){return ''}}
 function setupMS(){
   if(!('mediaSession' in navigator))return;const h=(k,f)=>{try{navigator.mediaSession.setActionHandler(k,f)}catch(e){}};
-  /* Durante a série: ⏯ registra e inicia o descanso, ⏮/⏭ tiram/põem 1 rep.
-     No descanso: ⏯ pausa/retoma, ⏮ +15 s, ⏭ pula. Sem handlers de seek: assim o iPhone mostra ⏮⏭ em vez de ±10 s. */
-  const playPause=()=>{au.play().catch(()=>{});const a=db.active;if(!a)return;if(a.rest)toggleRest(true);else reg(true);msUpd(true)};
-  h('play',playPause);h('pause',playPause);
-  h('nexttrack',()=>{const a=db.active;if(!a)return;a.rest?endRest(false,true):repAdj(1)});
-  h('previoustrack',()=>{const a=db.active;if(!a)return;a.rest?addRest(15,true):repAdj(-1)});
+  /* Ciclo automático. Fazendo a série: ⏯ pausa, ⏭ "terminei", ⏮ +15 s.
+     No descanso: ⏯ pausa, ⏮/⏭ tiram/põem 1 rep da série que acabou de fazer.
+     Sem handlers de seek: assim o iPhone mostra ⏮⏭ em vez de ±10 s. */
+  const pp=()=>{au.play().catch(()=>{});const a=db.active;if(!a)return;a.rest?toggleRest(true):startCycle();msUpd(true)};
+  h('play',pp);h('pause',pp);
+  h('nexttrack',()=>{const a=db.active;if(!a)return;if(!a.rest)return startCycle();a.rest.reg?repLast(1):finishNow()});
+  h('previoustrack',()=>{const a=db.active;if(!a||!a.rest)return;a.rest.reg?repLast(-1):addRest(15,true)});
   ['seekforward','seekbackward','seekto'].forEach(k=>h(k,null));
 }
-function repAdj(d){const a=db.active;a.cur.r=Math.max(0,(+a.cur.r||0)+d);const i=$('#inR');if(i)i.value=a.cur.r;save();msUpd(true);if(document.hidden)say(a.cur.r+' repetições')}
+const short=n=>n.split(' (')[0];
 function msUpd(force){
   const a=db.active;if(!a||!('mediaSession' in navigator))return;
-  const t=T(a.tid),ex=curEx();if(!t||!ex)return;let title,artist;const sn=ex.n.split(' (')[0];
-  if(a.rest){const rem=remOf(a.rest);title=(a.rest.paused?'Pausado ':'Descanso ')+mmss(rem)+' · ⏭ pula';artist=`Próx: ${sn} S${a.seti+1} · ${a.cur.r}×${fmtW(a.cur.w,ex.u)}`}
-  else{title=`${a.cur.r} reps × ${fmtW(a.cur.w,ex.u)} · S${a.seti+1}/${ex.sets.length}`;artist=`⏯ registra · ⏮⏭ reps · ${sn}`}
-  const k=title+'|'+artist+'|'+(a.rest?a.rest.paused:'s');if(k===lastMS&&!force)return;lastMS=k;
+  const t=T(a.tid),ex=curEx();if(!t||!ex)return;const r=a.rest,sn=short(ex.n),P=r&&r.paused?'Pausado · ':'';let title,artist;
+  if(!r){title=`Pronto · S${a.seti+1}/${ex.sets.length} · ${a.cur.r} × ${fmtW(a.cur.w,ex.u)}`;artist=`⏯ começa · ${sn}`}
+  else if(!r.reg){title=`${P}Série ${a.seti+1}/${ex.sets.length} · ${a.cur.r} × ${fmtW(a.cur.w,ex.u)}`;artist=`${sn} · ⏭ terminei · ⏮ +15s`}
+  else{const e=a.entries.at(-1);title=`${P||'Descanso '}${mmss(remOf(r))} · fez ${e?e.r:'?'} reps`;artist=`⏮⏭ ajusta reps · próx: ${sn} S${a.seti+1}`}
+  const k=title+'|'+artist;if(k===lastMS&&!force)return;lastMS=k;
   try{navigator.mediaSession.metadata=new MediaMetadata({title,artist,album:t.name,artwork:[{src:art(t),sizes:'256x256',type:'image/png'}]})}catch(e){}
-  try{navigator.mediaSession.playbackState=a.rest&&a.rest.paused?'paused':'playing'}catch(e){}
-  try{if(a.rest){const d=a.rest.dur,p=Math.min(d,Math.max(0,d-remOf(a.rest)));navigator.mediaSession.setPositionState({duration:d,position:p,playbackRate:1})}
-    else{const el=(Date.now()-a.start)/1000;navigator.mediaSession.setPositionState({duration:Math.max(5400,el+600),position:el,playbackRate:1})}}catch(e){}
+  try{navigator.mediaSession.playbackState=r&&r.paused?'paused':'playing'}catch(e){}
+  try{if(r)navigator.mediaSession.setPositionState({duration:r.dur,position:Math.min(r.dur,Math.max(0,r.dur-remOf(r))),playbackRate:1});else navigator.mediaSession.setPositionState()}catch(e){}
 }
 async function wake(){if(!db.cfg.wake||!db.active||!navigator.wakeLock)return;try{wl=await navigator.wakeLock.request('screen')}catch(e){}}
 function unwake(){try{wl&&wl.release()}catch(e){}wl=null}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&db.active){wake();if(view.name==='workout')render()}});
 
-/* ---------- lógica do treino ---------- */
+/* ---------- lógica do treino (ciclo automático: série + descanso) ---------- */
 const curEx=()=>{const a=db.active;return a?T(a.tid)?.ex[a.exi]:null};
 const doneCount=i=>{const a=db.active,e=T(a.tid).ex[i];return e?a.entries.filter(x=>x.ex===e.id).length:0};
 const remOf=r=>r.paused?r.left:(r.endAt-Date.now())/1000;
+const spW=(w,u)=>u==='corpo'?(w?', mais '+w+' quilos':''):u==='kg'?(w?', '+String(w).replace('.',',')+' quilos':''):', '+w+(w==1?' anilha':' anilhas');
 function setCur(){const a=db.active,ex=curEx();if(!ex)return;const s=ex.sets[a.seti];
   if(s)a.cur={r:s.r,w:s.w};else{const l=a.entries.filter(e=>e.ex===ex.id).at(-1)||ex.sets.at(-1)||{r:10,w:0};a.cur={r:l.r,w:l.w}}}
 function nextIncomplete(){const a=db.active,n=T(a.tid).ex.length;for(let k=1;k<=n;k++){const i=(a.exi+k)%n;if(doneCount(i)<T(a.tid).ex[i].sets.length)return i}return -1}
 function lastTime(exId){for(let i=db.log.length-1;i>=0;i--){const es=db.log[i].e.filter(e=>e.ex===exId);if(es.length)return{d:db.log[i].start,txt:fmtSets(es)}}return null}
+function syncPlan(e){const ex=T(db.active.tid).ex.find(x=>x.id===e.ex),s=ex&&ex.sets[e.s];if(s){s.r=e.r;s.w=e.w}}
 
-function begin(tid){db.active={tid,exi:0,seti:0,start:Date.now(),entries:[],rest:null,cur:null};setCur();unlock();startKeepAlive();wake();save();go('workout')}
-function startRest(d){db.active.rest={dur:d,endAt:Date.now()+d*1000,paused:false,left:d,f30:d<=30,f10:d<=10};scheduleBeeps()}
-function reg(remote){
+function begin(tid){db.active={tid,exi:0,seti:0,start:Date.now(),entries:[],rest:null,cur:null};setCur();unlock();startKeepAlive();wake();go('workout');startCycle()}
+function startCycle(){
+  const a=db.active,ex=curEx();if(!a||!ex)return;AC();
+  const exec=Math.max(5,+db.cfg.exec||20),rest=ex.rest||180,dur=exec+rest;
+  a.rest={dur,exec,endAt:Date.now()+dur*1000,paused:false,left:dur,f30:rest<=30,f10:rest<=10,reg:false};
+  scheduleBeeps();save();render();msUpd(true);
+  say(`${a.seti===0?short(ex.n)+'. ':''}Série ${a.seti+1}. ${a.cur.r} repetições${spW(a.cur.w,ex.u)}.`);
+}
+function doReg(){
   const a=db.active,ex=curEx();if(!a||!ex)return;
-  const r=+a.cur.r||0,w=+a.cur.w||0,n=a.seti+1;
-  a.entries.push({ex:ex.id,n:ex.n,u:ex.u,s:a.seti,r,w,t:Date.now()});
-  if(ex.sets[a.seti]){ex.sets[a.seti].r=r;ex.sets[a.seti].w=w}
-  a.seti++;
-  try{navigator.vibrate&&navigator.vibrate(40)}catch(e){}
+  const e={ex:ex.id,n:ex.n,u:ex.u,s:a.seti,r:+a.cur.r||0,w:+a.cur.w||0,t:Date.now()};a.entries.push(e);syncPlan(e);
+  a.seti++;try{navigator.vibrate&&navigator.vibrate(40)}catch(x){}
   if(a.seti>=ex.sets.length){const nx=nextIncomplete();
-    if(nx<0){setCur();save();render();msUpd(true);if(remote||document.hidden)say('Última série registrada. Treino completo.');finishPrompt();return}
+    if(nx<0){a.rest=null;cancelBeeps();setCur();save();render();msUpd(true);say('Treino completo!');finishPrompt();return}
     a.exi=nx;a.seti=doneCount(nx)}
-  setCur();startRest(ex.rest||180);save();render();msUpd(true);
-  if(remote||document.hidden)say(`Série ${n} registrada. Descanso ${mmss(ex.rest||180).replace(':',' e ')}`);
+  setCur();if(a.rest)a.rest.reg=true;scheduleBeeps();save();render();msUpd(true);
 }
-function endRest(natural,remote){
-  const a=db.active;if(!a||!a.rest)return;a.rest=null;cancelBeeps();
-  if(natural){try{navigator.vibrate&&navigator.vibrate([300,120,300])}catch(e){}const ex=curEx();say(`Descanso encerrado. ${ex?ex.n+', série '+(a.seti+1):''}`)}
-  else if(remote)say('Descanso pulado');
-  save();render();msUpd(true);
-}
+function finishNow(){const a=db.active,r=a&&a.rest;if(!r)return startCycle();if(r.reg)return;
+  const left=r.dur-r.exec;if(r.paused)r.left=left;else r.endAt=Date.now()+left*1000;doReg()}
+function cycleEnd(natural){const a=db.active;if(!a)return;a.rest=null;cancelBeeps();
+  if(natural){try{navigator.vibrate&&navigator.vibrate([300,120,300])}catch(e){}}startCycle()}
 function toggleRest(remote){const r=db.active?.rest;if(!r)return;
   if(r.paused){r.endAt=Date.now()+r.left*1000;r.paused=false;if(remote)say('Retomado')}else{r.left=remOf(r);r.paused=true;if(remote)say('Pausado')}
   scheduleBeeps();save();render();msUpd(true)}
-function addRest(d,remote){const r=db.active?.rest;if(!r)return;
+function addRest(d,remote){const r=db.active?.rest;if(!r)return;const el=r.dur-remOf(r);
   if(r.paused)r.left=Math.max(1,r.left+d);else r.endAt=Math.max(Date.now()+1000,r.endAt+d*1000);
-  const rem=remOf(r);if(rem>r.dur)r.dur=rem;if(rem>30)r.f30=false;if(rem>10)r.f10=false;
+  const rem=remOf(r);r.dur=el+rem;if(!r.reg)r.exec=Math.max(el,r.exec+d);
+  if(rem>30)r.f30=false;if(rem>10)r.f10=false;
   if(remote)say((d>0?'Mais ':'Menos ')+Math.abs(d)+' segundos');
   scheduleBeeps();save();tick();msUpd(true)}
+function repLast(d){const a=db.active,e=a.entries.at(-1);if(!e)return;e.r=Math.max(0,e.r+d);syncPlan(e);save();render();msUpd(true);if(document.hidden)say(e.r+' repetições')}
 function jump(i){const a=db.active,t=T(a.tid);if(i<0||i>=t.ex.length)return;a.exi=i;a.seti=Math.min(doneCount(i),t.ex[i].sets.length);setCur();save();render();msUpd(true);
   const c=document.querySelector('.chip.on');c&&c.scrollIntoView({inline:'center',block:'nearest'})}
 function finishPrompt(){openModal(`<h3>Todas as séries feitas</h3><p>Pode encerrar e salvar no histórico, ou continuar se quiser fazer algo extra.</p><div class="acts"><button class="pri" data-a="finish">Encerrar e salvar</button><button data-a="closem">Continuar treinando</button></div>`)}
@@ -323,24 +335,31 @@ function vTreino(){
   <button class="addb" data-a="addex">+ Adicionar exercício</button>
   <div class="dock"><button class="pri" data-a="start" data-v="${t.id}">${db.active&&db.active.tid===t.id?'Continuar treino':'Iniciar treino'}</button></div>`;
 }
+const stR=(id,k,v)=>`<div class="sr"><button data-a="adj" data-v="${k},-1" aria-label="menos uma rep">−</button><input id="${id}" type="number" inputmode="numeric" value="${v}" aria-label="repetições"><button data-a="adj" data-v="${k},1" aria-label="mais uma rep">+</button></div>`;
+const stW=(id,k,v,u)=>{const wb=u==='anilhas'?[1]:[5,1];return `<div class="sr">${wb.map(d=>`<button class="${d>1?'sm':''}" data-a="adj" data-v="${k},${-d}">${d>1?'−'+d:'−'}</button>`).join('')}<input id="${id}" type="number" inputmode="decimal" step="0.5" value="${v}" aria-label="peso">${[...wb].reverse().map(d=>`<button class="${d>1?'sm':''}" data-a="adj" data-v="${k},${d}">${d>1?'+'+d:'+'}</button>`).join('')}</div>`};
+const wLab=u=>u==='kg'?'Peso (kg)':u==='anilhas'?'Anilhas':'Carga extra (kg)';
 function vWorkout(){
-  const a=db.active,t=T(a.tid),ex=curEx(),len=ex.sets.length,dn=doneCount(a.exi),s=ex.sets[a.seti],over=a.seti>=len;
-  const chips=`<div class="chips">${t.ex.map((e,i)=>{const d=doneCount(i);return `<button class="chip ${i===a.exi?'on':''} ${d>=e.sets.length?'ok':''}" data-a="jump" data-v="${i}">${i+1}. ${esc(e.n.split(' (')[0])}<i>${d}/${e.sets.length}</i></button>`}).join('')}</div>`;
-  let rest;
-  if(a.rest){const rem=remOf(a.rest);
-    rest=`<section class="rest ${a.rest.paused?'paused':''} ${rem<=10?'warn':''}" id="restbox"><div class="ring"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="54"/><circle class="prg" id="rr" cx="60" cy="60" r="54" stroke-dasharray="${RING}" style="stroke-dashoffset:${RING*(1-rem/a.rest.dur)}"/></svg><div class="rin"><div class="big" id="rt">${mmss(rem)}</div><small>${a.rest.paused?'pausado':'descanso'}</small></div></div>
-    <div class="rbtns"><button data-a="radd" data-v="-15">−15s</button><button data-a="radd" data-v="15">+15s</button><button data-a="rp" class="${a.rest.paused?'pri':''}">${a.rest.paused?'Retomar':'Pausar'}</button><button data-a="rskip">Pular</button></div></section>`}
-  else rest=`<button class="restbtn" data-a="rstart">Iniciar descanso (${mmss(ex.rest)})</button>`;
-  const wb=ex.u==='anilhas'?[1]:[5,1];
-  const lt=lastTime(ex.id);const mine=a.entries.map((e,i)=>({e,i})).filter(x=>x.e.ex===ex.id);
-  return `${chips}${rest}
-  <section class="ex"><h2>${esc(ex.n)}</h2>${ex.note?`<div class="note">${esc(ex.note)}</div>`:''}
+  const a=db.active,t=T(a.tid),ex=curEx(),len=ex.sets.length,dn=doneCount(a.exi),s=ex.sets[a.seti],over=a.seti>=len,r=a.rest,ph=!r?'idle':r.reg?'rest':'set';
+  const chips=`<div class="chips">${t.ex.map((e,i)=>{const d=doneCount(i);return `<button class="chip ${i===a.exi?'on':''} ${d>=e.sets.length?'ok':''}" data-a="jump" data-v="${i}">${i+1}. ${esc(short(e.n))}<i>${d}/${e.sets.length}</i></button>`}).join('')}</div>`;
+  let box='';
+  if(r){const rem=remOf(r),el=r.dur-rem,pr=ph==='set'?r.exec-el:rem,pd=ph==='set'?r.exec:r.dur-r.exec;
+    box=`<section class="rest ${ph} ${r.paused?'paused':''} ${ph==='rest'&&rem<=10?'warn':''}" id="restbox"><div class="ring"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="54"/><circle class="prg" id="rr" cx="60" cy="60" r="54" stroke-dasharray="${RING}" style="stroke-dashoffset:${RING*(1-pr/pd)}"/></svg><div class="rin"><div class="big" id="rt">${mmss(pr)}</div><small>${r.paused?'pausado':ph==='set'?'fazendo a série':'descanso'}</small></div></div>
+    <div class="rbtns">${ph==='set'
+      ?`<button data-a="radd" data-v="15">+15s</button><button data-a="rp" class="${r.paused?'pri':''}">${r.paused?'Retomar':'Pausar'}</button><button class="pri wide" data-a="reg">Terminei</button>`
+      :`<button data-a="radd" data-v="-15">−15s</button><button data-a="radd" data-v="15">+15s</button><button data-a="rp" class="${r.paused?'pri':''}">${r.paused?'Retomar':'Pausar'}</button><button data-a="rskip">Pular</button>`}</div></section>`}
+  const lt=lastTime(ex.id),mine=a.entries.map((e,i)=>({e,i})).filter(x=>x.e.ex===ex.id);
+  let fez='';
+  if(ph==='rest'){const e=a.entries.at(-1);if(e)fez=`<section class="ex fez"><small class="lab">Você fez · S${e.s+1}</small><h3>${esc(e.n)}</h3>
+    <div class="stp"><small>Repetições que conseguiu</small>${stR('inER','er',e.r)}</div>
+    <div class="stp"><small>${wLab(e.u)}</small>${stW('inEW','ew',e.w,e.u)}</div></section>`}
+  return `${chips}${box}${fez}
+  <section class="ex">${ph==='rest'?'<small class="lab">Próxima</small>':''}<h2>${esc(ex.n)}</h2>${ex.note?`<div class="note">${esc(ex.note)}</div>`:''}
   <div class="dots">${ex.sets.map((_,i)=>`<span class="dot ${i<dn?'ok':''} ${i===a.seti?'cur':''}">${i+1}</span>`).join('')}</div>
-  <div class="meta">${over?'<b>Séries concluídas.</b> Se quiser, registre uma extra.':`Série <b>${a.seti+1}</b> de ${len} · meta <b>${esc(s.t)}</b> reps`}</div>
+  <div class="meta">${over?'<b>Séries concluídas.</b> Se quiser, faça uma extra.':`Série <b>${a.seti+1}</b> de ${len} · meta <b>${esc(s.t)}</b> reps`}</div>
   ${lt?`<div class="prev">Última vez (${dShort(lt.d)}): ${lt.txt}</div>`:''}
-  <div class="stp"><small>Repetições</small><div class="sr"><button data-a="adj" data-v="r,-1" aria-label="menos uma rep">−</button><input id="inR" type="number" inputmode="numeric" value="${a.cur.r}" aria-label="repetições"><button data-a="adj" data-v="r,1" aria-label="mais uma rep">+</button></div></div>
-  <div class="stp"><small>${ex.u==='kg'?'Peso (kg)':ex.u==='anilhas'?'Anilhas':'Carga extra (kg)'}</small><div class="sr">${wb.map(d=>`<button class="${d>1?'sm':''}" data-a="adj" data-v="w,${-d}">${d>1?'−'+d:'−'}</button>`).join('')}<input id="inW" type="number" inputmode="decimal" step="0.5" value="${a.cur.w}" aria-label="peso">${[...wb].reverse().map(d=>`<button class="${d>1?'sm':''}" data-a="adj" data-v="w,${d}">${d>1?'+'+d:'+'}</button>`).join('')}</div></div>
-  <button class="pri reg" data-a="reg">${over?'Registrar série extra':'Registrar série '+(a.seti+1)}</button>
+  <div class="stp"><small>Repetições</small>${stR('inR','r',a.cur.r)}</div>
+  <div class="stp"><small>${wLab(ex.u)}</small>${stW('inW','w',a.cur.w,ex.u)}</div>
+  ${ph==='idle'?`<button class="pri reg" data-a="go1">Começar série ${a.seti+1}</button>`:ph==='set'?`<button class="pri reg" data-a="reg">Terminei a série</button>`:''}
   <div class="row3"><button data-a="prevex">‹ Anterior</button><button data-a="skipset" ${over?'disabled':''}>Pular série</button><button data-a="nextex">Próximo ›</button></div>
   ${mine.length?`<div class="done">${mine.map(x=>`<div><span>S${x.e.s+1} · ${x.e.r} reps × ${fmtW(x.e.w,x.e.u)}</span><button class="ghost" data-a="undo" data-v="${x.i}">desfazer</button></div>`).join('')}</div>`:''}
   </section>`;
@@ -362,18 +381,20 @@ function vHist(){
 }
 function vCfg(){
   const sw=(k,l,d)=>`<label class="sw" style="margin:0;color:var(--ink)"><span>${l}<br><small>${d}</small></span><input type="checkbox" data-cfg="${k}" ${db.cfg[k]?'checked':''}></label>`;
-  return `${sw('voice','Aviso por voz','Fala "faltam 30 segundos", "10 segundos" e o fim do descanso.')}
-  ${sw('beep','Bipes','Bipa aos 30s, 10s e no fim. Funciona mesmo se a voz falhar.')}
+  return `<label class="sw" style="margin:0;color:var(--ink)"><span>Tempo para fazer a série (s)<br><small>Depois dele a série é registrada sozinha e o descanso começa. Use "Terminei" ou ⏭ se acabar antes.</small></span><input class="num" type="number" inputmode="numeric" data-cfgn="exec" value="${db.cfg.exec}"></label>
+  ${sw('voice','Aviso por voz','Fala a série que vem, "faltam 30 segundos" e "10 segundos".')}
+  ${sw('beep','Bipes','Bipa quando a série é registrada, aos 30s, 10s e no fim do descanso.')}
   ${sw('wake','Manter tela ligada','Durante o treino a tela não apaga. Deixe desligado se for bloquear o celular.')}
   <button style="width:100%;margin-top:14px" data-a="testvoice">Testar voz e bipe</button>
+  <div class="sec">Como funciona</div>
+  <ul class="help"><li>Ao iniciar, o ciclo roda sozinho: tempo da série + descanso de 3 min, e emenda na próxima série.</li><li>A série é registrada com as reps e o peso que estão na tela. No descanso você corrige o que realmente fez.</li></ul>
   <div class="sec">Na tela bloqueada</div>
-  <ul class="help"><li>Comece o treino pelo app; ele aparece no controle de mídia da tela bloqueada.</li><li><b>Fazendo a série:</b> ⏮ / ⏭ tiram ou põem 1 repetição; <b>⏯</b> registra a série e já inicia o descanso.</li><li><b>No descanso:</b> ⏯ pausa/retoma, ⏮ soma 15 s, ⏭ pula o descanso.</li><li>O peso não dá para mudar pela tela bloqueada; ele já vem com o da última vez.</li><li>Se você ouvir música em outro app, ele assume o controle de mídia; aí use o app normalmente.</li></ul>
+  <ul class="help"><li><b>Fazendo a série:</b> ⏭ terminei (registra e começa o descanso), ⏮ +15 s, ⏯ pausa.</li><li><b>No descanso:</b> ⏮ / ⏭ tiram ou põem 1 repetição na série que você acabou de fazer; ⏯ pausa.</li><li>O peso não dá para mudar pela tela bloqueada; mude no app durante o descanso.</li><li>Se você ouvir música em outro app, ele assume o controle de mídia; aí use o app normalmente.</li></ul>
   <div class="sec">Backup</div>
   <small>Os dados ficam só neste aparelho. Copie o backup de vez em quando.</small>
   <textarea id="bk" placeholder="Cole aqui um backup para importar"></textarea>
   <div class="mrow"><button data-a="export">Copiar backup</button><button data-a="import">Importar</button><button class="danger" data-a="reset">Restaurar ficha original</button></div>`;
 }
-
 function render(){
   const v=view.name;if(v==='workout'&&!db.active)view={name:'home'};
   const t=view.name==='workout'?T(db.active.tid):view.tid?T(view.tid):null;
@@ -384,7 +405,7 @@ function render(){
   let hd,body;
   switch(view.name){
     case 'treino':hd=`<button class="ghost" data-a="home" aria-label="voltar">‹</button><span class="tile sm">${t.id}</span><div class="wt"><b>${esc(t.name)}</b><small>${esc(t.sub)}</small></div>`;body=vTreino();break;
-    case 'workout':hd=`<span class="tile sm">${t.id}</span><div class="wt"><b>${esc(t.name)}</b><small id="el">${hms((Date.now()-db.active.start)/1000)}</small></div><button data-a="quit">Encerrar</button>`;body=vWorkout();break;
+    case 'workout':hd=`<span class="tile sm">${t.id}</span><div class="wt"><b>${esc(t.name)}</b><small>${db.active.entries.length} ${db.active.entries.length===1?'série feita':'séries feitas'}</small></div><button data-a="quit">Encerrar</button>`;body=vWorkout();break;
     case 'done':hd=`<h1>Treino concluído</h1>`;body=vDone();break;
     case 'hist':hd=`<h1>Histórico</h1>`;body=vHist();break;
     case 'cfg':hd=`<h1>Ajustes</h1>`;body=vCfg();break;
@@ -393,12 +414,14 @@ function render(){
   $('#hd').innerHTML=hd;$('#app').innerHTML=body;
 }
 function tick(){
-  const a=db.active;if(!a)return;const el=$('#el');if(el)el.textContent=hms((Date.now()-a.start)/1000);
-  const r=a.rest;if(r){const rem=remOf(r);
-    if(!r.paused){if(!r.f30&&rem<=30){r.f30=true;if(rem>22)say('Faltam 30 segundos')}
-      if(!r.f10&&rem<=10){r.f10=true;if(rem>5)say('10 segundos')}
-      if(rem<=0){endRest(true);return}}
-    const rt=$('#rt');if(rt){rt.textContent=mmss(rem);$('#rr').style.strokeDashoffset=RING*(1-rem/r.dur);$('#restbox').classList.toggle('warn',rem<=10)}}
+  const a=db.active;if(!a)return;const r=a.rest;
+  if(r){const rem=remOf(r),el=r.dur-rem;
+    if(!r.paused){
+      if(!r.reg&&el>=r.exec){doReg();return}
+      if(r.reg){if(!r.f30&&rem<=30){r.f30=true;if(rem>22)say('Faltam 30 segundos')}
+        if(!r.f10&&rem<=10){r.f10=true;if(rem>5)say('10 segundos')}
+        if(rem<=0){cycleEnd(true);return}}}
+    const rt=$('#rt');if(rt){const pr=r.reg?rem:r.exec-el,pd=r.reg?r.dur-r.exec:r.exec;rt.textContent=mmss(pr);$('#rr').style.strokeDashoffset=RING*(1-pr/pd);$('#restbox').classList.toggle('warn',r.reg&&rem<=10)}}
   msUpd();
 }
 setInterval(tick,250);
@@ -428,13 +451,15 @@ const A={
   open:v=>go('treino',v),
   start:v=>{if(db.active){if(db.active.tid===v)return A.resume();return openModal(`<h3>Já tem um treino em andamento</h3><p>${esc(T(db.active.tid).name)} ainda não foi encerrado.</p><div class="acts"><button class="pri" data-a="resume">Continuar o atual</button><button class="danger" data-a="forcestart" data-v="${v}">Descartar e iniciar ${esc(T(v).name)}</button></div>`)}begin(v)},
   forcestart:v=>{discard();begin(v)},
-  resume:()=>{unlock();startKeepAlive();scheduleBeeps();wake();go('workout')},
-  reg:()=>reg(false),
-  skipset:()=>{const a=db.active,ex=curEx();a.seti++;if(a.seti>=ex.sets.length){const nx=nextIncomplete();if(nx<0){setCur();save();render();return finishPrompt()}a.exi=nx;a.seti=doneCount(nx)}setCur();save();render();msUpd(true)},
+  resume:()=>{const a=db.active;if(a.rest&&!a.rest.paused&&remOf(a.rest)<-5)a.rest=null;unlock();startKeepAlive();scheduleBeeps();wake();go('workout')},
+  reg:()=>finishNow(),go1:()=>startCycle(),
+  skipset:()=>{const a=db.active,ex=curEx();if(a.rest&&!a.rest.reg){a.rest=null;cancelBeeps()}a.seti++;if(a.seti>=ex.sets.length){const nx=nextIncomplete();if(nx<0){setCur();save();render();return finishPrompt()}a.exi=nx;a.seti=doneCount(nx)}setCur();save();render();msUpd(true)},
   prevex:()=>jump(db.active.exi-1),nextex:()=>jump(db.active.exi+1),jump:v=>jump(+v),
-  adj:v=>{const[k,d]=v.split(','),a=db.active;a.cur[k]=Math.max(0,Math.round((+a.cur[k]+ +d)*10)/10);$(k==='r'?'#inR':'#inW').value=a.cur[k];save();msUpd()},
-  rp:()=>toggleRest(false),radd:v=>addRest(+v),rskip:()=>endRest(false),
-  rstart:()=>{AC();startRest(curEx().rest||180);save();render();msUpd(true)},
+  adj:v=>{const[k,d]=v.split(','),a=db.active,ids={r:'#inR',w:'#inW',er:'#inER',ew:'#inEW'};
+    if(k==='r'||k==='w'){a.cur[k]=Math.max(0,Math.round((+a.cur[k]+ +d)*10)/10);$(ids[k]).value=a.cur[k]}
+    else{const e=a.entries.at(-1);if(!e)return;const f=k[1];e[f]=Math.max(0,Math.round((+e[f]+ +d)*10)/10);syncPlan(e);save();render();msUpd();return}
+    save();msUpd()},
+  rp:()=>toggleRest(false),radd:v=>addRest(+v),rskip:()=>cycleEnd(false),
   undo:v=>{const a=db.active,e=a.entries[+v];if(!e)return;a.entries.splice(+v,1);const i=T(a.tid).ex.findIndex(x=>x.id===e.ex);if(i===a.exi){a.seti=doneCount(i);setCur()}save();render();toast('Série removida')},
   quit:()=>openModal(`<h3>Encerrar treino?</h3><p>${db.active.entries.length} séries registradas até agora.</p><div class="acts"><button class="pri" data-a="finish">Encerrar e salvar</button><button class="danger" data-a="discard">Descartar treino</button><button data-a="closem">Voltar</button></div>`),
   finish,discard,
@@ -458,10 +483,13 @@ const A={
   reset2:()=>{if(db.active)discard();db.plan=seed().plan;save();closeModal();render();toast('Ficha restaurada')}
 };
 document.addEventListener('click',e=>{if(e.target.id==='modal')return closeModal();const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const f=A[b.dataset.a];if(f)f(b.dataset.v,b)});
-document.addEventListener('input',e=>{const a=db.active;if(!a)return;
-  if(e.target.id==='inR'){a.cur.r=parseInt(e.target.value)||0;save()}
-  if(e.target.id==='inW'){a.cur.w=parseFloat(String(e.target.value).replace(',','.'))||0;save()}});
-document.addEventListener('change',e=>{const k=e.target.dataset?.cfg;if(!k)return;db.cfg[k]=e.target.checked;save();if(k==='wake'){e.target.checked?wake():unwake()}if(k==='beep')scheduleBeeps()});
+document.addEventListener('input',e=>{const a=db.active;if(!a)return;const id=e.target.id,n=parseFloat(String(e.target.value).replace(',','.'))||0,last=a.entries.at(-1);
+  if(id==='inR'){a.cur.r=Math.round(n);save()}
+  if(id==='inW'){a.cur.w=n;save()}
+  if(last&&(id==='inER'||id==='inEW')){last[id==='inER'?'r':'w']=id==='inER'?Math.round(n):n;syncPlan(last);save()}});
+document.addEventListener('change',e=>{const d=e.target.dataset||{};
+  if(d.cfgn){db.cfg[d.cfgn]=Math.max(5,parseInt(e.target.value)||20);e.target.value=db.cfg[d.cfgn];save();return}
+  const k=d.cfg;if(!k)return;db.cfg[k]=e.target.checked;save();if(k==='wake'){e.target.checked?wake():unwake()}if(k==='beep')scheduleBeeps()});
 render();
 }
 </script>
