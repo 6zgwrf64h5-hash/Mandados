@@ -230,22 +230,25 @@ const artC={};
 function art(t){if(artC[t.id])return artC[t.id];try{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle=t.color;x.fillRect(0,0,256,256);x.fillStyle='#fff';x.font='bold 170px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(t.id,128,140);return artC[t.id]=c.toDataURL('image/png')}catch(e){return ''}}
 function setupMS(){
   if(!('mediaSession' in navigator))return;const h=(k,f)=>{try{navigator.mediaSession.setActionHandler(k,f)}catch(e){}};
-  h('play',()=>{au.play().catch(()=>{});const r=db.active?.rest;if(r&&r.paused)toggleRest(true);msUpd(true)});
-  h('pause',()=>{const r=db.active?.rest;if(r&&!r.paused)toggleRest(true);msUpd(true)});
-  h('nexttrack',()=>{if(!db.active)return;db.active.rest?endRest(false,true):reg(true)});
-  h('previoustrack',()=>{if(db.active?.rest)addRest(15,true)});
-  h('seekforward',()=>{if(db.active?.rest)addRest(-15,true)});
-  h('seekbackward',()=>{if(db.active?.rest)addRest(15,true)});
+  /* Durante a série: ⏯ registra e inicia o descanso, ⏮/⏭ tiram/põem 1 rep.
+     No descanso: ⏯ pausa/retoma, ⏮ +15 s, ⏭ pula. Sem handlers de seek: assim o iPhone mostra ⏮⏭ em vez de ±10 s. */
+  const playPause=()=>{au.play().catch(()=>{});const a=db.active;if(!a)return;if(a.rest)toggleRest(true);else reg(true);msUpd(true)};
+  h('play',playPause);h('pause',playPause);
+  h('nexttrack',()=>{const a=db.active;if(!a)return;a.rest?endRest(false,true):repAdj(1)});
+  h('previoustrack',()=>{const a=db.active;if(!a)return;a.rest?addRest(15,true):repAdj(-1)});
+  ['seekforward','seekbackward','seekto'].forEach(k=>h(k,null));
 }
+function repAdj(d){const a=db.active;a.cur.r=Math.max(0,(+a.cur.r||0)+d);const i=$('#inR');if(i)i.value=a.cur.r;save();msUpd(true);if(document.hidden)say(a.cur.r+' repetições')}
 function msUpd(force){
   const a=db.active;if(!a||!('mediaSession' in navigator))return;
-  const t=T(a.tid),ex=curEx();if(!t||!ex)return;let title,artist;
-  if(a.rest){const rem=remOf(a.rest);title=(a.rest.paused?'Pausado · ':'Descanso ')+mmss(rem);artist=`Próx: ${ex.n} · S${a.seti+1} · ${a.cur.r}×${fmtW(a.cur.w,ex.u)}`}
-  else{title=`Série ${a.seti+1}/${ex.sets.length} · ${a.cur.r} × ${fmtW(a.cur.w,ex.u)}`;artist=ex.n}
-  const k=title+'|'+artist;if(k===lastMS&&!force)return;lastMS=k;
-  try{navigator.mediaSession.metadata=new MediaMetadata({title,artist,album:t.name+(a.rest?' · ⏭ pula descanso':' · ⏭ registra série'),artwork:[{src:art(t),sizes:'256x256',type:'image/png'}]})}catch(e){}
+  const t=T(a.tid),ex=curEx();if(!t||!ex)return;let title,artist;const sn=ex.n.split(' (')[0];
+  if(a.rest){const rem=remOf(a.rest);title=(a.rest.paused?'Pausado ':'Descanso ')+mmss(rem)+' · ⏭ pula';artist=`Próx: ${sn} S${a.seti+1} · ${a.cur.r}×${fmtW(a.cur.w,ex.u)}`}
+  else{title=`${a.cur.r} reps × ${fmtW(a.cur.w,ex.u)} · S${a.seti+1}/${ex.sets.length}`;artist=`⏯ registra · ⏮⏭ reps · ${sn}`}
+  const k=title+'|'+artist+'|'+(a.rest?a.rest.paused:'s');if(k===lastMS&&!force)return;lastMS=k;
+  try{navigator.mediaSession.metadata=new MediaMetadata({title,artist,album:t.name,artwork:[{src:art(t),sizes:'256x256',type:'image/png'}]})}catch(e){}
   try{navigator.mediaSession.playbackState=a.rest&&a.rest.paused?'paused':'playing'}catch(e){}
-  try{if(a.rest){const d=a.rest.dur,p=Math.min(d,Math.max(0,d-remOf(a.rest)));navigator.mediaSession.setPositionState({duration:d,position:p,playbackRate:1})}else navigator.mediaSession.setPositionState()}catch(e){}
+  try{if(a.rest){const d=a.rest.dur,p=Math.min(d,Math.max(0,d-remOf(a.rest)));navigator.mediaSession.setPositionState({duration:d,position:p,playbackRate:1})}
+    else{const el=(Date.now()-a.start)/1000;navigator.mediaSession.setPositionState({duration:Math.max(5400,el+600),position:el,playbackRate:1})}}catch(e){}
 }
 async function wake(){if(!db.cfg.wake||!db.active||!navigator.wakeLock)return;try{wl=await navigator.wakeLock.request('screen')}catch(e){}}
 function unwake(){try{wl&&wl.release()}catch(e){}wl=null}
@@ -364,7 +367,7 @@ function vCfg(){
   ${sw('wake','Manter tela ligada','Durante o treino a tela não apaga. Deixe desligado se for bloquear o celular.')}
   <button style="width:100%;margin-top:14px" data-a="testvoice">Testar voz e bipe</button>
   <div class="sec">Na tela bloqueada</div>
-  <ul class="help"><li>Comece o treino pelo app; ele aparece no controle de mídia da tela bloqueada.</li><li><b>⏭ Próxima faixa</b>: registra a série com os números da tela (ou pula o descanso, se estiver descansando).</li><li><b>⏯ Play/Pausa</b>: pausa ou retoma o descanso.</li><li><b>⏮ Faixa anterior</b>: +15 s de descanso.</li><li>Se você ouvir música em outro app, ele assume o controle de mídia; aí use o app normalmente.</li></ul>
+  <ul class="help"><li>Comece o treino pelo app; ele aparece no controle de mídia da tela bloqueada.</li><li><b>Fazendo a série:</b> ⏮ / ⏭ tiram ou põem 1 repetição; <b>⏯</b> registra a série e já inicia o descanso.</li><li><b>No descanso:</b> ⏯ pausa/retoma, ⏮ soma 15 s, ⏭ pula o descanso.</li><li>O peso não dá para mudar pela tela bloqueada; ele já vem com o da última vez.</li><li>Se você ouvir música em outro app, ele assume o controle de mídia; aí use o app normalmente.</li></ul>
   <div class="sec">Backup</div>
   <small>Os dados ficam só neste aparelho. Copie o backup de vez em quando.</small>
   <textarea id="bk" placeholder="Cole aqui um backup para importar"></textarea>
