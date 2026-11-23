@@ -72,6 +72,8 @@ main{max-width:640px;margin:0 auto;padding:16px}
 .rbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rbtns button{height:52px;font-weight:600}
 .rbtns .wide{grid-column:1/-1}
+.fb{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.fb button{height:48px}.fb button.on{background:var(--c);border-color:var(--c);color:#fff;font-weight:600}
+.hint{margin-top:8px;font-size:15px;padding:8px 12px;border-radius:10px;background:var(--card2)}.hint.L{color:#7dd3fc}.hint.P{color:#fbbf24}.hint.A{color:#86efac}
 .rest.set .prg{stroke:var(--ok)}
 .lab{display:block;font-weight:600;margin-bottom:4px}
 .fez{margin-bottom:12px;background:var(--card2)}
@@ -152,7 +154,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 19h20';
+const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 19h30';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -201,7 +203,9 @@ const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
 let view={name:db.active?'home':'home'}, edit=null, lastMS='';
 const T=id=>db.plan.find(t=>t.id===id);
 const fmtW=(w,u)=>u==='corpo'?(w?'+'+w+' kg':'peso corporal'):w+(u==='kg'?' kg':' anil.');
-const fmtSets=es=>{const u=es[0]?.u;return es.map(e=>u==='corpo'?(e.w?e.r+'×+'+e.w:e.r):e.r+'×'+e.w).join(' · ')+(u==='kg'?' kg':u==='anilhas'?' anil.':u==='corpo'&&es.some(e=>e.w)?' kg':' reps')};
+const FEEL={L:'leve',A:'adequado',P:'pesado'};
+const one=e=>(e.u==='corpo'?(e.w?e.r+'×+'+e.w+' kg':e.r+' reps'):e.r+'×'+e.w+(e.u==='kg'?' kg':' anil.'))+(e.f?' ('+FEEL[e.f]+')':'');
+const fmtSets=es=>es.map(one).join(' · ');
 const dLong=ts=>new Date(ts).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
 const dShort=ts=>new Date(ts).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
 
@@ -275,6 +279,8 @@ const spW=(w,u)=>u==='corpo'?(w?', mais '+w+' quilos':''):u==='kg'?(w?', '+Strin
 function setCur(){const a=db.active,ex=curEx();if(!ex)return;const s=ex.sets[a.seti];
   if(s)a.cur={r:s.r,w:s.w};else{const l=a.entries.filter(e=>e.ex===ex.id).at(-1)||ex.sets.at(-1)||{r:10,w:0};a.cur={r:l.r,w:l.w}}}
 function nextIncomplete(){const a=db.active,n=T(a.tid).ex.length;for(let k=1;k<=n;k++){const i=(a.exi+k)%n;if(doneCount(i)<T(a.tid).ex[i].sets.length)return i}return -1}
+function lastSet(exId,n){for(let i=db.log.length-1;i>=0;i--){const e=db.log[i].e.find(x=>x.ex===exId&&x.s===n);if(e)return e}return null}
+const HINT={L:'achou leve → dá pra subir o peso',A:'achou adequado → mantém',P:'achou pesado → mantém ou baixa'};
 function lastTime(exId){for(let i=db.log.length-1;i>=0;i--){const es=db.log[i].e.filter(e=>e.ex===exId);if(es.length)return{d:db.log[i].start,txt:fmtSets(es)}}return null}
 const EX=()=>Math.max(5,+db.cfg.exec||20);
 function estT(t){const r=[];t.ex.forEach(e=>e.sets.forEach(()=>r.push(e.rest||180)));return r.length?r.reduce((s,x)=>s+EX()+x,0)-r.at(-1):0}
@@ -364,17 +370,19 @@ function vWorkout(){
   let fez='';
   if(ph==='rest'){const e=a.entries.at(-1);if(e)fez=`<section class="ex fez"><small class="lab">Você fez · S${e.s+1}</small><h3>${esc(e.n)}</h3>
     <div class="stp"><small>Repetições que conseguiu</small>${stR('inER','er',e.r)}</div>
-    <div class="stp"><small>${wLab(e.u)}</small>${stW('inEW','ew',e.w,e.u)}</div></section>`}
+    <div class="stp"><small>${wLab(e.u)}</small>${stW('inEW','ew',e.w,e.u)}</div>
+    <div class="stp"><small>Como estava o peso? (opcional)</small><div class="fb">${Object.entries(FEEL).map(([k,l])=>`<button data-a="feel" data-v="${k}" class="${e.f===k?'on':''}">${l[0].toUpperCase()+l.slice(1)}</button>`).join('')}</div></div></section>`}
   return `${chips}${box}${fez}
   <section class="ex">${ph==='rest'?'<small class="lab">Próxima</small>':''}<h2>${esc(ex.n)}</h2>${ex.note?`<div class="note">${esc(ex.note)}</div>`:''}
   <div class="dots">${ex.sets.map((_,i)=>`<span class="dot ${i<dn?'ok':''} ${i===a.seti?'cur':''}">${i+1}</span>`).join('')}</div>
   <div class="meta">${over?'<b>Séries concluídas.</b> Se quiser, faça uma extra.':`Série <b>${a.seti+1}</b> de ${len} · meta <b>${esc(s.t)}</b> reps`}</div>
-  ${lt?`<div class="prev">Última vez (${dShort(lt.d)}): ${lt.txt}</div>`:''}
+  ${(()=>{const ls=!over&&lastSet(ex.id,a.seti);return ls?`<div class="hint ${ls.f||''}">Última vez nesta série: <b>${one({...ls,f:0})}</b>${ls.f?'<br>'+HINT[ls.f]:''}</div>`:''})()}
+  ${lt?`<div class="prev">Último treino (${dShort(lt.d)}): ${lt.txt}</div>`:''}
   <div class="stp"><small>Repetições</small>${stR('inR','r',a.cur.r)}</div>
   <div class="stp"><small>${wLab(ex.u)}</small>${stW('inW','w',a.cur.w,ex.u)}</div>
   ${ph==='idle'?`<button class="pri reg" data-a="go1">Começar série ${a.seti+1}</button>`:ph==='set'?`<button class="pri reg" data-a="reg">Terminei a série</button>`:''}
   <div class="row3"><button data-a="prevex">‹ Anterior</button><button data-a="skipset" ${over?'disabled':''}>Pular série</button><button data-a="nextex">Próximo ›</button></div>
-  ${mine.length?`<div class="done">${mine.map(x=>`<div><span>S${x.e.s+1} · ${x.e.r} reps × ${fmtW(x.e.w,x.e.u)}</span><button class="ghost" data-a="undo" data-v="${x.i}">desfazer</button></div>`).join('')}</div>`:''}
+  ${mine.length?`<div class="done">${mine.map(x=>`<div><span>S${x.e.s+1} · ${one(x.e)}</span><button class="ghost" data-a="undo" data-v="${x.i}">desfazer</button></div>`).join('')}</div>`:''}
   </section>`;
 }
 function groups(es){const m=new Map();es.forEach(e=>{if(!m.has(e.ex))m.set(e.ex,[]);m.get(e.ex).push(e)});return[...m.values()]}
@@ -476,6 +484,7 @@ const A={
     if(k==='r'||k==='w'){a.cur[k]=Math.max(0,Math.round((+a.cur[k]+ +d)*10)/10);$(ids[k]).value=a.cur[k]}
     else{const e=a.entries.at(-1);if(!e)return;const f=k[1];e[f]=Math.max(0,Math.round((+e[f]+ +d)*10)/10);syncPlan(e);save();render();msUpd();return}
     save();msUpd()},
+  feel:v=>{const e=db.active.entries.at(-1);if(!e)return;e.f=e.f===v?undefined:v;save();render()},
   rp:()=>toggleRest(false),radd:v=>addRest(+v),rskip:()=>cycleEnd(false),
   undo:v=>{const a=db.active,e=a.entries[+v];if(!e)return;a.entries.splice(+v,1);const i=T(a.tid).ex.findIndex(x=>x.id===e.ex);if(i===a.exi){a.seti=doneCount(i);setCur()}save();render();toast('Série removida')},
   quit:()=>openModal(`<h3>Encerrar treino?</h3><p>${db.active.entries.length} séries registradas até agora.</p><div class="acts"><button class="pri" data-a="finish">Encerrar e salvar</button><button class="danger" data-a="discard">Descartar treino</button><button data-a="closem">Voltar</button></div>`),
