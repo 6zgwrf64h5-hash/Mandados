@@ -193,7 +193,7 @@ try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!db||!Array.isArray(db.plan))db=seed();
 db.log=db.log||[];
 if((db.v||1)<2){db.plan.forEach(t=>t.ex.forEach(e=>e.rest=180));db.v=2}
-db.cfg=Object.assign({voice:true,beep:true,wake:false,exec:20,music:false},db.cfg||{});
+db.cfg=Object.assign({voice:true,beep:true,wake:false,exec:20,music:false,minute:true},db.cfg||{});
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
 
 let view={name:db.active?'home':'home'}, edit=null, lastMS='';
@@ -387,6 +387,7 @@ function vCfg(){
   return `<label class="sw" style="margin:0;color:var(--ink)"><span>Tempo para fazer a série (s)<br><small>Depois dele a série é registrada sozinha e o descanso começa. Use "Terminei" ou ⏭ se acabar antes.</small></span><input class="num" type="number" inputmode="numeric" data-cfgn="exec" value="${db.cfg.exec}"></label>
   ${sw('music','Modo com música','Sua música continua tocando e a voz e os bipes saem por cima. Sem botões na tela bloqueada. Com a tela bloqueada o iPhone pode calar os avisos; se acontecer, ligue "Manter tela ligada".')}
   ${sw('voice','Aviso por voz','Fala a série que vem, "faltam 30 segundos" e "10 segundos".')}
+  ${sw('minute','Avisar cada minuto','No descanso, fala "1 minuto", "2 minutos"…')}
   ${sw('beep','Bipes','Bipa quando a série é registrada, aos 30s, 10s e no fim do descanso.')}
   ${sw('wake','Manter tela ligada','Durante o treino a tela não apaga. Deixe desligado se for bloquear o celular.')}
   <button style="width:100%;margin-top:14px" data-a="testvoice">Testar voz e bipe</button>
@@ -422,6 +423,7 @@ function tick(){
   if(r){const rem=remOf(r),el=r.dur-rem;
     if(!r.paused){
       if(!r.reg&&el>=r.exec){doReg();return}
+      if(r.reg&&db.cfg.minute){const m=Math.floor((el-r.exec)/60);if(m>=1&&m>(r.mn||0)){r.mn=m;if(rem>8)say(m===1?'1 minuto':m+' minutos')}}
       if(r.reg){if(!r.f30&&rem<=30){r.f30=true;if(rem>22)say('Faltam 30 segundos')}
         if(!r.f10&&rem<=10){r.f10=true;if(rem>5)say('10 segundos')}
         if(rem<=0){cycleEnd(true);return}}}
