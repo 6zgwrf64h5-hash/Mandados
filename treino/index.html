@@ -190,7 +190,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 20h05';
+const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 20h10';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -363,7 +363,7 @@ function addRest(d,remote){const r=db.active?.rest;if(!r)return;const el=r.dur-r
 function repLast(d){const a=db.active,e=a.entries.at(-1);if(!e)return;e.r=Math.max(0,e.r+d);syncPlan(e);save();render();msUpd(true);if(document.hidden)say(e.r+' repetições')}
 function jump(i){const a=db.active,t=T(a.tid);if(i<0||i>=t.ex.length)return;a.exi=i;a.seti=Math.min(doneCount(i),t.ex[i].sets.length);setCur();save();render();msUpd(true);
   const c=document.querySelector('.chip.on');c&&c.scrollIntoView({inline:'center',block:'nearest'})}
-function finishPrompt(){openModal(`<h3>Todas as séries feitas</h3><p>Pode encerrar e salvar no histórico, ou continuar se quiser fazer algo extra.</p><div class="acts"><button class="pri" data-a="finish">Encerrar e salvar</button><button data-a="closem">Continuar treinando</button></div>`)}
+function finishPrompt(){const e=db.active?.entries.at(-1);openModal(`<h3>Todas as séries feitas</h3>${e?`<div class="stp"><small>Última série (${esc(short(e.n))} · ${fmtW(e.w,e.u)}): repetições que você fez</small>${stR('inER','er',e.r)}</div>`:''}<p>Pode encerrar e salvar no histórico, ou continuar se quiser fazer algo extra.</p><div class="acts"><button class="pri" data-a="finish">Encerrar e salvar</button><button data-a="closem">Continuar treinando</button></div>`)}
 function finish(){
   const a=db.active;if(!a)return;const t=T(a.tid);let sid=null;
   if(a.entries.length){sid=uid();db.log.push({id:sid,tid:a.tid,tn:t.name,start:a.start,end:Date.now(),e:a.entries})}
@@ -407,7 +407,7 @@ function vWorkout(){
   const mine=a.entries.map((e,i)=>({e,i})).filter(x=>x.e.ex===ex.id);
   let fez='';
   if(ph==='rest'){const e=a.entries.at(-1);if(e)fez=`<section class="ex fez"><small class="lab">Você fez · S${e.s+1} · ${esc(short(e.n))}</small>
-    <div class="pair"><div><small>Reps feitas</small>${stR('inER','er',e.r)}</div><div><small>${wLab(e.u)}</small>${stW('inEW','ew',e.w,e.u,1)}</div></div>
+    <div class="stp"><small>Repetições que você fez (${fmtW(e.w,e.u)})</small>${stR('inER','er',e.r)}</div>
     <div class="fb">${Object.entries(FEEL).map(([k,l])=>`<button data-a="feel" data-v="${k}" class="${e.f===k?'on':''}">${l[0].toUpperCase()+l.slice(1)}</button>`).join('')}</div></section>`}
   const ls=!over&&lastSet(ex.id,a.seti);
   return `${chips}${box}${fez}
@@ -415,7 +415,7 @@ function vWorkout(){
   <div class="mrow2"><div class="dots">${ex.sets.map((_,i)=>`<span class="dot ${i<dn?'ok':''} ${i===a.seti?'cur':''}">${i+1}</span>`).join('')}</div><span class="meta">${over?'Séries concluídas':`meta <b>${esc(s.t)}</b> reps`}</span></div>
   ${ex.note&&ph!=='rest'?`<div class="note sm">${esc(ex.note)}</div>`:''}
   ${ls?`<div class="hint ${ls.f||''}">Última vez: <b>${one({...ls,f:0})}</b>${ls.f?' · '+HINT[ls.f]:''}</div>`:''}
-  <div class="pair"><div><small>Repetições</small>${stR('inR','r',a.cur.r)}</div><div><small>${wLab(ex.u)}</small>${stW('inW','w',a.cur.w,ex.u,1)}</div></div>
+  <div class="stp"><small>${ex.u==='corpo'?'Carga extra (kg)':wLab(ex.u)} para a série ${Math.min(a.seti,len-1)+1}</small>${stW('inW','w',a.cur.w,ex.u)}</div>
   ${ph==='idle'?`<button class="pri reg" data-a="go1">Começar série ${a.seti+1}</button>`:ph==='set'?`<button class="pri reg" data-a="reg">Terminei a série</button>`:''}
   <div class="row3"><button data-a="prevex">‹ Anterior</button><button data-a="skipset" ${over?'disabled':''}>Pular série</button><button data-a="nextex">Próximo ›</button></div>
   ${mine.length?`<div class="done">${mine.map(x=>`<div><span>S${x.e.s+1} · ${one(x.e)}</span><button class="ghost" data-a="undo" data-v="${x.i}">desfazer</button></div>`).join('')}</div>`:''}
@@ -591,7 +591,7 @@ const A={
   prevex:()=>jump(db.active.exi-1),nextex:()=>jump(db.active.exi+1),jump:v=>jump(+v),
   adj:v=>{const[k,d]=v.split(','),a=db.active,ids={r:'#inR',w:'#inW',er:'#inER',ew:'#inEW'};
     if(k==='r'||k==='w'){a.cur[k]=Math.max(0,Math.round((+a.cur[k]+ +d)*10)/10);$(ids[k]).value=a.cur[k]}
-    else{const e=a.entries.at(-1);if(!e)return;const f=k[1];e[f]=Math.max(0,Math.round((+e[f]+ +d)*10)/10);syncPlan(e);save();render();msUpd();return}
+    else{const e=a.entries.at(-1);if(!e)return;const f=k[1];e[f]=Math.max(0,Math.round((+e[f]+ +d)*10)/10);syncPlan(e);save();render();msUpd();const el=$(ids[k]);if(el)el.value=e[f];return}
     save();msUpd()},
   feel:v=>{const e=db.active.entries.at(-1);if(!e)return;e.f=e.f===v?undefined:v;save();render()},
   rp:()=>toggleRest(false),radd:v=>addRest(+v),rskip:()=>cycleEnd(false),
