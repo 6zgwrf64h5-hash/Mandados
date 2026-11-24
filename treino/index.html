@@ -196,7 +196,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 21h30';
+const KEY='meutreino.v1', RING=339.29, APPV='23/11 · 21h35';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -227,12 +227,13 @@ function seed(){
       E('Rosca martelo','kg',180,'',[['8–10',0,10],['8–10',0,10]])]},
     {id:'D',name:'Treino D',sub:'Pernas 2 + complementos',color:'#f59e0b',note:'',ex:[
       E('Agachamento no rack','kg',180,'',[['10',15,10],['10',15,10],['8',20,8]]),
+      E('Flexora deitada','kg',180,'',[['10–12',0,12],['10–12',0,12],['10–12',0,10]]),
       E('Panturrilha no rack','kg',180,'',x3('15–20',0,20)),
       E('Abdominal inferior na barra','corpo',180,'',x3('15–20',0,20)),
       E('Barra fixa','corpo',300,'Até quase a falha.',[['quase falha',0,9],['quase falha',0,5]]),
       E('Supino máquina','kg',180,'',[['10–12',0,12],['10–12',0,12],['8–10',0,10]]),
       E('Paralelas (opcional)','corpo',180,'Só se sobrar energia.',[['falha',0,10],['falha',0,10]])]}
-  ],log:[],active:null,cfg:{},v:4};
+  ],log:[],active:null,cfg:{},v:5};
 }
 
 let db=null;
@@ -248,6 +249,10 @@ if(db.v<3){ /* +1 série de elevação lateral (C) e supino máquina no D */
     D.ex.splice(i<0?D.ex.length:i,0,{id:uid(),n:'Supino máquina',u:'kg',rest:180,note:'',sets:[{t:'10–12',w:0,r:12},{t:'10–12',w:0,r:12},{t:'8–10',w:0,r:10}]})}
   db.v=3;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
 if(db.v<4){db.plan.forEach(t=>t.ex.forEach(e=>{if(/barra fixa/i.test(e.n))e.rest=300}));db.v=4;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
+if(db.v<5){const D=db.plan.find(t=>t.id==='D');
+  if(D&&!D.ex.some(e=>/flexora deitada/i.test(e.n))){const i=D.ex.findIndex(e=>/agachamento/i.test(e.n));
+    D.ex.splice(i<0?0:i+1,0,{id:uid(),n:'Flexora deitada',u:'kg',rest:180,note:'',sets:[{t:'10–12',w:0,r:12},{t:'10–12',w:0,r:12},{t:'10–12',w:0,r:10}]})}
+  db.v=5;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
 db.cfg=Object.assign({voice:true,beep:true,wake:false,exec:20,music:false,minute:true},db.cfg||{});
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
 
