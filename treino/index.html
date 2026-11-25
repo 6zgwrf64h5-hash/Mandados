@@ -197,7 +197,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='24/11 · 22h35';
+const KEY='meutreino.v1', RING=339.29, APPV='24/11 · 22h40';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -357,11 +357,12 @@ function startCycle(){
   a.rest={dur,exec,endAt:Date.now()+dur*1000,paused:false,left:dur,f30:rest<=30,f10:rest<=10,reg:false};
   scheduleBeeps();save();render();msUpd(true);
   const sp=ex.sets[a.seti],aj=sp&&sp.adj&&sp.adj.to===+a.cur.w?sp.adj:null,dd=aj?Math.round((aj.to-aj.from)*10)/10:0;
-  const n=ex.sets.length,k=a.seti,ORD=['Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima','Oitava'];
-  const tt=String(sp?sp.t:a.cur.r),reps=/\d/.test(tt)?tt.replace(/\s*[–-]\s*/,' a ')+' repetições':/quase/i.test(tt)?'até quase a falha':/falha/i.test(tt)?'até a falha':'carga '+tt;
-  const ser=(ORD[k]||('Série '+(k+1)))+(k<8?' série':'')+(k===n-1&&n>1?', a última':'');
-  say(`${k===0?short(ex.n)+'. '+n+(n===1?' série. ':' séries. '):''}${ser}. ${reps}${spW(a.cur.w,ex.u)}.${aj?` Peso ajustado: ${dd>0?'mais':'menos'} ${String(Math.abs(dd)).replace('.',',')}${ex.u==='anilhas'?' anilhas':' quilos'} em relação ao último treino.`:''}`);
+  const I=setInfo();
+  say(`${a.seti===0?short(ex.n)+'. '+I.nser+'. ':''}${I.ser}. ${I.reps}${I.w}.${aj?` Peso ajustado: ${dd>0?'mais':'menos'} ${String(Math.abs(dd)).replace('.',',')}${ex.u==='anilhas'?' anilhas':' quilos'} em relação ao último treino.`:''}`);
 }
+function setInfo(){const a=db.active,ex=curEx(),sp=ex.sets[a.seti],n=ex.sets.length,k=a.seti,ORD=['Primeira','Segunda','Terceira','Quarta','Quinta','Sexta','Sétima','Oitava'];
+  const tt=String(sp?sp.t:a.cur.r),reps=/\d/.test(tt)?tt.replace(/\s*[–-]\s*/,' a ')+' repetições':/quase/i.test(tt)?'até quase a falha':/falha/i.test(tt)?'até a falha':'carga '+tt;
+  return{ser:(ORD[k]||('Série '+(k+1)))+(k<8?' série':'')+(k===n-1&&n>1?', a última':''),reps,w:spW(a.cur.w,ex.u),nser:n+(n===1?' série':' séries'),ex}}
 function doReg(){
   const a=db.active,ex=curEx();if(!a||!ex)return;
   const e={ex:ex.id,n:ex.n,u:ex.u,s:a.seti,r:+a.cur.r||0,w:+a.cur.w||0,t:Date.now()};a.entries.push(e);syncPlan(e);
@@ -370,7 +371,8 @@ function doReg(){
     if(nx<0){a.rest=null;cancelBeeps();setCur();save();render();msUpd(true);say('Treino completo!');finishPrompt();return}
     a.exi=nx;a.seti=doneCount(nx)}
   setCur();if(a.rest)a.rest.reg=true;scheduleBeeps();save();render();msUpd(true);
-  if(a.rest)say(`Descanso de ${falaT(Math.round(a.rest.dur-a.rest.exec))} iniciado`);
+  if(a.rest){const I=setInfo(),novo=a.seti===0;
+    say(`Descanso de ${falaT(Math.round(a.rest.dur-a.rest.exec))} iniciado. ${novo?`Próximo exercício: ${short(I.ex.n)}, ${I.nser}. Primeira série: `:`Próxima: ${I.ser.toLowerCase()}, `}${I.reps}${I.w}.`)}
 }
 function falaR(sec){const m=Math.floor(sec/60),h=sec%60===30;return m?(m===1?'1 minuto':m+' minutos')+(h?' e meio':''):sec+' segundos'}
 function falaT(sec){const m=Math.floor(sec/60),r=sec%60,M=m?(m===1?'1 minuto':m+' minutos'):'',S=r?r+' segundos':'';return M&&S?M+' e '+S:(M||S)}
