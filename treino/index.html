@@ -201,7 +201,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='25/11 · 00h05';
+const KEY='meutreino.v1', RING=339.29, APPV='25/11 · 00h15';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -321,8 +321,10 @@ async function decodeClip(k,blob){try{if(!dctx){const O=window.OfflineAudioConte
 (async()=>{try{for(const[k,b]of await idbAll())await decodeClip(k,b)}catch(e){}if(view.name==='rec'||view.name==='cfg')render()})();
 let playing=[];
 function stopClips(){playing.forEach(s=>{try{s.stop()}catch(e){}});playing=[]}
-function playToks(toks,cb){const c=AC();if(!c)return;stopClips();let t=c.currentTime+.05;
-  toks.forEach(k=>{const x=clips.get(k);if(!x)return;const s=c.createBufferSource(),g=c.createGain();s.buffer=x.buf;g.gain.value=x.g;s.connect(g);g.connect(c.destination);s.start(t,x.off,x.dur);playing.push(s);t+=x.dur+.03});
+async function playToks(toks,cb){const c=AC();if(!c)return;stopClips();if(c.state!=='running'){try{await c.resume()}catch(e){}}let t=c.currentTime+.05;
+  toks.forEach(k=>{const x=clips.get(k);if(!x)return;
+    if(!x.rb||x.rc!==c){const n=x.buf.length,rb=c.createBuffer(1,n,x.buf.sampleRate);rb.getChannelData(0).set(x.buf.getChannelData(0));x.rb=rb;x.rc=c} /* buffer criado no próprio contexto (Safari) */
+    const s=c.createBufferSource(),g=c.createGain();s.buffer=x.rb;g.gain.value=x.g;s.connect(g);g.connect(c.destination);s.start(t,x.off,x.dur);playing.push(s);t+=x.dur+.03});
   if(cb)setTimeout(cb,(t-c.currentTime)*1000)}
 function say(t,toks){if(!db.cfg.voice)return;if(useClips()){if(toks)playToks(toks);return}
   if(!voiceOn()||!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=1.05;if(voice)u.voice=voice;
