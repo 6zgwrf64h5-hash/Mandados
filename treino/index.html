@@ -197,7 +197,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='24/11 · 22h45';
+const KEY='meutreino.v1', RING=339.29, APPV='24/11 · 22h50';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -254,7 +254,7 @@ if(db.v<5){const D=db.plan.find(t=>t.id==='D');
   if(D&&!D.ex.some(e=>/flexora deitada/i.test(e.n))){const i=D.ex.findIndex(e=>/agachamento/i.test(e.n));
     D.ex.splice(i<0?0:i+1,0,{id:uid(),n:'Flexora deitada',u:'kg',rest:180,note:'',sets:[{t:'10–12',w:0,r:12},{t:'10–12',w:0,r:12},{t:'10–12',w:0,r:10}]})}
   db.v=5;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
-db.cfg=Object.assign({voice:true,beep:true,wake:false,exec:20,music:false,minute:true},db.cfg||{});
+db.cfg=Object.assign({voice:true,beep:true,wake:false,exec:20,music:false,minute:true,mvoice:false},db.cfg||{});
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
 
 let view={name:db.active?'home':'home'}, edit=null, lastMS='';
@@ -279,16 +279,19 @@ function scheduleBeeps(){
   cancelBeeps();const r=db.active?.rest;if(!r||r.paused||!db.cfg.beep)return;const c=AC();if(!c)return;
   const rem=remOf(r),el=r.dur-rem,b=c.currentTime;
   if(!r.reg&&r.exec-el>.3)beepAt(b+r.exec-el,660,.2);
-  if(!db.cfg.voice){if(rem>30.3&&r.dur-r.exec>30)beepAt(b+rem-30,880,.18);if(rem>10.3){beepAt(b+rem-10,880,.12);beepAt(b+rem-9.8,880,.12)}}
+  if(!voiceOn()){const rd=r.dur-r.exec;
+    for(let v=Math.floor((rem-.3)/30)*30;v>10;v-=30){if(v>=rd-5)continue;const t=b+rem-v;beepAt(t,880,.12);if(v<=30)beepAt(t+.2,880,.12)} /* a cada 30 s (aos 30 s: duplo) */
+    for(let v=Math.min(10,Math.floor(rem-.2));v>=1;v--)beepAt(b+rem-v,v<=3?1175:784,.07)}               /* contagem 10…1 */
   beepAt(b+rem,1320,.25);beepAt(b+rem+.35,1320,.25);beepAt(b+rem+.7,1760,.5);
 }
 let voice=null;
 function pickVoice(){try{voice=speechSynthesis.getVoices().find(v=>/pt[-_]BR/i.test(v.lang))||null}catch(e){}}
 if('speechSynthesis' in window){pickVoice();try{speechSynthesis.onvoiceschanged=pickVoice}catch(e){}}
-function say(t){if(!db.cfg.voice||!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=1.05;if(voice)u.voice=voice;
+const voiceOn=()=>db.cfg.voice&&!(db.cfg.music&&!db.cfg.mvoice);
+function say(t){if(!voiceOn()||!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';u.rate=1.05;if(voice)u.voice=voice;
   if(db.cfg.music&&navigator.audioSession){try{navigator.audioSession.type='transient'}catch(e){}u.onend=u.onerror=()=>{try{navigator.audioSession.type='ambient'}catch(e){}}}speechSynthesis.speak(u)}catch(e){}}
 function setSession(){try{if(navigator.audioSession)navigator.audioSession.type=db.cfg.music?'ambient':'playback'}catch(e){}}
-function unlock(){setSession();AC();try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}
+function unlock(){setSession();AC();if(voiceOn())try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}}
 function silentWav(sec){const sr=8000,n=sr*sec,b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
   w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
   for(let i=0;i<n;i++)v.setInt16(44+i*2,i%2?1:-1,true);return URL.createObjectURL(new Blob([b],{type:'audio/wav'}))}
@@ -371,6 +374,7 @@ function doReg(){
     if(nx<0){a.rest=null;cancelBeeps();setCur();save();render();msUpd(true);say('Treino completo!');finishPrompt();return}
     a.exi=nx;a.seti=doneCount(nx)}
   setCur();if(a.rest)a.rest.reg=true;scheduleBeeps();save();render();msUpd(true);
+  if(a.rest&&!voiceOn()&&db.cfg.beep&&ac){const t=ac.currentTime;beepAt(t+.05,990,.12);beepAt(t+.25,990,.12)} /* descanso começou: 2 bipes */
   if(a.rest){const I=setInfo(),novo=a.seti===0;
     say(`Descanso de ${falaT(Math.round(a.rest.dur-a.rest.exec))} iniciado. ${novo?`Próximo exercício: ${short(I.ex.n)}, ${I.nser}. Primeira série: `:`Próxima: ${I.ser.toLowerCase()}, `}${I.reps}${I.w}.`)}
 }
@@ -529,6 +533,7 @@ function vCfg(){
   return `<label class="sw" style="margin:0;color:var(--ink)"><span>Seu peso (kg)<br><small>Para estimar calorias quando não houver peso na aba Medidas.</small></span><input class="num" type="number" inputmode="decimal" data-cfgp="peso" value="${db.cfg.peso||''}" placeholder="80"></label>
   <label class="sw" style="margin:0;color:var(--ink)"><span>Tempo para fazer a série (s)<br><small>Depois dele a série é registrada sozinha e o descanso começa. Use "Terminei" ou ⏭ se acabar antes.</small></span><input class="num" type="number" inputmode="numeric" data-cfgn="exec" value="${db.cfg.exec}"></label>
   ${sw('music','Modo com música','Sua música continua tocando e a voz e os bipes saem por cima. Tire o iPhone do modo silencioso (senão os avisos ficam mudos) e deixe "Manter tela ligada" ativo. Sem botões na tela bloqueada.')}
+  ${sw('mvoice','Voz no modo com música','No iPhone a voz costuma PAUSAR o Spotify. Desligado: no modo com música os avisos viram bipes que tocam junto com a música (2 bipes no início do descanso, 1 a cada 30 s, 2 aos 30 s finais e um tique por segundo nos últimos 10).')}
   ${sw('voice','Aviso por voz','Anuncia exercício, série, repetições e peso, o início do descanso e a contagem final.')}
   ${sw('minute','Avisar a cada 30 segundos','No descanso, fala "faltam 2 minutos", "faltam 1 minuto e meio"… Os últimos 30 s (30, 20 e 10…1) são sempre falados.')}
   ${sw('beep','Bipes','Bipa quando a série é registrada e no fim do descanso (com a voz desligada, também aos 30 s e 10 s).')}
@@ -707,7 +712,7 @@ document.addEventListener('input',e=>{const a=db.active;if(!a)return;const id=e.
 document.addEventListener('change',e=>{const d=e.target.dataset||{};
   if(d.cfgp){const v=parseFloat(String(e.target.value).replace(',','.'));if(v>0)db.cfg[d.cfgp]=v;else delete db.cfg[d.cfgp];save();return}
   if(d.cfgn){db.cfg[d.cfgn]=Math.max(5,parseInt(e.target.value)||20);e.target.value=db.cfg[d.cfgn];save();return}
-  const k=d.cfg;if(!k)return;db.cfg[k]=e.target.checked;save();if(k==='wake'){e.target.checked?wake():unwake()}if(k==='beep')scheduleBeeps();if(k==='music'&&db.active){startKeepAlive();scheduleBeeps()}});
+  const k=d.cfg;if(!k)return;db.cfg[k]=e.target.checked;save();if(k==='wake'){e.target.checked?wake():unwake()}if(k==='beep'||k==='mvoice'||k==='voice')scheduleBeeps();if(k==='music'&&db.active){startKeepAlive();scheduleBeeps()}});
 render();
 }
 </script>
