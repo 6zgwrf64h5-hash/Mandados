@@ -203,7 +203,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='25/11 · 01h00';
+const KEY='meutreino.v1', RING=339.29, APPV='25/11 · 01h10';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -279,11 +279,12 @@ function closeModal(){$('#modal').hidden=true;edit=null}
 
 /* ---------- som, voz, tela bloqueada ---------- */
 let ac=null,beeps=[],wl=null;
-function AC(){if(ac&&(ac.state==='closed'))ac=null;if(!ac){const C=window.AudioContext||window.webkitAudioContext;if(C)try{ac=new C()}catch(e){}}if(ac&&ac.state!=='running')ac.resume().catch(()=>{});return ac}
+function AC(){if(ac&&(ac.state==='closed'))ac=null;if(!ac){const C=window.AudioContext||window.webkitAudioContext;if(C)try{ac=new C();ac.onstatechange=()=>{if(ac&&ac.state==='running')scheduleBeeps()}}catch(e){}}if(ac&&ac.state!=='running')ac.resume().catch(()=>{});return ac}
 /* depois de bloquear a tela ou sair do app, o iPhone suspende o som: reativa no primeiro toque */
-function wakeAudio(){if(!db.active)return;setSession();
-  if(ac&&ac.state!=='running'&&ac.state!=='suspended'){try{ac.close()}catch(e){}ac=null}   /* 'interrupted' no Safari: recria */
-  const c=AC();if(!c)return;if(c.state==='running')scheduleBeeps();else c.resume().then(()=>scheduleBeeps()).catch(()=>{try{c.close()}catch(e){}ac=null;AC();scheduleBeeps()})}
+function wakeAudio(gesture){if(!db.active)return;setSession();const c=AC();if(!c)return;
+  if(c.state==='running'){scheduleBeeps();return}
+  c.resume().then(()=>{if(c.state==='running')scheduleBeeps();else if(gesture)recreateAC()}).catch(()=>{if(gesture)recreateAC()})}
+function recreateAC(){try{ac&&ac.close()}catch(e){}ac=null;const c=AC();if(c){c.resume().catch(()=>{});scheduleBeeps()}}  /* só com toque do usuário (iPhone exige) */
 function beepAt(t,f,d){const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.6,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+d+.05);beeps.push(g)}
 function cancelBeeps(){beeps.forEach(g=>{try{g.disconnect()}catch(e){}});beeps=[]}
 function scheduleBeeps(){
@@ -376,8 +377,8 @@ function msUpd(force){
 }
 async function wake(){if(!db.cfg.wake||!db.active||!navigator.wakeLock)return;try{wl=await navigator.wakeLock.request('screen')}catch(e){}}
 function unwake(){try{wl&&wl.release()}catch(e){}wl=null}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&db.active){wake();wakeAudio();if(view.name==='workout')render()}});
-['touchstart','pointerdown','click'].forEach(ev=>document.addEventListener(ev,()=>{if(db.active&&(!ac||ac.state!=='running'))wakeAudio()},{capture:true,passive:true}));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&db.active){wake();wakeAudio(false);if(view.name==='workout')render()}});
+['touchend','click'].forEach(ev=>document.addEventListener(ev,()=>{if(db.active&&(!ac||ac.state!=='running'))wakeAudio(true)},{capture:true,passive:true}));
 
 /* ---------- lógica do treino (ciclo automático: série + descanso) ---------- */
 const curEx=()=>{const a=db.active;return a?T(a.tid)?.ex[a.exi]:null};
