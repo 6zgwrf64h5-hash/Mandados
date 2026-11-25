@@ -201,7 +201,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='24/11 · 23h55';
+const KEY='meutreino.v1', RING=339.29, APPV='25/11 · 00h05';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -601,13 +601,17 @@ function vCfg(){
 /* ---------- importar áudios gerados num site de voz ---------- */
 const normT=x=>String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\.[a-z0-9]+$/,'').replace(/[^a-z0-9]+/g,' ').trim();
 const scriptTxt=()=>vocab().map(x=>x.l.replace(/[!.]+$/,'')+'.').join('\n');
+function scriptParts(max){const o=[];let cur='';for(const ln of scriptTxt().split('\n')){if(cur&&(cur.length+1+ln.length)>max){o.push(cur);cur=ln}else cur=cur?cur+'\n'+ln:ln}if(cur)o.push(cur);return o}
 function wavBlob(d,sr){const n=d.length,b=new ArrayBuffer(44+n*2),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
   w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
   for(let i=0;i<n;i++){const x=Math.max(-1,Math.min(1,d[i]));v.setInt16(44+i*2,x<0?x*32768:x*32767,true)}return new Blob([b],{type:'audio/wav'})}
 async function decodeFile(f){const O=window.OfflineAudioContext||window.webkitOfflineAudioContext,c=new O(1,1,44100),ab=await f.arrayBuffer();
   return await new Promise((ok,no)=>{const p=c.decodeAudioData(ab,ok,no);if(p&&p.then)p.then(ok,no)})}
-async function importOne(f){const v=vocab();let buf;try{buf=await decodeFile(f)}catch(e){return toast('Não consegui abrir esse áudio')}
-  const d=buf.getChannelData(0),sr=buf.sampleRate,fr=Math.round(sr*.02),nf=Math.floor(d.length/fr),en=new Float32Array(nf);let pk=0;
+async function importOne(fs){const v=vocab();fs=[...fs].sort((a,b)=>a.lastModified-b.lastModified||a.name.localeCompare(b.name));let bufs=[];
+  try{for(const f of fs)bufs.push(await decodeFile(f))}catch(e){return toast('Não consegui abrir esse áudio')}
+  const sr=bufs[0].sampleRate,gap=Math.round(sr*1.2),tot=bufs.reduce((t,b)=>t+b.length+gap,0),d=new Float32Array(tot);let o=0;
+  for(const b of bufs){const c=b.getChannelData(0);if(b.sampleRate===sr)d.set(c,o);else{const r=b.sampleRate/sr,n=Math.floor(c.length/r);for(let i=0;i<n;i++)d[o+i]=c[Math.floor(i*r)]}o+=Math.floor(b.length*sr/b.sampleRate)+gap}
+  const fr=Math.round(sr*.02),nf=Math.floor(d.length/fr),en=new Float32Array(nf);let pk=0;
   for(let i=0;i<nf;i++){let s2=0;for(let j=i*fr;j<(i+1)*fr;j++)s2+=d[j]*d[j];en[i]=Math.sqrt(s2/fr);if(en[i]>pk)pk=en[i]}
   const th=pk*.06,runs=[];let st=-1;for(let i=0;i<nf;i++){if(en[i]>th){if(st<0)st=i}else if(st>=0){runs.push([st,i]);st=-1}}if(st>=0)runs.push([st,nf]);
   if(runs.length<v.length)return openModal(`<h3>Não deu certo</h3><p>Achei só ${runs.length} trechos de fala no áudio, mas são ${v.length} itens. Gere o áudio de novo com o texto copiado do app, sem mudar nada.</p><div class="acts"><button data-a="closem">OK</button></div>`);
@@ -619,7 +623,7 @@ async function importOne(f){const v=vocab();let buf;try{buf=await decodeFile(f)}
 async function importMany(fs){const v=vocab(),m=new Map(v.map(x=>[normT(x.l),x.k]));let n=0,miss=[];
   for(const f of fs){const k=m.get(normT(f.name));if(!k){miss.push(f.name);continue}try{const buf=await decodeFile(f);const blob=wavBlob(buf.getChannelData(0),buf.sampleRate);await idbPut(k,blob);await decodeClip(k,blob);n++}catch(e){miss.push(f.name)}}
   render();toast(`${n} áudios importados`+(miss.length?` · ${miss.length} sem correspondência`:''))}
-document.addEventListener('change',e=>{if(e.target.id==='impOne'&&e.target.files[0])importOne(e.target.files[0]);if(e.target.id==='impMany'&&e.target.files.length)importMany([...e.target.files])});
+document.addEventListener('change',e=>{if(e.target.id==='impOne'&&e.target.files.length)importOne(e.target.files);if(e.target.id==='impMany'&&e.target.files.length)importMany([...e.target.files])});
 
 /* ---------- gravador de voz ---------- */
 let rec={on:false,seq:false,key:null,stream:null,mr:null,ch:[],actx:null,an:null,iv:null,lvl:0};
@@ -655,9 +659,11 @@ function vRec(){const v=vocab(),n=v.filter(x=>clips.has(x.k)).length,cur=rec.key
     <small style="display:block;margin-top:8px">Lugar silencioso, celular a um palmo da boca, fale normal e faça uma pausa curta depois de cada palavra. Cada palavra aparece na tela e o app passa para a próxima sozinho.</small>`}</section>
   <section class="ex" style="margin-bottom:10px"><small class="lab">Ou use uma voz de computador (site)</small>
     <small style="display:block">1. Copie o texto. 2. No site, cole, escolha uma voz em português do Brasil e baixe o MP3. 3. Importe aqui: o app corta em ${vocab().length} pedaços sozinho.</small>
-    <div class="mrow"><button data-a="copyscript">Copiar texto</button><label class="filebtn pri">Importar MP3<input id="impOne" type="file" accept="audio/*,.mp3,.wav,.m4a" hidden></label></div>
+    <div class="mrow"><button data-a="copyscript">Copiar texto</button><label class="filebtn pri">Importar MP3<input id="impOne" type="file" accept="audio/*,.mp3,.wav,.m4a" multiple hidden></label></div>
     <small style="display:block;margin-top:8px">Sites: <a href="https://ttsmaker.com/br" target="_blank" rel="noopener">ttsmaker.com/br</a> ou <a href="https://ttsmp3.com" target="_blank" rel="noopener">ttsmp3.com</a>. Também dá para importar vários arquivos com o nome igual ao texto (ex.: "faltam.mp3"):
     <label class="filebtn sm">Importar vários<input id="impMany" type="file" accept="audio/*,.mp3,.wav,.m4a" multiple hidden></label></small>
+    <small style="display:block;margin-top:10px">Se o site limitar o tamanho (ex.: 300 caracteres), gere <b>uma parte de cada vez, na ordem</b>, baixe todas e no "Importar MP3" selecione todas juntas:</small>
+    <div class="mrow">${scriptParts(280).map((_,i)=>`<button data-a="copypart" data-v="${i}">Parte ${i+1}</button>`).join('')}</div>
     <textarea id="scr" readonly style="min-height:90px;margin-top:8px;font-size:13px">${esc(scriptTxt())}</textarea></section>
   ${groups.map(g=>`<div class="sec">${g}</div>${v.filter(x=>x.g===g).map(x=>`<div class="vrow ${rec.key===x.k?'cur':''}"><span class="ok">${clips.has(x.k)?'✓':''}</span><span class="tx">${esc(x.l)}</span>
     ${clips.has(x.k)?`<button class="ghost" data-a="recplay" data-v="${x.k}" aria-label="ouvir">▶</button>`:''}<button class="ghost" data-a="recone" data-v="${x.k}" aria-label="gravar">●</button></div>`).join('')}`).join('')}
@@ -802,6 +808,7 @@ const A={
   export:()=>{const j=JSON.stringify({plan:db.plan,log:db.log,cfg:db.cfg,med:db.med});$('#bk').value=j;
     try{navigator.clipboard.writeText(j).then(()=>toast('Backup copiado'),()=>toast('Copie o texto da caixa'))}catch(e){toast('Copie o texto da caixa')}},
   import:()=>{try{const o=JSON.parse($('#bk').value);if(!Array.isArray(o.plan))throw 0;db.plan=o.plan;db.log=Array.isArray(o.log)?o.log:db.log;if(Array.isArray(o.med))db.med=o.med;if(o.cfg)Object.assign(db.cfg,o.cfg);save();toast('Backup importado');render()}catch(e){toast('Backup inválido')}},
+  copypart:v=>{const t=scriptParts(280)[+v];$('#scr').value=t;try{navigator.clipboard.writeText(t).then(()=>toast(`Parte ${+v+1} copiada`),()=>{$('#scr').select();toast('Selecione e copie o texto abaixo')})}catch(e){$('#scr').select()}},
   copyscript:()=>{const t=scriptTxt();try{navigator.clipboard.writeText(t).then(()=>toast('Texto copiado'),()=>{$('#scr').select();toast('Selecione e copie o texto abaixo')})}catch(e){$('#scr').select()}},
   rec:()=>go('rec'),recseq:()=>{const k=nextKey();if(k)recStart(k,true)},recstop:()=>{if(rec.seq){recStop(false);recClose();render()}else recStop(true)},
   recone:v=>{if(rec.on)recStop(false);setTimeout(()=>recStart(v,false),rec.on?300:0)},
