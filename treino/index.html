@@ -95,6 +95,7 @@ main{max-width:640px;margin:0 auto;padding:16px}
 .cd.on{background:var(--c);color:#fff;font:700 16px 'Barlow Condensed',sans-serif}
 .evd{font:700 20px 'Barlow Condensed',sans-serif;white-space:nowrap;color:var(--mute);align-self:center}.evd.up{color:var(--ok)}.evd.dn{color:#fbbf24}
 .sheet .stats div{background:var(--card2)}
+.stats.vol1{grid-template-columns:1fr;margin-bottom:0}.stats.vol1 b{font-size:38px;color:#fb923c}
 .kcal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 10px}.kcal div{background:var(--card);border-radius:14px;padding:10px;text-align:center}
 .kcal b{display:block;font:700 30px/1.1 'Barlow Condensed',sans-serif}.kcal i{font-style:normal;font-size:12px;color:var(--mute)}.kcal .tot{background:#3a1d12}.kcal .tot b{color:#fb923c}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--card);padding:4px;border-radius:12px;margin-bottom:10px}.seg button{border:0;background:none;min-height:38px;font-weight:600;color:var(--mute)}.seg button.on{background:var(--card2);color:var(--ink)}
@@ -210,7 +211,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='26/11 · 18h25';
+const KEY='meutreino.v1', RING=339.29, APPV='26/11 · 18h50';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -564,7 +565,7 @@ let hm=0,hw=0,hp='m';
 const MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 function perStats(a,b){const ss=db.log.filter(x=>x.start>=a&&x.start<b);
   return{a,b,ss,n:ss.length,min:Math.round(ss.reduce((t,x)=>t+(x.end-x.start),0)/60000),sets:ss.reduce((t,x)=>t+x.e.length,0),
-    km:ss.reduce((t,x)=>t+(x.card?.km||0),0),cmin:ss.reduce((t,x)=>t+(x.card?.min||0),0),kcal:ss.reduce((t,x)=>t+kcalM(x)+kcalC(x),0)}}
+    km:ss.reduce((t,x)=>t+(x.card?.km||0),0),vol:Math.round(ss.reduce((t,x)=>t+x.e.filter(e=>e.u==='kg').reduce((u,e)=>u+e.r*e.w,0),0)),cmin:ss.reduce((t,x)=>t+(x.card?.min||0),0),kcal:ss.reduce((t,x)=>t+kcalM(x)+kcalC(x),0)}}
 function monthStats(off){const n=new Date(),a=new Date(n.getFullYear(),n.getMonth()+off,1),b=new Date(n.getFullYear(),n.getMonth()+off+1,1);return perStats(a.getTime(),b.getTime())}
 function weekStats(off){const a=weekStart(Date.now())+off*7*864e5;return perStats(a,a+7*864e5)}
 function evo(){
@@ -909,6 +910,7 @@ function cgHtml(kind,a,b){const M=perStats(a,b),P=perStats(a-(b-a),a),days=new S
     (days>=14?'Mês excelente, constância de verdade! 🏆':days>=8?'Bom mês de treino, continue assim!':days>0?'Cada treino conta. Próximo mês tem mais!':'Mês sem treinos registrados. Bora recomeçar!');
   const cmp=(v,p,u)=>{const d=Math.round((v-p)*10)/10;return d?`<i class="dl">${d>0?'+':''}${nf(d)}${u} vs ${W?'semana':'mês'} anterior</i>`:''};
   return `<h3>${days>0?(W?'Parabéns pela semana!':'Parabéns pelo mês!'):(W?'Resumo da semana':'Resumo do mês')}</h3><small>${per}</small><p style="margin:8px 0 12px">${msg}</p>
+  <div class="stats vol1"><div><b>${M.vol.toLocaleString('pt-BR')} kg</b><small>levantados no total (séries × repetições × peso)</small>${cmp(M.vol,P.vol,' kg')}</div></div>
   <div class="stats s4"><div><b>${days}</b><small>${days===1?'dia treinado':'dias treinados'}</small>${cmp(days,pd,'')}</div><div><b>${M.kcal.toLocaleString('pt-BR')}</b><small>kcal estimadas</small>${cmp(M.kcal,P.kcal,'')}</div>
   <div><b>${nf(M.km)}</b><small>km de esteira${M.cmin?` · ${M.cmin} min`:''}</small>${cmp(M.km,P.km,' km')}</div><div><b>${(M.min/60).toFixed(1).replace('.',',')}</b><small>horas de treino · ${M.sets} séries</small></div></div>
   <div class="acts"><button class="pri" data-a="cgnext">${cgQ.length?'Próximo resumo':'Valeu!'}</button><button data-a="cghist" data-v="${kind}">Ver no histórico</button></div>`}
