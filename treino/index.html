@@ -208,7 +208,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='26/11 · 17h45';
+const KEY='meutreino.v1', RING=339.29, APPV='26/11 · 17h55';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -457,7 +457,7 @@ function finishNow(){const a=db.active,r=a&&a.rest;if(!r)return startCycle();if(
 function cycleEnd(natural){const a=db.active;if(!a)return;a.rest=null;cancelBeeps();
   if(natural){try{navigator.vibrate&&navigator.vibrate([300,120,300])}catch(e){}}startCycle()}
 function toggleRest(remote){const r=db.active?.rest;if(!r)return;
-  if(r.paused){r.endAt=Date.now()+r.left*1000;r.paused=false;if(remote)say('Retomado')}else{r.left=remOf(r);r.paused=true;if(remote)say('Pausado')}
+  const a=db.active;if(r.paused){r.endAt=Date.now()+r.left*1000;r.paused=false;if(r.pAt){a.pauseMs=(a.pauseMs||0)+(Date.now()-r.pAt);delete r.pAt}if(remote)say('Retomado')}else{r.left=remOf(r);r.paused=true;r.pAt=Date.now();if(remote)say('Pausado')}
   scheduleBeeps();save();render();msUpd(true)}
 function addRest(d,remote){const r=db.active?.rest;if(!r)return;const el=r.dur-remOf(r);
   if(r.paused)r.left=Math.max(1,r.left+d);else r.endAt=Math.max(Date.now()+1000,r.endAt+d*1000);
@@ -471,7 +471,8 @@ function jump(i){const a=db.active,t=T(a.tid);if(i<0||i>=t.ex.length)return;a.ex
 function finishPrompt(){const e=db.active?.entries.at(-1);openModal(`<h3>Todas as séries feitas</h3>${e?`<div class="stp"><small>Última série (${esc(short(e.n))} · ${fmtW(e.w,e.u)}): repetições que você fez</small>${stR('inER','er',e.r)}</div>`:''}<p>Pode encerrar e salvar no histórico, ou continuar se quiser fazer algo extra.</p><div class="acts"><button class="pri" data-a="finish">Encerrar e salvar</button><button data-a="closem">Continuar treinando</button></div>`)}
 function finish(){
   const a=db.active;if(!a)return;const t=T(a.tid);let sid=null;
-  if(a.entries.length){sid=uid();db.log.push({id:sid,tid:a.tid,tn:t.name,start:a.start,end:Date.now(),e:a.entries})}
+  const pz=(a.pauseMs||0)+(a.rest&&a.rest.paused&&a.rest.pAt?Date.now()-a.rest.pAt:0);
+  if(a.entries.length){sid=uid();db.log.push({id:sid,tid:a.tid,tn:t.name,start:a.start,end:Date.now(),e:a.entries,pz})}
   stopKeepAlive();cancelBeeps();unwake();db.active=null;save();closeModal();
   if(!sid)return go('home');
   db.log.at(-1).kg=KG();save();go('done',a.tid,sid);
@@ -511,7 +512,7 @@ function vWorkout(){
   let box='';
   if(r){const rem=remOf(r),el=r.dur-rem,pr=ph==='set'?r.exec-el:rem,pd=ph==='set'?r.exec:r.dur-r.exec;
     box=`<section class="tbar ${ph} ${r.paused?'paused':''} ${ph==='rest'&&rem<=10?'warn':''}" id="restbox"><div class="ring"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="54"/><circle class="prg" id="rr" cx="60" cy="60" r="54" stroke-dasharray="${RING}" style="stroke-dashoffset:${RING*(1-pr/pd)}"/></svg></div>
-    <div class="tinfo"><div class="big" id="rt">${mmss(pr)}</div><small>${r.paused?'pausado':ph==='set'?(TMP(ex)?'aquecimento':'fazendo a série'):'descanso'}</small></div>
+    <div class="tinfo"><div class="big" id="rt">${mmss(pr)}</div><small id="tl">${r.paused?pzTxt():ph==='set'?(TMP(ex)?'aquecimento':'fazendo a série'):'descanso'}</small></div>
     <button data-a="rp" class="${r.paused?'pri':''}">${r.paused?'Retomar':'Pausar'}</button></section>`}
   const mine=a.entries.map((e,i)=>({e,i})).filter(x=>x.e.ex===ex.id);
   let fez='';
@@ -534,7 +535,7 @@ function vWorkout(){
 function groups(es){const m=new Map();es.forEach(e=>{if(!m.has(e.ex))m.set(e.ex,[]);m.get(e.ex).push(e)});return[...m.values()]}
 /* ---------- calorias e esteira (estimativas) ---------- */
 const KG=()=>{const o=lastOf('peso');return o?o.v:(+db.cfg.peso||80)};
-const kcalM=s=>Math.round(3.5*(s.kg||KG())*((s.end-s.start)/3.6e6));          /* musculação ~3,5 MET (inclui descansos) */
+const kcalM=s=>Math.round(3.5*(s.kg||KG())*((s.end-s.start-(s.pz||0))/3.6e6));          /* musculação ~3,5 MET (inclui descansos) */
 const kmh=c=>c&&c.min?c.km/(c.min/60):0;
 const kcalC=s=>{const c=s.card;if(!c||!c.km)return 0;return Math.round((kmh(c)>=7?1.0:0.65)*(s.kg||KG())*c.km)}; /* corrida ~1 kcal/kg/km, caminhada ~0,65 */
 const pace=c=>{if(!c||!c.km)return '';const p=c.min/c.km,m=Math.floor(p),sx=Math.round((p-m)*60);return m+':'+pad(sx===60?0:sx)+' min/km'};
@@ -547,7 +548,8 @@ function vCardio(){const s=db.log.find(x=>x.id===view.sid);if(!s)return vHome();
 function vDone(){
   const s=db.log.find(x=>x.id===view.sid);if(!s)return vHome();
   const vol=s.e.filter(e=>e.u==='kg').reduce((t,e)=>t+e.r*e.w,0),km=kcalM(s),kc=kcalC(s);
-  return `<div class="kcal"><div><small>Musculação</small><b>${km}</b><i>kcal</i></div><div><small>Esteira</small><b>${s.card?kc:'–'}</b><i>${s.card?`${nf(s.card.km)} km · ${s.card.min} min`:s.cpend?'pendente':'não fez'}</i></div><div class="tot"><small>Total</small><b>${km+kc}</b><i>kcal (estimativa)</i></div></div>
+  const pzm=s.pz?Math.round(s.pz/60000):0;
+  return `${s.pz?`<div class="note">Tempo pausado no treino: <b>${hms(s.pz/1000)}</b></div>`:''}<div class="kcal"><div><small>Musculação</small><b>${km}</b><i>kcal</i></div><div><small>Esteira</small><b>${s.card?kc:'–'}</b><i>${s.card?`${nf(s.card.km)} km · ${s.card.min} min`:s.cpend?'pendente':'não fez'}</i></div><div class="tot"><small>Total</small><b>${km+kc}</b><i>kcal (estimativa)</i></div></div>
   ${s.card?'':`<button class="addb" style="margin:0 0 10px" data-a="cardio" data-v="${s.id}">+ Registrar esteira</button>`}
   <div class="stats"><div><b>${Math.round((s.end-s.start)/60000)}</b><small>minutos</small></div><div><b>${s.e.length}</b><small>séries</small></div><div><b>${vol.toLocaleString('pt-BR')}</b><small>kg de volume</small></div></div>
   ${groups(s.e).map(g=>`<div class="exrow"><div class="tx"><b>${esc(g[0].n)}</b><small>${fmtSets(g)}</small></div></div>`).join('')}
@@ -595,7 +597,7 @@ function vHist(){
   ${medHist()}
   <div class="sec">Treinos feitos</div>`;
   return h+[...db.log].reverse().map(s=>{const t=T(s.tid)||{color:'#666',id:s.tid};
-    return `<details class="hs"><summary><span class="tile sm" style="--c:${t.color}">${esc(t.id)}</span><div class="tx"><b>${esc(s.tn)}</b><br><small>${dLong(s.start)} · ${Math.round((s.end-s.start)/60000)} min · ${s.e.length} séries${s.card?` · esteira ${nf(s.card.km)} km`:''} · ~${kcalM(s)+kcalC(s)} kcal</small></div></summary>
+    return `<details class="hs"><summary><span class="tile sm" style="--c:${t.color}">${esc(t.id)}</span><div class="tx"><b>${esc(s.tn)}</b><br><small>${dLong(s.start)} · ${Math.round((s.end-s.start)/60000)} min · ${s.e.length} séries${s.card?` · esteira ${nf(s.card.km)} km`:''}${s.pz>=60000?` · pausa ${Math.round(s.pz/60000)} min`:''} · ~${kcalM(s)+kcalC(s)} kcal</small></div></summary>
     ${s.card?`<div class="g">Esteira<br><span>${nf(s.card.km)} km em ${s.card.min} min · ${nf(Math.round(kmh(s.card)*10)/10)} km/h · ${pace(s.card)} · ~${kcalC(s)} kcal</span></div>`:''}
     ${groups(s.e).map(g=>`<div class="g">${esc(g[0].n)}<br><span>${fmtSets(g)}</span></div>`).join('')}
     <div style="padding:8px 0 14px;display:flex;gap:8px"><button data-a="cardio" data-v="${s.id}">${s.card?'Editar esteira':'+ Esteira'}</button><button class="danger" data-a="delsess" data-v="${s.id}">Excluir registro</button></div></details>`}).join('');
@@ -780,8 +782,11 @@ function pkReset(){cancelAnimationFrame(pkT);pkT=null;const r=$('#pkr');if(r)r.s
   ['pointerup','pointercancel'].forEach(ev=>document.addEventListener(ev,clr,true));
   document.addEventListener('click',e=>{if(swallow){swallow=false;e.preventDefault();e.stopPropagation()}},true);
   document.addEventListener('contextmenu',e=>{if(view.name==='workout')e.preventDefault()},true)})();
+const pzNow=()=>{const a=db.active,r=a&&a.rest;return r&&r.paused&&r.pAt?(Date.now()-r.pAt)/1000:0};
+const pzTxt=()=>{const a=db.active,tot=((a&&a.pauseMs)||0)/1000+pzNow();return 'pausado há '+mmss(pzNow())+(tot>pzNow()+1?' · total '+hms(tot):'')};
 function tick(){
-  {const p=$('#pocket');if(p&&!p.hidden){const a=db.active;if(!a){pocketOff()}else{const r=a.rest,rem=r?remOf(r):0,el=r?r.dur-rem:0;$('#pt').textContent=r?mmss(r.reg?rem:r.exec-el):'–';$('#pl').textContent=!r?'':r.paused?'pausado':r.reg?'descanso':'fazendo a série'}}}
+  {const r=db.active&&db.active.rest,tl=$('#tl');if(tl&&r&&r.paused)tl.textContent=pzTxt()}
+  {const p=$('#pocket');if(p&&!p.hidden){const a=db.active;if(!a){pocketOff()}else{const r=a.rest,rem=r?remOf(r):0,el=r?r.dur-rem:0;$('#pt').textContent=r?mmss(r.reg?rem:r.exec-el):'–';$('#pl').textContent=!r?'':r.paused?pzTxt():r.reg?'descanso':'fazendo a série'}}}
   const sw=$('#sndw');if(sw)sw.hidden=!(db.active&&view.name==='workout'&&ac&&ac.state!=='running');
   const a=db.active;if(!a)return;const r=a.rest;const elx=$('#el');if(elx)elx.textContent=leftTxt();
   if(r){const rem=remOf(r),el=r.dur-rem;
