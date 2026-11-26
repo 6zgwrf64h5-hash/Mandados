@@ -94,6 +94,7 @@ main{max-width:640px;margin:0 auto;padding:16px}
 .cw{font-size:12px;color:var(--mute)}.cd{height:34px;display:grid;place-items:center;border-radius:8px;font-size:13px;color:var(--mute);background:var(--card)}
 .cd.on{background:var(--c);color:#fff;font:700 16px 'Barlow Condensed',sans-serif}
 .evd{font:700 20px 'Barlow Condensed',sans-serif;white-space:nowrap;color:var(--mute);align-self:center}.evd.up{color:var(--ok)}.evd.dn{color:#fbbf24}
+.sheet .stats div{background:var(--card2)}
 .kcal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 10px}.kcal div{background:var(--card);border-radius:14px;padding:10px;text-align:center}
 .kcal b{display:block;font:700 30px/1.1 'Barlow Condensed',sans-serif}.kcal i{font-style:normal;font-size:12px;color:var(--mute)}.kcal .tot{background:#3a1d12}.kcal .tot b{color:#fb923c}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--card);padding:4px;border-radius:12px;margin-bottom:10px}.seg button{border:0;background:none;min-height:38px;font-weight:600;color:var(--mute)}.seg button.on{background:var(--card2);color:var(--ink)}
@@ -208,7 +209,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+pad(s%60)};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+':'+pad(m)+':'+pad(s%60):m+':'+pad(s%60)};
-const KEY='meutreino.v1', RING=339.29, APPV='26/11 · 17h55';
+const KEY='meutreino.v1', RING=339.29, APPV='26/11 · 18h05';
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{})}catch(e){}
 
 function seed(){
@@ -893,7 +894,27 @@ document.addEventListener('change',e=>{const d=e.target.dataset||{};
   if(d.cfgp){const v=parseFloat(String(e.target.value).replace(',','.'));if(v>0)db.cfg[d.cfgp]=v;else delete db.cfg[d.cfgp];save();return}
   if(d.cfgn){db.cfg[d.cfgn]=Math.max(5,parseInt(e.target.value)||20);e.target.value=db.cfg[d.cfgn];save();return}
   const k=d.cfg;if(!k)return;db.cfg[k]=e.target.checked;save();if(k==='wake'){e.target.checked?wake():unwake()}if(k==='beep'||k==='mvoice'||k==='voice'||k==='myvoice')scheduleBeeps();if(k==='music'&&db.active){startKeepAlive();scheduleBeeps()}});
+/* ---------- parabéns no fim da semana e do mês ---------- */
+let cgQ=[];
+function cgHtml(kind,a,b){const M=perStats(a,b),P=perStats(a-(b-a),a),days=new Set(M.ss.map(x=>new Date(x.start).toDateString())).size,pd=new Set(P.ss.map(x=>new Date(x.start).toDateString())).size;
+  const W=kind==='w',per=W?`Semana de ${dShort(a)} a ${dShort(b-864e5)}`:`${MES[new Date(a).getMonth()][0].toUpperCase()+MES[new Date(a).getMonth()].slice(1)} de ${new Date(a).getFullYear()}`;
+  const msg=W?(days>=4?'Semana completa! Os 4 treinos feitos. 💪':days===3?'Quase completa: faltou só 1 treino.':days>0?'Toda semana conta. Bora buscar os 4 dias na próxima!':'Semana sem treino. Bora voltar com tudo!'):
+    (days>=14?'Mês excelente, constância de verdade! 🏆':days>=8?'Bom mês de treino, continue assim!':days>0?'Cada treino conta. Próximo mês tem mais!':'Mês sem treinos registrados. Bora recomeçar!');
+  const cmp=(v,p,u)=>{const d=Math.round((v-p)*10)/10;return d?`<i class="dl">${d>0?'+':''}${nf(d)}${u} vs ${W?'semana':'mês'} anterior</i>`:''};
+  return `<h3>${days>0?(W?'Parabéns pela semana!':'Parabéns pelo mês!'):(W?'Resumo da semana':'Resumo do mês')}</h3><small>${per}</small><p style="margin:8px 0 12px">${msg}</p>
+  <div class="stats s4"><div><b>${days}</b><small>${days===1?'dia treinado':'dias treinados'}</small>${cmp(days,pd,'')}</div><div><b>${M.kcal.toLocaleString('pt-BR')}</b><small>kcal estimadas</small>${cmp(M.kcal,P.kcal,'')}</div>
+  <div><b>${nf(M.km)}</b><small>km de esteira${M.cmin?` · ${M.cmin} min`:''}</small>${cmp(M.km,P.km,' km')}</div><div><b>${(M.min/60).toFixed(1).replace('.',',')}</b><small>horas de treino · ${M.sets} séries</small></div></div>
+  <div class="acts"><button class="pri" data-a="cgnext">${cgQ.length?'Próximo resumo':'Valeu!'}</button><button data-a="cghist" data-v="${kind}">Ver no histórico</button></div>`}
+function checkCongrats(){if(db.active||!db.log.length||!$('#modal').hidden)return;db.seen=db.seen||{};const now=Date.now(),first=Math.min(...db.log.map(x=>x.start));
+  const ws=weekStart(now),pw=ws-7*864e5,n=new Date(),ms=new Date(n.getFullYear(),n.getMonth(),1).getTime(),pm=new Date(n.getFullYear(),n.getMonth()-1,1).getTime();cgQ=[];
+  if((db.seen.w||0)<pw&&first<ws)cgQ.push(['w',pw,ws]);
+  if((db.seen.m||0)<pm&&first<ms)cgQ.push(['m',pm,ms]);
+  cgShow()}
+function cgShow(){const x=cgQ.shift();if(!x)return;db.seen[x[0]]=x[1];save();openModal(cgHtml(...x))}
+A.cgnext=()=>{closeModal();cgShow()};A.cghist=v=>{hp=v==='w'?'w':'m';hw=-1;hm=-1;cgQ=[];closeModal();go('hist')};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(checkCongrats,400)});
 render();
+setTimeout(checkCongrats,600);
 }
 </script>
 </body>
