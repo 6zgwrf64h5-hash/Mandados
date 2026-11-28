@@ -44,9 +44,9 @@ button:disabled{opacity:.5}
 .src b{font-variant-numeric:tabular-nums;font-weight:600}
 .up{color:var(--warn)}.down{color:var(--ok)}
 h2{font-size:17px;margin:24px 0 10px;font-weight:600}
-.cw{position:relative}.cw.mv .cat{padding-left:40px}
+.cw{position:relative}.cw.mv .cat{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .hd{position:absolute;left:0;top:0;width:38px;height:60px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:16px;letter-spacing:-3px;touch-action:none;cursor:grab;z-index:2;user-select:none;-webkit-user-select:none}
-.cw.drag{z-index:5;opacity:.95}.cw.drag .cat{box-shadow:0 8px 24px rgba(0,0,0,.25);border-color:var(--acc)}
+.cw.drag{z-index:5;opacity:.97}.cw.drag .cat{transform:scale(1.02)}.cw.drag .cat{box-shadow:0 8px 24px rgba(0,0,0,.25);border-color:var(--acc)}
 .cw.anim{transition:transform .15s}
 .cat{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
 .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
@@ -118,7 +118,7 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <p class="lbl" id="catList"></p>
 <div class="inl"><input type="text" id="novaFonte" placeholder="Novo cartão ou conta"><button id="bFonte">Criar</button></div>
 <p class="lbl" id="fonteList"></p>
-<p class="lbl">Para mudar a ordem das categorias, segure ⋮⋮ e arraste. A ordem vale para todos os meses.</p><button id="bOrdVal" style="margin-bottom:10px">Voltar a ordenar por valor</button>
+<p class="lbl">Para mudar a ordem das categorias, segure o dedo em cima de uma categoria e arraste. A ordem vale para todos os meses.</p><button id="bOrdVal" style="margin-bottom:10px">Voltar a ordenar por valor</button>
 <p class="lbl">"Não contar" é para o que não é gasto: pagamento de fatura, transferência entre suas contas.</p>
 </details>
 <details><summary>Backup e apagar dados</summary>
@@ -261,7 +261,7 @@ function render(){
   $("cats").innerHTML=rows.map(([c,a,s])=>{
     let dl="";if(prev&&c!==PEND&&c!==IGN){const d=s-(pg[c]||0);if(Math.abs(d)>=1)dl=`<span class="dl ${d>0?"up":"down"}">${d>0?"▲":"▼"}${esc(brl(Math.abs(d)).replace("R$","").trim())}</span>`}
     const fixo=c===PEND||c===IGN;
-    return`<div class="cw${fixo?"":" mv"}" data-cw="${esc(c)}">${fixo?"":`<span class="hd" aria-label="Arrastar para reordenar">⋮⋮</span>`}<button class="cat${c===PEND?" pend":""}" data-c="${esc(c)}"><div class="row"><span>${esc(c)}<span class="pc">${c===IGN?"fora do total":(s/tot*100).toFixed(0)+"%"} · ${a.length}</span>${dl}</span><span class="v">${esc(brl(s))}</span></div>${c===IGN?"":`<div class="bar"><i style="width:${(s/mx*100).toFixed(1)}%"></i></div>`}</button>`+
+    return`<div class="cw${fixo?"":" mv"}" data-cw="${esc(c)}"><button class="cat${c===PEND?" pend":""}" data-c="${esc(c)}"><div class="row"><span>${esc(c)}<span class="pc">${c===IGN?"fora do total":(s/tot*100).toFixed(0)+"%"} · ${a.length}</span>${dl}</span><span class="v">${esc(brl(s))}</span></div>${c===IGN?"":`<div class="bar"><i style="width:${(s/mx*100).toFixed(1)}%"></i></div>`}</button>`+
     (open===c?`<div class="items">${a.slice().sort((x,y)=>dkey(x.d).localeCompare(dkey(y.d))).map(it=>{const i=all.indexOf(it),nm=nameOf(it.desc);return`<div class="it" data-it="${i}"><span class="d">${esc(it.d.slice(0,5))}</span><span class="n">${esc(nm)}<span class="raw">${nm!==it.desc?esc(it.desc)+" · ":""}${esc(it.src||"")}</span></span><span class="v">${esc(brl(it.v))}</span>${edit===i?editor(it,i):""}</div>`}).join("")}</div>`:"")+`</div>`}).join("");
   const pend={};(g[PEND]||[]).forEach(it=>{const k=norm(it.desc);const p=pend[k]=pend[k]||{desc:it.desc,n:0,v:0,src:new Set()};p.n++;p.v+=+it.v;p.src.add(it.src)});
   const pl=Object.values(pend).sort((a,b)=>b.v-a.v);
@@ -295,7 +295,7 @@ document.addEventListener("click",e=>{
     F[cur]=(F[cur]||[]).filter(i=>(i.src||"?")!==ds.dataset.dsrc);render();saveM(cur);toast("Apagado");return}
   if(e.target.closest(".ed"))return;
   const it=e.target.closest(".it");if(it){const i=+it.dataset.it;edit=edit===i?null:i;render();return}
-  const cat=e.target.closest(".cat");if(cat){open=open===cat.dataset.c?null:cat.dataset.c;edit=null;render()}
+  const cat=e.target.closest(".cat");if(cat){if(Date.now()-noClick<400)return;open=open===cat.dataset.c?null:cat.dataset.c;edit=null;render()}
 });
 function renderFixas(){const its=F[cur]||[],L=R.fixas||[];let pagas=0;
   $("fxList").innerHTML=L.length?L.map((f,j)=>{const k=norm(f.k||f.n);const hit=its.filter(i=>norm(i.desc).includes(k)||norm(nameOf(i.desc)).includes(k));
@@ -317,25 +317,38 @@ $("bFonte").onclick=()=>{const v=$("novaFonte").value.trim();if(v&&!R.fontes.inc
 
 
 
-/* ---------- arrastar categorias ---------- */
-let DG=null;
-document.addEventListener("pointerdown",e=>{const hd=e.target.closest(".hd");if(!hd)return;e.preventDefault();
-  if(open!==null||edit!==null){open=null;edit=null;render();return toast("Lista fechada — agora arraste")}
-  const el=hd.closest(".cw"),list=[...document.querySelectorAll("#cats .cw.mv")];
-  DG={el,list,start:e.clientY,sy:window.scrollY,id:e.pointerId,h:el.offsetHeight+8,idx:list.indexOf(el),to:list.indexOf(el),mids:list.map(x=>{const r=x.getBoundingClientRect();return r.top+window.scrollY+r.height/2})};
-  el.classList.add("drag");list.forEach(x=>{if(x!==el)x.classList.add("anim")});try{hd.setPointerCapture(e.pointerId)}catch(x){}
-  if(navigator.vibrate)navigator.vibrate(10);DG.raf=requestAnimationFrame(autoScroll)});
+/* ---------- arrastar categorias (segurar e arrastar) ---------- */
+let DG=null,LP=null,noClick=0;
+function beginDrag(el,cy,pid){
+  if(open!==null||edit!==null){const nm=el.dataset.cw;open=null;edit=null;render();el=[...document.querySelectorAll("#cats .cw.mv")].find(x=>x.dataset.cw===nm);if(!el)return}
+  const list=[...document.querySelectorAll("#cats .cw.mv")];
+  DG={el,list,start:cy,cy,sy:window.scrollY,id:pid,h:el.offsetHeight+8,idx:list.indexOf(el),to:list.indexOf(el),mids:list.map(x=>{const r=x.getBoundingClientRect();return r.top+window.scrollY+r.height/2})};
+  el.classList.add("drag");list.forEach(x=>{if(x!==el)x.classList.add("anim")});
+  try{navigator.vibrate&&navigator.vibrate(15)}catch(x){}DG.raf=requestAnimationFrame(autoScroll)}
 function moveDG(cy){if(!DG)return;DG.cy=cy;const dy=cy-DG.start+(window.scrollY-DG.sy);DG.el.style.transform=`translateY(${dy}px)`;
   const y=DG.mids[DG.idx]+dy;let to=DG.idx;
   DG.mids.forEach((m,i)=>{if(i<DG.idx&&y<m)to=Math.min(to,i);if(i>DG.idx&&y>m)to=Math.max(to,i)});DG.to=to;
   DG.list.forEach((x,i)=>{if(x===DG.el)return;let t=0;if(DG.idx<to&&i>DG.idx&&i<=to)t=-DG.h;if(DG.idx>to&&i<DG.idx&&i>=to)t=DG.h;x.style.transform=t?`translateY(${t}px)`:""})}
-function autoScroll(){if(!DG)return;const y=DG.cy;if(y!=null){const H=window.innerHeight;if(y<80)window.scrollBy(0,-10);else if(y>H-80)window.scrollBy(0,10);moveDG(y)}DG.raf=requestAnimationFrame(autoScroll)}
-document.addEventListener("pointermove",e=>{if(DG&&e.pointerId===DG.id){e.preventDefault();moveDG(e.clientY)}},{passive:false});
+function autoScroll(){if(!DG)return;const y=DG.cy;if(y!=null){const H=window.innerHeight;if(y<90)window.scrollBy(0,-10);else if(y>H-90)window.scrollBy(0,10);moveDG(y)}DG.raf=requestAnimationFrame(autoScroll)}
 window.addEventListener("scroll",()=>{if(DG&&DG.cy!=null)moveDG(DG.cy)});
-function endDG(e){if(!DG||(e&&e.pointerId!==DG.id))return;cancelAnimationFrame(DG.raf);
+function endDG(){if(LP){clearTimeout(LP.t);LP=null}if(!DG)return;cancelAnimationFrame(DG.raf);noClick=Date.now();
   const names=DG.list.map(x=>x.dataset.cw),[m]=names.splice(DG.idx,1);names.splice(DG.to,0,m);
   const moved=DG.to!==DG.idx;const old=R.order||[];if(moved)R.order=names.concat(old.filter(x=>!names.includes(x)));DG=null;if(moved){save();toast("Ordem salva para todos os meses")}render()}
-document.addEventListener("pointerup",endDG);document.addEventListener("pointercancel",endDG);
+// toque (celular): segurar ~0,4 s em qualquer parte do card
+const catsEl=$("cats");
+catsEl.addEventListener("touchstart",e=>{const el=e.target.closest(".cw.mv");if(!el||e.target.closest(".items")||e.touches.length>1)return;
+  const t=e.touches[0];LP={x:t.clientX,y:t.clientY,id:t.identifier,t:setTimeout(()=>{const p=LP;if(!p)return;LP=null;beginDrag(el,p.y,p.id)},400)}},{passive:true});
+document.addEventListener("touchmove",e=>{
+  if(DG){const t=[...e.changedTouches].find(x=>x.identifier===DG.id);if(t){e.preventDefault();moveDG(t.clientY)}return}
+  if(LP){const t=[...e.touches].find(x=>x.identifier===LP.id);if(t&&Math.hypot(t.clientX-LP.x,t.clientY-LP.y)>10){clearTimeout(LP.t);LP=null}}},{passive:false});
+document.addEventListener("touchend",e=>{if(DG&&![...e.touches].some(x=>x.identifier===DG.id))endDG();else if(LP){clearTimeout(LP.t);LP=null}});
+document.addEventListener("touchcancel",()=>endDG());
+// mouse (computador): segurar e arrastar
+catsEl.addEventListener("pointerdown",e=>{if(e.pointerType!=="mouse")return;const el=e.target.closest(".cw.mv");if(!el||e.target.closest(".items"))return;
+  LP={x:e.clientX,y:e.clientY,id:"m",t:setTimeout(()=>{const p=LP;if(!p)return;LP=null;beginDrag(el,p.y,"m")},400)}});
+document.addEventListener("pointermove",e=>{if(e.pointerType!=="mouse")return;if(DG&&DG.id==="m"){e.preventDefault();moveDG(e.clientY)}else if(LP&&Math.hypot(e.clientX-LP.x,e.clientY-LP.y)>10){clearTimeout(LP.t);LP=null}});
+document.addEventListener("pointerup",e=>{if(e.pointerType==="mouse")endDG()});
+document.addEventListener("contextmenu",e=>{if(e.target.closest("#cats .cw.mv"))e.preventDefault()});
 $("bOrdVal").onclick=()=>{R.order=[];save();render();toast("Voltou a ordenar por valor")};
 
 /* ---------- backup ---------- */
