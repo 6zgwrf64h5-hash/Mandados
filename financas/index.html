@@ -105,10 +105,11 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <div class="wrap">
 <header><h1>Meus gastos</h1><select id="mes" aria-label="Mês"></select><button class="pri" id="bImp">+ Adicionar</button></header>
 <section class="read"><div class="lbl" id="rLbl">Carregando…</div><div class="big" id="rTot">—</div><div class="sub" id="rSub"></div><div class="src" id="rSrc"></div></section>
-<details class="fx" id="fxBox" open><summary id="fxSum">Contas fixas</summary><div id="fxList"></div><div class="inl"><input type="text" id="fxNovo" placeholder="Nova conta fixa (ex.: Condomínio)"><button id="fxAdd">Adicionar</button></div><p class="lbl" style="margin:0 0 8px">O app procura pelo nome no mês escolhido. Se a conta vier com outro nome no extrato, toque nela na lista e dê o mesmo nome daqui.</p></details>
 <div class="busca"><input type="search" id="busca" placeholder="Buscar por nome ou valor (ex.: posto, 45,60)" aria-label="Buscar compras"><div id="resBusca"></div></div>
 <h2>Por categoria</h2>
 <div id="cats"></div>
+<h2>Contas fixas</h2>
+<details class="fx" id="fxBox" open style="margin-top:0"><summary id="fxSum">Contas fixas</summary><div id="fxList"></div><div class="inl"><input type="text" id="fxNovo" placeholder="Nova conta fixa (ex.: Condomínio)"><button id="fxAdd">Adicionar</button></div><p class="lbl" style="margin:0 0 8px">O app procura pelo nome no mês escolhido. Se a conta vier com outro nome no extrato, toque nela na lista e dê o mesmo nome daqui.</p></details>
 <div id="pendBox"></div>
 <h2>Evolução</h2>
 <div id="evo" class="evo"></div>
@@ -127,7 +128,7 @@ summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weig
 <p class="lbl">Apagar o que veio de uma fonte neste mês (para reenviar):</p>
 <div id="delSrc" class="chips"></div>
 </details>
-<p class="lbl" style="margin-top:20px;text-align:center">Versão 3 · segurar e arrastar</p>
+<p class="lbl" style="margin-top:20px;text-align:center">Versão 4</p>
 <p class="lbl" style="margin-top:20px">Cada mês = o que você efetivamente pagou nele: as faturas que vencem no mês (inteiras) + o extrato da conta do mês (dia 1 ao último dia).</p>
 </div>
 
@@ -231,6 +232,7 @@ function setRule(desc,c,n){const k=keyOf(desc)||norm(desc);R.map={...R.map};if(!
 const allCats=()=>[...R.cats,IGN];
 const catSel=(sel,attr)=>`<select ${attr}><option value="">${PEND}</option>${allCats().map(c=>`<option${c===sel?" selected":""}>${esc(c)}</option>`).join("")}</select>`;
 const dkey=d=>{const p=d.split("/");return(p[2]||"")+(p[1]||"")+(p[0]||"")};
+const dTxt=(d,pl)=>`<span class="dl ${d>0?"up":"down"}">${d>0?"+":"−"} ${esc(brl(Math.abs(d)))} vs ${esc(pl)}</span>`;
 const live=its=>its.filter(i=>catOf(i.desc)!==IGN);
 
 function render(){
@@ -260,7 +262,7 @@ function render(){
   const rows=Object.entries(g).map(([c,a])=>[c,a,sum(a)]).sort((a,b)=>(a[0]===IGN)-(b[0]===IGN)||(a[0]===PEND)-(b[0]===PEND)||oi(a[0])-oi(b[0])||b[2]-a[2]);
   const mx=Math.max(...rows.filter(r=>r[0]!==IGN).map(r=>r[2]),1);
   $("cats").innerHTML=rows.map(([c,a,s])=>{
-    let dl="";if(prev&&c!==PEND&&c!==IGN){const d=s-(pg[c]||0);if(Math.abs(d)>=1)dl=`<span class="dl ${d>0?"up":"down"}">${d>0?"▲":"▼"}${esc(brl(Math.abs(d)).replace("R$","").trim())}</span>`}
+    let dl="";if(prev&&c!==PEND&&c!==IGN){const d=s-(pg[c]||0);if(Math.abs(d)>=0.01)dl=`<br>`+dTxt(d,mLbl(prev))+(pg[c]?"":` <span class="pc">(não teve em ${esc(mLbl(prev))})</span>`);else dl=`<br><span class="pc" style="margin:0">igual a ${esc(mLbl(prev))}</span>`}
     const fixo=c===PEND||c===IGN;
     return`<div class="cw${fixo?"":" mv"}" data-cw="${esc(c)}"><button class="cat${c===PEND?" pend":""}" data-c="${esc(c)}"><div class="row"><span>${esc(c)}<span class="pc">${c===IGN?"fora do total":(s/tot*100).toFixed(0)+"%"} · ${a.length}</span>${dl}</span><span class="v">${esc(brl(s))}</span></div>${c===IGN?"":`<div class="bar"><i style="width:${(s/mx*100).toFixed(1)}%"></i></div>`}</button>`+
     (open===c?`<div class="items">${a.slice().sort((x,y)=>dkey(x.d).localeCompare(dkey(y.d))).map(it=>{const i=all.indexOf(it),nm=nameOf(it.desc);return`<div class="it" data-it="${i}"><span class="d">${esc(it.d.slice(0,5))}</span><span class="n">${esc(nm)}<span class="raw">${nm!==it.desc?esc(it.desc)+" · ":""}${esc(it.src||"")}</span></span><span class="v">${esc(brl(it.v))}</span>${edit===i?editor(it,i):""}</div>`}).join("")}</div>`:"")+`</div>`}).join("");
@@ -298,10 +300,10 @@ document.addEventListener("click",e=>{
   const it=e.target.closest(".it");if(it){const i=+it.dataset.it;edit=edit===i?null:i;render();return}
   const cat=e.target.closest(".cat");if(cat){if(Date.now()-noClick<400)return;open=open===cat.dataset.c?null:cat.dataset.c;edit=null;render()}
 });
-function renderFixas(){const its=F[cur]||[],L=R.fixas||[];let pagas=0;
-  $("fxList").innerHTML=L.length?L.map((f,j)=>{const k=norm(f.k||f.n);const hit=its.filter(i=>norm(i.desc).includes(k)||norm(nameOf(i.desc)).includes(k));
-    if(hit.length)pagas++;return`<div class="fr"><span class="${hit.length?"ok":"no"}">${hit.length?"✓":"⚠"}</span><span>${esc(f.n)}${hit.length?"":`<span class="raw">não apareceu em ${esc(mLbl(cur))}</span>`}</span><span class="v">${hit.length?esc(brl(sum(hit))):""}</span><button class="rm" data-fxrm="${j}" aria-label="Remover">×</button></div>`}).join(""):`<p class="lbl">Nenhuma ainda.</p>`;
-  const falta=L.length-pagas;$("fxSum").innerHTML=`Contas fixas <span class="pc">${pagas}/${L.length} pagas</span>${falta?` <span class="dl up">⚠ ${falta} faltando</span>`:""}`}
+function renderFixas(){const its=F[cur]||[],L=R.fixas||[];let pagas=0;const ms=Object.keys(F).sort().reverse(),pv=ms[ms.indexOf(cur)+1],pits=pv?F[pv]:null;
+  $("fxList").innerHTML=L.length?L.map((f,j)=>{const k=norm(f.k||f.n);const mt=i=>norm(i.desc).includes(k)||norm(nameOf(i.desc)).includes(k);const hit=its.filter(mt);const ph=pits?pits.filter(mt):[];const dd=hit.length&&ph.length?sum(hit)-sum(ph):null;
+    if(hit.length)pagas++;return`<div class="fr"><span class="${hit.length?"ok":"no"}">${hit.length?"✓":"⚠"}</span><span>${esc(f.n)}${hit.length?(dd!==null&&Math.abs(dd)>=0.01?`<span class="raw">${dTxt(dd,mLbl(pv))}</span>`:(dd!==null?`<span class="raw">igual a ${esc(mLbl(pv))}</span>`:"")):`<span class="raw">não apareceu em ${esc(mLbl(cur))}</span>`}</span><span class="v">${hit.length?esc(brl(sum(hit))):""}</span><button class="rm" data-fxrm="${j}" aria-label="Remover">×</button></div>`}).join(""):`<p class="lbl">Nenhuma ainda.</p>`;
+  const falta=L.length-pagas;$("fxSum").innerHTML=`<span class="pc" style="margin:0">${pagas}/${L.length} pagas</span>${falta?` <span class="dl up">⚠ ${falta} faltando</span>`:""}`}
 $("fxAdd").onclick=()=>{const v=$("fxNovo").value.trim();if(!v)return;R.fixas=[...(R.fixas||[]),{n:v,k:norm(v)}];$("fxNovo").value="";render();saveR()};
 function renderBusca(){const q=$("busca").value.trim(),box=$("resBusca");if(!q){box.innerHTML="";return}
   const isNum=/^[\d.,]+$/.test(q),qn=/,/.test(q)?q.replace(/\./g,""):(/\.\d{1,2}$/.test(q)?q.replace(".",","):q.replace(/\./g,"")),qt=norm(q),out=[];
